@@ -21,6 +21,8 @@ declare module '*.vue' {
 interface ImportMetaEnv {
   /** 后端 API 基础地址，如不设置则默认使用 Vite proxy 转发到 localhost:8000 */
   readonly VITE_API_BASE_URL?: string
+  /** 是否为 API 请求携带 Cookie 凭据，只有配置为 "true" 时启用 */
+  readonly VITE_API_WITH_CREDENTIALS?: string
 }
 
 interface ImportMeta {

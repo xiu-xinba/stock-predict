@@ -39,3 +39,8 @@ export function colorWithAlpha(color: string, alpha: number): string {
   // Fallback: return as-is
   return color
 }
+
+export function cssVar(name: string, fallback: string): string {
+  if (typeof document === 'undefined') return fallback
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback
+}

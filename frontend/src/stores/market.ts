@@ -15,6 +15,7 @@ export const useMarketStore = defineStore('market', () => {
   const refreshTimer = ref<number | null>(null)
   let refCount = 0
   let abortController: AbortController | null = null
+  let requestSeq = 0
 
   async function fetchMarketData(force = false) {
     if (loading.value && !force) return
@@ -24,56 +25,64 @@ export const useMarketStore = defineStore('market', () => {
       abortController.abort()
     }
     abortController = new AbortController()
+    const currentController = abortController
     const signal = abortController.signal
+    const seq = ++requestSeq
 
     loading.value = true
-    let hasError = false
+    try {
+      let hasError = false
 
-    // Use Promise.allSettled to run all requests in parallel and update state atomically
-    const [indicesResult, gainersResult, losersResult] = await Promise.allSettled([
-      fetchMarketIndices(signal),
-      fetchFundRanking('gainers', 5, signal),
-      fetchFundRanking('losers', 5, signal),
-    ])
+      // Use Promise.allSettled to run all requests in parallel and update state atomically
+      const [indicesResult, gainersResult, losersResult] = await Promise.allSettled([
+        fetchMarketIndices(signal),
+        fetchFundRanking('gainers', 5, signal),
+        fetchFundRanking('losers', 5, signal),
+      ])
 
-    // Stale check: if a new request was fired while we were waiting, discard results
-    if (signal.aborted) return
+      // Stale check: if a new request was fired while we were waiting, discard results
+      if (signal.aborted || seq !== requestSeq) return
 
-    // Process indices
-    if (indicesResult.status === 'fulfilled') {
-      indices.value = indicesResult.value.data ?? []
-    } else {
-      if (!(indicesResult.reason instanceof CancelError)) hasError = true
+      // Process indices
+      if (indicesResult.status === 'fulfilled') {
+        indices.value = indicesResult.value.data ?? []
+      } else {
+        if (!(indicesResult.reason instanceof CancelError)) hasError = true
+      }
+
+      // Process gainers
+      if (gainersResult.status === 'fulfilled') {
+        topGainers.value = gainersResult.value.data ?? []
+      } else {
+        if (!(gainersResult.reason instanceof CancelError)) hasError = true
+      }
+
+      // Process losers
+      if (losersResult.status === 'fulfilled') {
+        topLosers.value = losersResult.value.data ?? []
+      } else {
+        if (!(losersResult.reason instanceof CancelError)) hasError = true
+      }
+
+      if (!hasError) {
+        lastRefresh.value = new Date().toLocaleTimeString('zh-CN')
+        error.value = null
+      } else if (indices.value.length > 0) {
+        lastRefresh.value = new Date().toLocaleTimeString('zh-CN')
+        error.value = '部分数据刷新失败'
+        ElMessage.warning('部分行情数据刷新失败')
+      } else {
+        error.value = '行情数据加载失败'
+        ElMessage.error('行情数据加载失败，请稍后重试')
+      }
+    } finally {
+      if (seq === requestSeq) {
+        loading.value = false
+        if (abortController === currentController) {
+          abortController = null
+        }
+      }
     }
-
-    // Process gainers
-    if (gainersResult.status === 'fulfilled') {
-      topGainers.value = gainersResult.value.data ?? []
-    } else {
-      if (!(gainersResult.reason instanceof CancelError)) hasError = true
-    }
-
-    // Process losers
-    if (losersResult.status === 'fulfilled') {
-      topLosers.value = losersResult.value.data ?? []
-    } else {
-      if (!(losersResult.reason instanceof CancelError)) hasError = true
-    }
-
-    if (!hasError) {
-      lastRefresh.value = new Date().toLocaleTimeString('zh-CN')
-      error.value = null
-    } else if (indices.value.length > 0) {
-      lastRefresh.value = new Date().toLocaleTimeString('zh-CN')
-      error.value = '部分数据刷新失败'
-      ElMessage.warning('部分行情数据刷新失败')
-    } else {
-      error.value = '行情数据加载失败'
-      ElMessage.error('行情数据加载失败，请稍后重试')
-    }
-
-    loading.value = false
-    abortController = null
   }
 
   function startRefresh(interval: number = 30000) {

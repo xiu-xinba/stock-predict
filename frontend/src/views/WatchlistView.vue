@@ -1,90 +1,96 @@
 <template>
   <div class="watchlist-page">
-    <section class="page-hero">
-      <h1 class="page-title">我的自选</h1>
-      <p class="page-desc">追踪关注的基金，实时掌握涨跌动态</p>
-      <div v-if="store.items.length > 0" class="refresh-info">
-        <span v-if="store.lastRefresh" class="refresh-time">更新于 {{ store.lastRefresh }}</span>
-        <span v-else class="refresh-time">加载中...</span>
-        <button class="refresh-btn" :class="{ spinning: store.loading }" @click="handleRefresh" title="刷新数据">
-          <svg viewBox="0 0 1024 1024"><path fill="currentColor" d="M771.776 794.88A384 384 0 0 1 128 512h64a320 320 0 0 0 555.712 216.448H654.72a32 32 0 1 1 0-64h149.44a32 32 0 0 1 32 32v148.16a32 32 0 1 1-64 0v-50.048zM296.064 229.12A384 384 0 0 1 896 512h-64a320 320 0 0 0-555.712-216.448h72.832a32 32 0 0 1 0 64H199.04a32 32 0 0 1-32-32V179.52a32 32 0 0 1 64 0v49.6z"/></svg>
+    <section class="page-head">
+      <div>
+        <p class="page-kicker">Watchlist</p>
+        <h1 class="page-title">自选监控</h1>
+        <p class="page-desc">关注基金实时涨跌与净值状态</p>
+      </div>
+      <div v-if="store.items.length > 0" class="head-actions">
+        <span v-if="store.lastRefresh" class="refresh-time">{{ store.lastRefresh }}</span>
+        <span v-else class="refresh-time">同步中</span>
+        <button class="icon-btn" :class="{ spinning: store.loading }" type="button" @click="handleRefresh" title="刷新数据">
+          <svg viewBox="0 0 1024 1024" aria-hidden="true"><path fill="currentColor" d="M771.776 794.88A384 384 0 0 1 128 512h64a320 320 0 0 0 555.712 216.448H654.72a32 32 0 1 1 0-64h149.44a32 32 0 0 1 32 32v148.16a32 32 0 1 1-64 0v-50.048zM296.064 229.12A384 384 0 0 1 896 512h-64a320 320 0 0 0-555.712-216.448h72.832a32 32 0 0 1 0 64H199.04a32 32 0 0 1-32-32V179.52a32 32 0 0 1 64 0v49.6z"/></svg>
         </button>
       </div>
     </section>
 
-    <section class="add-section">
+    <section class="command-panel">
       <WatchlistAdd />
     </section>
 
     <template v-if="store.items.length > 0">
-      <section class="stats-section">
-        <div class="stat-card total">
-          <div class="stat-number">{{ store.items.length }}</div>
-          <div class="stat-label">自选基金</div>
+      <section class="metrics-strip" aria-label="自选统计">
+        <div class="metric-cell">
+          <span class="metric-label">Total</span>
+          <strong>{{ store.items.length }}</strong>
         </div>
-        <div class="stat-card up">
-          <div class="stat-number">{{ upCount }}</div>
-          <div class="stat-label">上涨</div>
+        <div class="metric-cell up">
+          <span class="metric-label">Up</span>
+          <strong>{{ upCount }}</strong>
         </div>
-        <div class="stat-card down">
-          <div class="stat-number">{{ downCount }}</div>
-          <div class="stat-label">下跌</div>
+        <div class="metric-cell down">
+          <span class="metric-label">Down</span>
+          <strong>{{ downCount }}</strong>
         </div>
-        <div class="stat-card flat">
-          <div class="stat-number">{{ flatCount }}</div>
-          <div class="stat-label">平盘</div>
+        <div class="metric-cell flat">
+          <span class="metric-label">Flat</span>
+          <strong>{{ flatCount }}</strong>
         </div>
       </section>
 
       <section class="toolbar">
+        <span class="toolbar-label">排序</span>
         <div class="sort-group">
           <button
             v-for="opt in sortOptions"
             :key="opt.value"
             :class="['sort-btn', { active: store.sortBy === opt.value }]"
+            type="button"
             @click="store.setSort(opt.value as typeof store.sortBy)"
           >
             {{ opt.label }}
-            <svg v-if="store.sortBy === opt.value" class="sort-dir" :class="{ asc: store.sortOrder === 'asc' }" viewBox="0 0 1024 1024"><path fill="currentColor" d="M384 192v640l-320-320zm256 0v640l320-320z"/></svg>
+            <svg v-if="store.sortBy === opt.value" class="sort-dir" :class="{ asc: store.sortOrder === 'asc' }" viewBox="0 0 1024 1024" aria-hidden="true"><path fill="currentColor" d="M384 192v640l-320-320zm256 0v640l320-320z"/></svg>
           </button>
         </div>
       </section>
 
-      <section class="fund-list">
-        <transition-group name="card" tag="div" class="list-container">
+      <section class="fund-table" aria-label="自选基金列表">
+        <div class="table-head">
+          <span>基金</span>
+          <span>类型</span>
+          <span>估算净值</span>
+          <span>涨跌幅</span>
+          <span></span>
+        </div>
+        <transition-group name="row" tag="div" class="table-body">
           <article
             v-for="item in store.sortedItems"
             :key="item.fund_code"
-            class="fund-card"
+            :class="['fund-row', item.direction]"
             tabindex="0"
             @click="goToPredict(item.fund_code)"
             @keydown.enter="goToPredict(item.fund_code)"
           >
-            <div :class="['card-indicator', item.direction]"></div>
-            <div class="card-body">
-              <div class="card-row-top">
-                <h3 class="card-name">{{ item.fund_name }}</h3>
-                <span class="card-type">{{ item.fund_type }}</span>
-              </div>
-              <div class="card-row-bottom">
-                <span class="card-code">{{ item.fund_code }}</span>
-                <div class="card-figures">
-                  <span class="card-nav">{{ item.estimated_nav != null ? item.estimated_nav.toFixed(4) : '--' }}</span>
-                  <span :class="['card-change', getChangeClass(item.change_pct)]">
-                    <template v-if="item.change_pct > 0">▲</template>
-                    <template v-else-if="item.change_pct < 0">▼</template>
-                    {{ item.change_pct != null ? (item.change_pct > 0 ? '+' : '') + item.change_pct.toFixed(2) : '--' }}%
-                  </span>
-                </div>
-              </div>
+            <div class="fund-main">
+              <span class="fund-code">{{ item.fund_code }}</span>
+              <h3 class="fund-name">{{ item.fund_name }}</h3>
             </div>
+            <span class="fund-type">{{ item.fund_type || '--' }}</span>
+            <span class="fund-nav">{{ item.estimated_nav != null ? item.estimated_nav.toFixed(4) : '--' }}</span>
+            <span :class="['fund-change', getChangeClass(item.change_pct)]">
+              <template v-if="item.change_pct > 0">▲</template>
+              <template v-else-if="item.change_pct < 0">▼</template>
+              {{ item.change_pct != null ? (item.change_pct > 0 ? '+' : '') + item.change_pct.toFixed(2) : '--' }}%
+            </span>
             <button
-              class="card-remove"
+              class="remove-btn"
               aria-label="移除自选"
               title="移除自选"
+              type="button"
               @click.stop="handleRemove(item.fund_code)"
             >
-              <svg viewBox="0 0 1024 1024"><path fill="currentColor" d="M512 64a448 448 0 1 1 0 896 448 448 0 0 1 0-896zM288 512a38.4 38.4 0 0 0 0 76.8h448a38.4 38.4 0 0 0 0-76.8H288z"/></svg>
+              <svg viewBox="0 0 1024 1024" aria-hidden="true"><path fill="currentColor" d="M512 64a448 448 0 1 1 0 896 448 448 0 0 1 0-896zM288 512a38.4 38.4 0 0 0 0 76.8h448a38.4 38.4 0 0 0 0-76.8H288z"/></svg>
             </button>
           </article>
         </transition-group>
@@ -119,12 +125,11 @@ const upCount = computed(() => store.directionCounts.up)
 const downCount = computed(() => store.directionCounts.down)
 const flatCount = computed(() => store.directionCounts.flat)
 
-/** 基于涨跌幅数值决定红涨绿跌颜色类（中国A股标准） */
 function getChangeClass(pct: number | null | undefined): string {
   if (pct == null) return 'flat'
-  if (pct > 0) return 'up'    // 红色 - 上涨
-  if (pct < 0) return 'down'  // 绿色 - 下跌
-  return 'flat'                // 灰色 - 平盘
+  if (pct > 0) return 'up'
+  if (pct < 0) return 'down'
+  return 'flat'
 }
 
 function goToPredict(fundCode: string) {
@@ -137,7 +142,6 @@ function handleRemove(fundCode: string) {
 }
 
 function handleRefresh() {
-  // Prevent rapid clicks while already loading
   if (store.loading) return
   store.refreshQuotes()
 }
@@ -159,296 +163,373 @@ onUnmounted(() => {
 
 <style scoped>
 .watchlist-page {
-  padding: var(--sp-6) 0;
-  max-width: 720px;
-  margin: 0 auto;
-}
-
-.page-hero {
-  text-align: center;
-  padding: 40px 0 24px;
-}
-.page-title {
-  font-size: var(--fs-4xl);
-  font-weight: 700;
-  color: var(--color-text-primary);
-  margin-bottom: var(--sp-2);
-  letter-spacing: -0.5px;
-}
-.page-desc {
-  font-size: var(--fs-md);
-  color: var(--color-text-secondary);
-}
-
-.refresh-info {
   display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+.page-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  padding: var(--sp-2) 0 var(--sp-1);
+}
+
+.page-kicker {
+  margin: 0 0 var(--sp-1);
+  color: var(--color-brand);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
+  line-height: var(--lh-tight);
+}
+
+.page-title {
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: var(--fs-3xl);
+  font-weight: var(--fw-extrabold);
+  line-height: var(--lh-snug);
+}
+
+.page-desc {
+  margin: var(--sp-1) 0 0;
+  color: var(--color-text-secondary);
+  font-size: var(--fs-sm);
+}
+
+.head-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-1);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-card);
+}
+
+.refresh-time {
+  padding-left: var(--sp-2);
+  color: var(--color-text-secondary);
+  font-size: var(--fs-xs);
+}
+
+.icon-btn,
+.remove-btn {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: var(--sp-2);
-  margin-top: var(--sp-2);
-}
-.refresh-time {
-  font-size: var(--fs-xs);
-  color: var(--color-text-secondary);
-}
-.refresh-btn {
-  width: 24px;
-  height: 24px;
-  border: none;
-  border-radius: 6px;
+  width: 32px;
+  height: 32px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
   background: transparent;
   color: var(--color-text-secondary);
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  transition: color 0.15s, background 0.15s;
+  transition: background-color var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
 }
-.refresh-btn svg {
-  width: 14px;
-  height: 14px;
+
+.icon-btn svg,
+.remove-btn svg {
+  width: 15px;
+  height: 15px;
 }
-.refresh-btn:hover {
+
+.icon-btn:hover {
   color: var(--color-brand);
-  background: var(--color-bg-hover);
+  background: var(--color-brand-soft);
+  border-color: var(--color-brand-muted);
 }
-.refresh-btn.spinning svg {
+
+.icon-btn.spinning svg {
   animation: spin 1s linear infinite;
 }
+
 @keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
 
-.add-section {
-  margin-bottom: var(--sp-6);
+.command-panel {
+  padding: var(--sp-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-card);
 }
 
-.stats-section {
+.metrics-strip {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: var(--sp-3);
-  margin-bottom: var(--sp-5);
-}
-.stat-card {
-  background: var(--color-bg-card);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  padding: var(--sp-4);
-  text-align: center;
-  transition: transform 0.2s, box-shadow 0.2s;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--color-bg-card);
 }
-.stat-card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
+
+.metric-cell {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  padding: var(--sp-3) var(--sp-4);
+  border-right: 1px solid var(--color-border-light);
 }
-.stat-number {
-  font-size: var(--fs-2xl);
-  font-weight: 700;
-  color: var(--color-text-primary);
-  line-height: 1.2;
+
+.metric-cell:last-child {
+  border-right: 0;
 }
-.stat-card.up .stat-number { color: var(--color-up); }
-.stat-card.down .stat-number { color: var(--color-down); }
-.stat-card.flat .stat-number { color: var(--color-text-secondary); }
-.stat-label {
-  font-size: var(--fs-xs);
+
+.metric-label {
   color: var(--color-text-secondary);
-  margin-top: var(--sp-1);
-  font-weight: 500;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
 }
+
+.metric-cell strong {
+  color: var(--color-text-primary);
+  font-size: var(--fs-xl);
+  line-height: var(--lh-tight);
+}
+
+.metric-cell.up strong { color: var(--color-up); }
+.metric-cell.down strong { color: var(--color-down); }
+.metric-cell.flat strong { color: var(--color-flat); }
 
 .toolbar {
-  margin-bottom: var(--sp-4);
-}
-.sort-group {
   display: flex;
-  gap: var(--sp-2);
-  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
 }
+
+.toolbar-label {
+  color: var(--color-text-secondary);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+}
+
+.sort-group {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1);
+  padding: var(--sp-1);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-card);
+}
+
 .sort-btn {
   display: inline-flex;
   align-items: center;
   gap: 2px;
-  padding: 5px 14px;
-  border: 1px solid var(--color-border);
-  border-radius: 9999px;
-  background: var(--color-bg-card);
+  min-height: 30px;
+  padding: 0 var(--sp-3);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
   color: var(--color-text-regular);
   font-size: var(--fs-sm);
-  font-family: inherit;
   cursor: pointer;
-  transition: all 0.15s;
-  user-select: none;
-  outline: none;
+  transition: background-color var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
 }
+
 .sort-btn:hover {
-  border-color: var(--color-brand);
   color: var(--color-brand);
+  background: var(--color-bg-hover);
 }
+
 .sort-btn.active {
-  background: var(--color-brand-light);
-  border-color: var(--color-brand);
   color: var(--color-brand);
-  font-weight: 600;
+  background: var(--color-brand-soft);
+  border-color: var(--color-brand-muted);
+  font-weight: var(--fw-semibold);
 }
+
 .sort-dir {
-  width: 12px;
-  height: 12px;
-  transition: transform 0.2s;
+  width: 11px;
+  height: 11px;
+  transition: transform var(--transition-fast);
 }
+
 .sort-dir.asc {
   transform: rotate(180deg);
 }
 
-.fund-list {
-  margin-bottom: var(--sp-6);
+.fund-table {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--color-bg-card);
 }
-.list-container {
-  display: flex;
-  flex-direction: column;
+
+.table-head,
+.fund-row {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.5fr) minmax(100px, 0.7fr) minmax(96px, 0.6fr) minmax(96px, 0.6fr) 44px;
+  align-items: center;
   gap: var(--sp-3);
 }
 
-.fund-card {
-  display: flex;
-  align-items: center;
-  background: var(--color-bg-card);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  overflow: hidden;
-  cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
-}
-.fund-card:hover {
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
-}
-.fund-card:focus-visible {
-  outline: 2px solid var(--color-brand);
-  outline-offset: 2px;
-}
-
-.card-indicator {
-  width: 4px;
-  align-self: stretch;
-  flex-shrink: 0;
-}
-.card-indicator.up { background: var(--color-up); }
-.card-indicator.down { background: var(--color-down); }
-.card-indicator.flat { background: var(--color-text-secondary); }
-
-.card-body {
-  flex: 1;
-  min-width: 0;
-  padding: var(--sp-4) var(--sp-4) var(--sp-4) var(--sp-5);
-}
-.card-row-top {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-2);
-  margin-bottom: 4px;
-}
-.card-name {
-  font-size: var(--fs-base);
-  font-weight: 600;
-  color: var(--color-text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  margin: 0;
-}
-.card-type {
-  font-size: var(--fs-xs);
-  padding: 1px 8px;
-  border-radius: 4px;
+.table-head {
+  min-height: 36px;
+  padding: 0 var(--sp-4);
+  border-bottom: 1px solid var(--color-border);
   background: var(--color-bg-hover);
   color: var(--color-text-secondary);
-  flex-shrink: 0;
-  font-weight: 500;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
 }
-.card-row-bottom {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.card-code {
-  font-size: var(--fs-sm);
-  color: var(--color-text-regular);
-}
-.card-figures {
-  display: flex;
-  align-items: baseline;
-  gap: var(--sp-3);
-}
-.card-nav {
-  font-size: var(--fs-md);
-  font-weight: 600;
-  color: var(--color-text-primary);
-}
-.card-change {
-  font-size: var(--fs-sm);
-  font-weight: 600;
-}
-.card-change.up { color: var(--color-up); }
-.card-change.down { color: var(--color-down); }
-.card-change.flat { color: var(--color-text-regular); }
 
-.card-remove {
-  width: 36px;
-  height: 36px;
-  border: none;
-  border-radius: 10px;
-  background: transparent;
-  color: var(--color-text-secondary);
+.table-body {
+  display: flex;
+  flex-direction: column;
+}
+
+.fund-row {
+  position: relative;
+  min-height: 64px;
+  padding: var(--sp-2) var(--sp-4);
+  border-bottom: 1px solid var(--color-border-light);
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  margin-right: var(--sp-3);
-  transition: all 0.15s;
-  outline: none;
-  padding: 0;
+  transition: background-color var(--transition-fast);
 }
-.card-remove svg {
-  width: 16px;
-  height: 16px;
+
+.fund-row::before {
+  content: '';
+  position: absolute;
+  top: var(--sp-2);
+  bottom: var(--sp-2);
+  left: 0;
+  width: 3px;
+  background: var(--color-flat);
 }
-.card-remove:hover {
-  background: rgba(228, 57, 60, 0.08);
+
+.fund-row.up::before { background: var(--color-up); }
+.fund-row.down::before { background: var(--color-down); }
+.fund-row:last-child { border-bottom: 0; }
+.fund-row:hover { background: var(--color-bg-hover); }
+
+.fund-main {
+  min-width: 0;
+}
+
+.fund-code {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--color-text-secondary);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+}
+
+.fund-name {
+  margin: 0;
+  overflow: hidden;
+  color: var(--color-text-primary);
+  font-size: var(--fs-base);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-snug);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fund-type {
+  overflow: hidden;
+  color: var(--color-text-secondary);
+  font-size: var(--fs-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fund-nav {
+  color: var(--color-text-primary);
+  font-size: var(--fs-base);
+  font-weight: var(--fw-semibold);
+}
+
+.fund-change {
+  font-size: var(--fs-base);
+  font-weight: var(--fw-bold);
+}
+
+.fund-change.up { color: var(--color-up); }
+.fund-change.down { color: var(--color-down); }
+.fund-change.flat { color: var(--color-flat); }
+
+.remove-btn:hover {
   color: var(--color-up);
-}
-.card-remove:focus-visible {
-  box-shadow: 0 0 0 2px var(--color-brand);
-}
-
-.card-enter-active,
-.card-leave-active {
-  transition: all 0.3s ease;
-}
-.card-enter-from {
-  opacity: 0;
-  transform: translateY(12px);
-}
-.card-leave-to {
-  opacity: 0;
-  transform: translateX(40px);
-}
-.card-move {
-  transition: transform 0.3s ease;
+  background: var(--color-up-bg);
+  border-color: var(--color-up-border);
 }
 
-@media (max-width: 767px) {
-  .stats-section {
-    grid-template-columns: repeat(2, 1fr);
+.row-enter-active,
+.row-leave-active,
+.row-move {
+  transition: opacity var(--transition-normal), transform var(--transition-normal);
+}
+
+.row-enter-from {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+.row-leave-to {
+  opacity: 0;
+  transform: translateX(24px);
+}
+
+@media (max-width: 760px) {
+  .page-head,
+  .toolbar {
+    align-items: flex-start;
+    flex-direction: column;
   }
-  .card-body {
-    padding: var(--sp-3) var(--sp-3) var(--sp-3) var(--sp-4);
+
+  .head-actions,
+  .sort-group {
+    width: 100%;
   }
-  .card-figures {
+
+  .metrics-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .metric-cell:nth-child(2) {
+    border-right: 0;
+  }
+
+  .metric-cell:nth-child(-n + 2) {
+    border-bottom: 1px solid var(--color-border-light);
+  }
+
+  .table-head {
+    display: none;
+  }
+
+  .fund-row {
+    grid-template-columns: minmax(0, 1fr) auto;
     gap: var(--sp-2);
+    min-height: 78px;
+  }
+
+  .fund-main {
+    grid-row: 1 / span 2;
+  }
+
+  .fund-type,
+  .fund-nav {
+    display: none;
+  }
+
+  .fund-change {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
+  }
+
+  .remove-btn {
+    grid-column: 2;
+    grid-row: 2;
+    justify-self: end;
   }
 }
 </style>

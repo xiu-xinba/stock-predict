@@ -1,41 +1,30 @@
-import { ref, computed, watch, onUnmounted } from 'vue'
+import { ref, computed, watch } from 'vue'
 
-type ThemeMode = 'light' | 'dark' | 'system'
-
-function getSystemPreference(): boolean {
-  return window.matchMedia('(prefers-color-scheme: dark)').matches
-}
+type ThemeMode = 'light' | 'dark'
 
 function getInitialMode(): ThemeMode {
   try {
     const saved = localStorage.getItem('theme-mode')
-    if (saved === 'light' || saved === 'dark' || saved === 'system') {
+    if (saved === 'light' || saved === 'dark') {
       return saved
     }
   } catch {
     // ignore
   }
-  return 'system'
+  return 'light'
 }
 
-function applyDark(isDark: boolean) {
+function applyTheme(newMode: ThemeMode) {
+  const isDark = newMode === 'dark'
   if (isDark) {
     document.documentElement.classList.add('dark')
   } else {
     document.documentElement.classList.remove('dark')
   }
+  document.documentElement.style.colorScheme = newMode
 }
 
 const mode = ref<ThemeMode>(getInitialMode())
-
-let mediaQueryListenerCount = 0
-const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
-
-function handleMediaChange(e: MediaQueryListEvent) {
-  if (mode.value === 'system') {
-    applyDark(e.matches)
-  }
-}
 
 watch(mode, (newMode) => {
   try {
@@ -43,26 +32,11 @@ watch(mode, (newMode) => {
   } catch {
     // ignore
   }
-  applyDark(newMode === 'dark' || (newMode === 'system' && getSystemPreference()))
+  applyTheme(newMode)
 }, { immediate: true })
 
 export function useTheme() {
-  const isDark = computed(() =>
-    mode.value === 'dark' || (mode.value === 'system' && getSystemPreference())
-  )
-
-  if (mediaQueryListenerCount === 0) {
-    mediaQuery.addEventListener('change', handleMediaChange)
-  }
-  mediaQueryListenerCount++
-
-  onUnmounted(() => {
-    mediaQueryListenerCount--
-    if (mediaQueryListenerCount <= 0) {
-      mediaQueryListenerCount = 0
-      mediaQuery.removeEventListener('change', handleMediaChange)
-    }
-  })
+  const isDark = computed(() => mode.value === 'dark')
 
   function setMode(newMode: ThemeMode) {
     mode.value = newMode
@@ -73,7 +47,7 @@ export function useTheme() {
   }
 
   function cycleMode() {
-    const order: ThemeMode[] = ['light', 'dark', 'system']
+    const order: ThemeMode[] = ['light', 'dark']
     const idx = order.indexOf(mode.value)
     mode.value = order[(idx + 1) % order.length]
   }

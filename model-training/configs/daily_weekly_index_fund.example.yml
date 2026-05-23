@@ -1,0 +1,21 @@
+task: daily_weekly_index_fund
+data_path: data/processed/daily_weekly_index_fund_samples.csv
+model_output_path: artifacts/daily_weekly_index_fund.onnx
+metadata_output_path: artifacts/daily_weekly_index_fund_metadata.json
+report_output_path: reports/daily_weekly_index_fund_report.json
+feature_set: index_fund_daily_v1
+label_column: label
+future_return_column: future_return_pct_next_day
+flat_threshold_pct: 0.05
+test_size: 0.2
+random_seed: 20260523
+lightgbm:
+  n_estimators: 600
+  learning_rate: 0.025
+  num_leaves: 31
+  max_depth: -1
+  min_child_samples: 60
+  subsample: 0.85
+  colsample_bytree: 0.85
+  reg_alpha: 0.08
+  reg_lambda: 0.20

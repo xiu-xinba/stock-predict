@@ -1,6 +1,0 @@
-@StockPredictApi_HostAddress = http://localhost:5070
-
-GET {{StockPredictApi_HostAddress}}/weatherforecast/
-Accept: application/json
-
-###

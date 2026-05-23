@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fund-model-training"
+version = "0.1.0"
+description = "Training pipeline for stock-predict fund direction models"
+requires-python = ">=3.11,<3.13"
+readme = "README.md"
+
+[project.scripts]
+fund-build-panic-factor = "fund_model_training.build_panic_factor:main"
+fund-build-samples = "fund_model_training.build_samples:main"
+fund-collect-data = "fund_model_training.collect_data:main"
+fund-train-baseline = "fund_model_training.train_baseline:main"
+fund-validate-contract = "fund_model_training.validate_contract:main"
+
+[project.optional-dependencies]
+data = ["pandas>=2.2", "akshare>=1.16", "requests>=2.31"]
+mlops = ["evidently>=0.4", "river>=0.21", "mlflow>=3.0"]
+
+[tool.setuptools.packages.find]
+where = ["src"]

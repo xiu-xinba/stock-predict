@@ -1,6 +1,5 @@
 <template>
   <div class="idx-card" :class="[direction, `mkt-${index.market}`]">
-    <div class="card-rail"></div>
     <div class="card-inner">
       <div class="card-head">
         <span class="idx-name">{{ index.name }}</span>
@@ -27,23 +26,21 @@
 import { ref, computed } from 'vue'
 import echarts from '@/utils/echarts'
 import { useECharts } from '@/composables/useECharts'
-import { formatValue, colorWithAlpha } from '@/utils/format'
+import { useTheme } from '@/composables/useTheme'
+import { formatValue, colorWithAlpha, cssVar } from '@/utils/format'
 import type { MarketIndex } from '@/types'
 
 const props = defineProps<{ index: MarketIndex }>()
 
 const direction = computed(() => props.index.change_pct >= 0 ? 'up' : 'down')
+const { isDark } = useTheme()
 
 const chartRef = ref<HTMLElement>()
 useECharts(
   chartRef,
   () => {
     const isUp = props.index.change_pct >= 0
-    const el = chartRef.value
-    const style = el ? getComputedStyle(el) : null
-    const upColor = style?.getPropertyValue('--color-up').trim() || '#cf2e2e'
-    const downColor = style?.getPropertyValue('--color-down').trim() || '#1a9956'
-    const color = isUp ? upColor : downColor
+    const color = isUp ? cssVar('--color-up', '#b42318') : cssVar('--color-down', '#067647')
     return {
       grid: { top: 2, right: 0, bottom: 0, left: 0 },
       xAxis: { show: false, type: 'category', data: props.index.mini_chart_data.map((_: number, i: number) => i), boundaryGap: false },
@@ -64,7 +61,7 @@ useECharts(
       animationDuration: 600,
     }
   },
-  () => [props.index.mini_chart_data, props.index.change_pct]
+  () => [props.index.mini_chart_data, props.index.change_pct, isDark.value]
 )
 </script>
 
@@ -74,23 +71,18 @@ useECharts(
   background: var(--color-bg-card);
   border-radius: var(--radius-lg);
   overflow: hidden;
-  transition: transform var(--transition-spring), box-shadow var(--transition-normal);
+  transition: background-color var(--transition-fast);
   cursor: default;
+  border: 1px solid var(--color-border);
+  border-top: 3px solid var(--color-border);
 }
 .idx-card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
+  background: var(--color-bg-hover);
 }
-
-/* 左侧色轨 */
-.card-rail {
-  width: 4px;
-  flex-shrink: 0;
-  transition: width var(--transition-fast);
-}
-.idx-card:hover .card-rail { width: 5px; }
-.idx-card.up .card-rail { background: var(--gradient-up); }
-.idx-card.down .card-rail { background: var(--gradient-down); }
+.idx-card.up { border-top-color: var(--color-up); }
+.idx-card.down { border-top-color: var(--color-down); }
+.idx-card.mkt-hk { border-top-color: var(--color-hk); }
+.idx-card.mkt-us { border-top-color: var(--color-us); }
 
 /* 内容 */
 .card-inner {
@@ -108,7 +100,6 @@ useECharts(
   font-size: var(--fs-sm);
   color: var(--color-text-secondary);
   font-weight: var(--fw-semibold);
-  letter-spacing: var(--ls-wide);
   line-height: var(--lh-snug);
 }
 .idx-pct {
@@ -116,7 +107,6 @@ useECharts(
   font-weight: var(--fw-bold);
   padding: 2px 8px;
   border-radius: 6px;
-  letter-spacing: var(--ls-wide);
   font-variant-numeric: tabular-nums;
 }
 .idx-pct.up { color: var(--color-up); background: var(--color-up-bg); }
@@ -137,7 +127,6 @@ useECharts(
   font-size: var(--fs-2xl);
   font-weight: var(--fw-extrabold);
   color: var(--color-text-primary);
-  letter-spacing: var(--ls-tighter);
   line-height: var(--lh-tight);
   font-variant-numeric: tabular-nums;
 }

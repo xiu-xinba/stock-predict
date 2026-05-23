@@ -12,32 +12,37 @@ export function useFundSearch(getFilters?: () => Record<string, string | undefin
   let debounceTimer: ReturnType<typeof setTimeout> | null = null
   let blurTimer: ReturnType<typeof setTimeout> | null = null
   let disposed = false
+  let searchSeq = 0
 
   function onInput() {
     if (debounceTimer) clearTimeout(debounceTimer)
     const query = keyword.value.trim()
     if (!query) {
+      searchSeq++
       suggestions.value = []
       showDropdown.value = false
       return
     }
+    const seq = ++searchSeq
     debounceTimer = setTimeout(async () => {
       if (disposed) return
+      if (seq !== searchSeq) return
       if (query !== keyword.value.trim()) return
       try {
         const filters = getFilters?.()
         await predictionStore.search(query, 1, filters)
-        if (disposed) return // BUG-01: check again after await
+        if (disposed) return
+        if (seq !== searchSeq) return
+        if (query !== keyword.value.trim()) return
         suggestions.value = predictionStore.searchResults
         showDropdown.value = true
       } catch {
-        suggestions.value = []
+        if (seq === searchSeq) suggestions.value = []
       }
     }, 300)
   }
 
   function onBlur() {
-    // BUG-02: Store blur timer so onFocus can cancel it
     blurTimer = setTimeout(() => {
       showDropdown.value = false
       focused.value = false
@@ -46,7 +51,6 @@ export function useFundSearch(getFilters?: () => Record<string, string | undefin
   }
 
   function onFocus() {
-    // BUG-02: Cancel pending blur timer to prevent dropdown from closing
     if (blurTimer) {
       clearTimeout(blurTimer)
       blurTimer = null

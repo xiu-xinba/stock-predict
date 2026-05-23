@@ -6,7 +6,7 @@
 
 - **市场行情** — A股/港股/美股主要指数实时展示，迷你走势图，基金涨跌排行
 - **自选基金** — 添加/删除关注基金，实时报价刷新，排序筛选
-- **智能预测** — 基于 ONNX 模型的基金净值趋势预测，多因子分析
+- **智能预测** — 提供隔日和盘中 5 分钟预测接口，当前为 Go 基线逻辑，预留新模型接入
 
 ## 技术栈
 
@@ -23,11 +23,10 @@
 ### 后端
 | 技术 | 用途 |
 |------|------|
-| ASP.NET Core 8 | Web API |
-| Entity Framework Core | ORM (SQLite) |
-| ONNX Runtime | 模型推理 |
-| Polly | HTTP 重试策略 |
-| Swagger | API 文档 |
+| Go 1.22+ | Web API |
+| Go 标准库 net/http | 路由、中间件、HTTP 服务 |
+| 内存种子数据 | 当前开发期数据仓库 |
+| Python / ONNX 预留 | 后续训练模型服务或运行时模型接入 |
 
 ## 项目结构
 
@@ -46,12 +45,8 @@ stock-predict/
 │   │   ├── utils/          # 工具函数
 │   │   └── views/          # 页面视图
 │   └── vite.config.ts
-├── backend-dotnet/          # .NET 后端
-│   ├── Controllers/        # API 控制器
-│   ├── Services/           # 业务逻辑
-│   ├── Models/             # 数据模型
-│   ├── Dtos/               # 数据传输对象
-│   └── Data/               # 数据库上下文
+├── backend-go/              # Go 后端
+├── model-training/          # 模型训练项目
 └── docs/                   # 项目文档
 ```
 
@@ -60,18 +55,17 @@ stock-predict/
 ### 环境要求
 
 - Node.js >= 18
-- .NET SDK 8.0
-- SQLite
+- Go >= 1.22
+- Python 3.11/3.12（训练模型时需要）
 
 ### 启动后端
 
 ```bash
-cd backend-dotnet
-dotnet restore
-dotnet run
+cd backend-go
+go run ./cmd/api
 ```
 
-后端默认运行在 `http://localhost:5000`
+后端默认运行在 `http://localhost:5070`
 
 ### 启动前端
 
@@ -94,14 +88,14 @@ npm run build
 
 | 端点 | 方法 | 说明 |
 |------|------|------|
-| `/market/indices` | GET | 获取市场指数数据 |
-| `/market/ranking/{type}` | GET | 获取基金涨跌排行 |
-| `/watchlist` | GET | 获取自选列表 |
-| `/watchlist` | POST | 添加自选基金 |
-| `/watchlist/{code}` | DELETE | 删除自选基金 |
-| `/watchlist/quotes` | POST | 批量获取基金报价 |
-| `/predict/{code}` | GET | 获取基金预测数据 |
-| `/funds/search` | GET | 搜索基金 |
+| `/api/v1/health` | GET | 后端健康检查 |
+| `/api/v1/market/indices` | GET | 获取市场指数数据，包含 A 股、港股、美股与标普 500 |
+| `/api/v1/market/ranking/{gainers\|losers}` | GET | 获取基金涨跌排行 |
+| `/api/v1/watchlist/quotes` | POST | 批量获取自选基金报价 |
+| `/api/v1/predict/{code}` | GET | 获取基金预测数据 |
+| `/api/v1/funds/search` | GET | 搜索基金 |
+| `/api/v1/funds/filters` | GET | 获取基金筛选项 |
+| `/api/v1/funds/sync` | POST | 开发期触发基金同步占位接口 |
 
 ## 设计特色
 

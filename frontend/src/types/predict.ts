@@ -26,8 +26,15 @@ export interface ChangeRange {
   high: number
 }
 
+/** 预测可靠性级别 */
+export type PredictionReliability = 'model' | 'model_no_features' | 'baseline' | 'baseline_no_realtime' | 'mock'
+
 /** 预测结果 — 核心业务数据 */
 export interface PredictionResult {
+  /** 预测周期，如 next_day / intraday_5m */
+  horizon: string
+  /** 预测窗口文案 */
+  target_window: string
   /** 预测方向：'up' 上涨 / 'down' 下跌 / 'flat' 平盘 */
   direction: 'up' | 'down' | 'flat'
   /** 方向置信度 0-1，越接近 1 表示模型越确信 */
@@ -38,10 +45,30 @@ export interface PredictionResult {
   change_range: ChangeRange
   /** 关键预测因子列表（按重要性降序，最多 5 个） */
   top_factors: FactorItem[]
-  /** 预测可靠性级别: 'model' | 'model_no_features' | 'mock' */
-  reliability?: string
+  /** 预测可靠性级别 */
+  reliability: PredictionReliability
   /** 可靠性说明 */
-  reliability_note?: string
+  reliability_note: string
+  /** 目标准确率阈值 */
+  accuracy_target: number
+  /** 是否已通过目标准确率验证 */
+  meets_accuracy_target: boolean
+  /** 是否可作为高置信动作信号 */
+  is_actionable: boolean
+  /** 校准与回测说明 */
+  calibration_note: string
+}
+
+/** 预测数据覆盖情况 */
+export interface PredictionDataQuality {
+  has_realtime_quote: boolean
+  has_market_indices: boolean
+  has_holdings_data: boolean
+  has_intraday_constituent_data: boolean
+  has_etf_flow_data: boolean
+  coverage_score: number
+  missing_sources: string[]
+  note: string
 }
 
 /** 市场快照 — 三大 A 股指数实时数据 */
@@ -70,6 +97,12 @@ export interface PredictionData {
   fund_name: string
   /** 预测结果 */
   prediction: PredictionResult
+  /** 隔日预测 */
+  next_day_prediction: PredictionResult
+  /** 盘中未来五分钟预测 */
+  intraday_prediction: PredictionResult
+  /** 数据覆盖情况 */
+  data_quality: PredictionDataQuality
   /** 市场快照 */
   market_snapshot: MarketSnapshot
 }

@@ -6,11 +6,14 @@ import { CancelError } from '@/api/index'
 import { ElMessage } from 'element-plus'
 
 const STORAGE_KEY = 'fund-watchlist'
+const MAX_WATCHLIST_ITEMS = 50
+type AddItemResult = 'added' | 'duplicate' | 'limit'
 
 function loadFromStorage(): WatchlistItem[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
-    return raw ? JSON.parse(raw) : []
+    const parsed = raw ? JSON.parse(raw) : []
+    return Array.isArray(parsed) ? parsed.slice(0, MAX_WATCHLIST_ITEMS) : []
   } catch {
     return []
   }
@@ -71,8 +74,9 @@ export const useWatchlistStore = defineStore('watchlist', () => {
     return { up, down, flat }
   })
 
-  function addItem(fund: { fund_code: string; fund_name: string; fund_type: string }) {
-    if (items.value.some((i) => i.fund_code === fund.fund_code)) return false
+  function addItem(fund: { fund_code: string; fund_name: string; fund_type: string }): AddItemResult {
+    if (items.value.some((i) => i.fund_code === fund.fund_code)) return 'duplicate'
+    if (items.value.length >= MAX_WATCHLIST_ITEMS) return 'limit'
     const item: WatchlistItem = {
       fund_code: fund.fund_code,
       fund_name: fund.fund_name,
@@ -85,7 +89,7 @@ export const useWatchlistStore = defineStore('watchlist', () => {
     items.value.push(item)
     // Immediately fetch real-time data for the newly added fund
     refreshQuotes()
-    return true
+    return 'added'
   }
 
   function removeItem(fundCode: string) {

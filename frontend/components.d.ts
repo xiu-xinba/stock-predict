@@ -11,13 +11,7 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
-    ElButton: typeof import('element-plus/es')['ElButton']
-    ElCard: typeof import('element-plus/es')['ElCard']
-    ElCol: typeof import('element-plus/es')['ElCol']
-    ElEmpty: typeof import('element-plus/es')['ElEmpty']
     ElIcon: typeof import('element-plus/es')['ElIcon']
-    ElRow: typeof import('element-plus/es')['ElRow']
-    ElSkeleton: typeof import('element-plus/es')['ElSkeleton']
     FundRanking: typeof import('./src/components/market/FundRanking.vue')['default']
     FundSearch: typeof import('./src/components/FundSearch.vue')['default']
     IndexCard: typeof import('./src/components/market/IndexCard.vue')['default']

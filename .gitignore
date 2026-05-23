@@ -1,8 +1,9 @@
 # ============================================
-# .NET 后端
+# 后端/数据库构建产物
 # ============================================
 bin/
 obj/
+verify-build/
 *.db
 *.db-shm
 *.db-wal
@@ -14,6 +15,21 @@ obj/
 node_modules/
 dist/
 *.local
+
+# ============================================
+# Python
+# ============================================
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# ============================================
+# Go
+# ============================================
+backend-go/bin/
+backend-go/tmp/
+backend-go/.gocache/
+backend-go/*.exe
 
 # ============================================
 # IDE / 编辑器
@@ -38,7 +54,6 @@ desktop.ini
 .env
 .env.*
 !.env.example
-appsettings.Production.json
 
 # ============================================
 # 日志
@@ -51,3 +66,16 @@ logs/
 # ============================================
 describe/
 docs/superpowers/
+
+# ============================================
+# 模型训练项目
+# ============================================
+model-training/.venv/
+model-training/data/raw/*
+model-training/data/processed/*
+model-training/artifacts/*
+model-training/reports/*
+!model-training/data/raw/.gitkeep
+!model-training/data/processed/.gitkeep
+!model-training/artifacts/.gitkeep
+!model-training/reports/.gitkeep

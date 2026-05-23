@@ -1,8 +1,9 @@
 import request from './index'
+import { API_ROUTES } from './routes'
 import type { FundSearchResponse, FundFiltersResponse, PredictResponse } from '@/types'
 
 export async function predictFund(fundCode: string): Promise<PredictResponse> {
-  const { data } = await request.get<PredictResponse>(`/predict/${fundCode}`)
+  const { data } = await request.get<PredictResponse>(API_ROUTES.prediction.fund(fundCode))
   return data
 }
 
@@ -32,11 +33,11 @@ export async function searchFunds(
     if (filters.sort_by) params.sort_by = filters.sort_by
     if (filters.sort_order) params.sort_order = filters.sort_order
   }
-  const { data } = await request.get<FundSearchResponse>('/funds/search', { params })
+  const { data } = await request.get<FundSearchResponse>(API_ROUTES.funds.search, { params })
   return data
 }
 
 export async function fetchFundFilters(): Promise<FundFiltersResponse> {
-  const { data } = await request.get<FundFiltersResponse>('/funds/filters')
+  const { data } = await request.get<FundFiltersResponse>(API_ROUTES.funds.filters)
   return data
 }

@@ -1,15 +1,21 @@
 <template>
-  <div id="app">
+  <div id="app" class="app-shell">
     <header class="topbar">
-      <h1 class="topbar-title">
-        <span aria-hidden="true" class="topbar-logo">📊</span>
-        {{ currentTitle }}
-      </h1>
+      <div>
+        <p class="topbar-kicker">Realtime Fund Analytics</p>
+        <h1 class="topbar-title">{{ currentTitle }}</h1>
+      </div>
     </header>
-    <div class="theme-fab" @click="toggleTheme" :title="themeTitle" role="button" tabindex="0" @keydown.enter="toggleTheme">
-      <svg v-if="isDark" class="theme-fab-icon" viewBox="0 0 1024 1024"><path fill="currentColor" d="M240.448 240.448a384 384 0 1 0 559.424 525.696 448 448 0 0 1-542.016-542.08 391 391 0 0 0-17.408 16.384m181.056 362.048a384 384 0 0 0 525.632 16.384A448 448 0 1 1 405.056 76.8a384 384 0 0 0 16.448 525.696"/></svg>
-      <svg v-else class="theme-fab-icon" viewBox="0 0 1024 1024"><path fill="currentColor" d="M512 64h64v192h-64zm0 576h64v192h-64zM160 480v-64h192v64zm576 0v-64h192v64zM249.856 199.04l45.248-45.184L430.848 289.6 385.6 334.848 249.856 199.104zM657.152 606.4l45.248-45.248 135.744 135.744-45.248 45.248zM114.048 923.2 68.8 877.952l316.8-316.8 45.248 45.248zM702.4 334.848 657.152 289.6l135.744-135.744 45.248 45.248z"/></svg>
-    </div>
+
+    <button class="theme-fab" type="button" :title="themeTitle" @click="toggleTheme">
+      <svg v-if="isDark" class="theme-fab-icon" viewBox="0 0 1024 1024" aria-hidden="true">
+        <path fill="currentColor" d="M512 64h64v192h-64zm0 576h64v192h-64zM160 480v-64h192v64zm576 0v-64h192v64zM249.856 199.04l45.248-45.184L430.848 289.6 385.6 334.848 249.856 199.104zM657.152 606.4l45.248-45.248 135.744 135.744-45.248 45.248zM114.048 923.2 68.8 877.952l316.8-316.8 45.248 45.248zM702.4 334.848 657.152 289.6l135.744-135.744 45.248 45.248z"/>
+      </svg>
+      <svg v-else class="theme-fab-icon" viewBox="0 0 1024 1024" aria-hidden="true">
+        <path fill="currentColor" d="M240.448 240.448a384 384 0 1 0 559.424 525.696 448 448 0 0 1-542.016-542.08 391 391 0 0 0-17.408 16.384m181.056 362.048a384 384 0 0 0 525.632 16.384A448 448 0 1 1 405.056 76.8a384 384 0 0 0 16.448 525.696"/>
+      </svg>
+    </button>
+
     <main class="main-content">
       <router-view v-slot="{ Component }">
         <transition name="fade" mode="out-in">
@@ -17,58 +23,61 @@
         </transition>
       </router-view>
     </main>
+
+    <div
+      class="dock-hotspot"
+      aria-hidden="true"
+      @mouseenter="showDock"
+      @touchstart.passive="showDock"
+    ></div>
+
     <transition name="pill">
-      <div
+      <button
         v-if="!dockVisible"
         class="dock-pill"
-        @mouseenter="showDock"
-        @touchstart.prevent="showDock"
-        role="button"
+        type="button"
         aria-label="展开导航栏"
-        tabindex="0"
-        @keydown.enter="showDock"
+        @mouseenter="showDock"
+        @focus="showDock"
+        @click="showDock"
       >
         <span class="pill-bar"></span>
-      </div>
+      </button>
     </transition>
+
     <transition name="dock">
       <nav
         v-if="dockVisible"
         class="dock"
+        aria-label="主导航"
         @mouseenter="cancelHide"
         @mouseleave="scheduleHide"
+        @focusin="cancelHide"
+        @focusout="scheduleHide"
         @touchend="scheduleHide"
       >
-        <div class="dock-track">
-          <router-link
-            v-for="item in navItems"
-            :key="item.path"
-            :to="item.path"
-            class="dock-item"
-            :class="{ active: activeMenu === item.path }"
-            @mouseenter="onItemEnter($event, item)"
-            @mouseleave="onItemLeave"
-          >
-            <div class="dock-icon-wrap">
-              <el-icon :size="28"><component :is="item.icon" /></el-icon>
-            </div>
-            <span class="dock-label">{{ item.label }}</span>
-          </router-link>
-        </div>
-        <transition name="tooltip">
-          <div v-if="tooltipText" class="dock-tooltip" :style="tooltipStyle">
-            {{ tooltipText }}
-          </div>
-        </transition>
+        <router-link
+          v-for="item in navItems"
+          :key="item.path"
+          :to="item.path"
+          class="dock-item"
+          :class="{ active: activeMenu === item.path }"
+          :title="item.title"
+        >
+          <span class="dock-icon">
+            <el-icon :size="24"><component :is="item.icon" /></el-icon>
+          </span>
+          <span class="dock-label">{{ item.label }}</span>
+        </router-link>
       </nav>
     </transition>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onUnmounted } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { Star, TrendCharts, MagicStick } from '@element-plus/icons-vue'
+import { MagicStick, Star, TrendCharts } from '@element-plus/icons-vue'
 import type { Component } from 'vue'
 import { useTheme } from '@/composables/useTheme'
 
@@ -80,9 +89,9 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { path: '/watchlist', label: '自选', icon: Star, title: '我的自选' },
+  { path: '/watchlist', label: '自选', icon: Star, title: '自选监控' },
   { path: '/market', label: '行情', icon: TrendCharts, title: '市场行情' },
-  { path: '/predict', label: '预测', icon: MagicStick, title: '基金预测' },
+  { path: '/predict', label: '预测', icon: MagicStick, title: '模型预测' },
 ]
 
 const route = useRoute()
@@ -104,6 +113,7 @@ const currentTitle = computed(() => {
 
 const dockVisible = ref(false)
 let hideTimer: ReturnType<typeof setTimeout> | null = null
+let initialTimer: ReturnType<typeof setTimeout> | null = null
 
 function showDock() {
   if (hideTimer) {
@@ -121,403 +131,232 @@ function cancelHide() {
 }
 
 function scheduleHide() {
+  if (hideTimer) clearTimeout(hideTimer)
   hideTimer = setTimeout(() => {
     dockVisible.value = false
-  }, 800)
+  }, 900)
 }
 
-const tooltipText = ref('')
-const tooltipStyle = ref<{ left: string }>({ left: '0px' })
-
-function onItemEnter(e: MouseEvent, item: NavItem | null) {
-  cancelHide()
-  const text = item ? item.title : ''
-  tooltipText.value = text
-  const el = (e.currentTarget as HTMLElement)
-  const rect = el.getBoundingClientRect()
-  const dockEl = el.closest('.dock')
-  if (dockEl) {
-    const dockRect = dockEl.getBoundingClientRect()
-    tooltipStyle.value = {
-      left: `${rect.left - dockRect.left + rect.width / 2}px`,
-    }
-  }
-}
-
-function onItemLeave() {
-  tooltipText.value = ''
-}
+onMounted(() => {
+  showDock()
+  initialTimer = setTimeout(scheduleHide, 1800)
+})
 
 onUnmounted(() => {
   if (hideTimer) clearTimeout(hideTimer)
+  if (initialTimer) clearTimeout(initialTimer)
 })
 </script>
 
 <style>
 #app {
-  background-color: var(--color-bg-page);
   min-height: 100vh;
-  display: flex;
-  flex-direction: column;
+}
+
+.app-shell {
+  min-height: 100vh;
+  background: var(--color-bg-page);
+  transition: background-color var(--transition-normal), color var(--transition-normal);
 }
 
 .topbar {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-2);
-  background: var(--color-bg-card);
-  border-bottom: 1px solid var(--color-border);
-  padding: 0 var(--sp-6);
-  height: 56px;
-  flex-shrink: 0;
   position: sticky;
   top: 0;
-  z-index: 50;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  background-color: rgba(255, 255, 255, 0.85);
-  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.06);
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  min-height: 64px;
+  padding: 0 var(--sp-8);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg-topbar);
+  box-sizing: border-box;
+  box-shadow: var(--shadow-sm);
+  transition: background-color var(--transition-normal), border-color var(--transition-normal), box-shadow var(--transition-normal);
 }
 
-html.dark .topbar {
-  background-color: rgba(35, 35, 38, 0.85);
-  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.25);
-}
-
-.topbar-logo {
-  font-size: var(--fs-lg);
-  flex-shrink: 0;
+.topbar-kicker {
+  margin: 0 0 2px;
+  color: var(--color-text-secondary);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-tight);
 }
 
 .topbar-title {
-  flex: 1;
-  font-size: var(--fs-lg);
-  font-weight: 600;
-  color: var(--color-text-primary);
   margin: 0;
-  display: flex;
-  align-items: center;
-  gap: var(--sp-2);
-}
-
-.topbar-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-bg-card);
-  color: var(--color-text-regular);
-  cursor: pointer;
-  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
-  flex-shrink: 0;
-}
-
-.topbar-btn:hover {
-  background: var(--color-bg-hover);
   color: var(--color-text-primary);
-  border-color: var(--color-brand);
+  font-size: var(--fs-xl);
+  font-weight: var(--fw-bold);
+  line-height: var(--lh-snug);
 }
 
 .theme-fab {
   position: fixed;
-  top: 72px;
+  top: 14px;
   right: 24px;
-  z-index: 90;
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  border: 1px solid var(--color-border);
-  background: var(--color-bg-card);
-  color: var(--color-text-regular);
-  cursor: pointer;
-  display: flex;
+  z-index: 80;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-  transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.15s ease, color 0.15s ease;
-  outline: none;
-  -webkit-tap-highlight-color: transparent;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 50%;
+  background: var(--color-bg-topbar);
+  color: var(--color-text-regular);
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: transform var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast), background-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
 .theme-fab:hover {
-  transform: scale(1.1);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
   color: var(--color-brand);
-  border-color: var(--color-brand);
+  border-color: var(--color-brand-muted);
+  background: var(--color-bg-card);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
 }
 
 .theme-fab:active {
-  transform: scale(0.95);
-}
-
-.theme-fab:focus-visible {
-  box-shadow: 0 0 0 3px rgba(51, 102, 255, 0.2);
+  transform: translateY(0) scale(0.96);
 }
 
 .theme-fab-icon {
-  width: 20px;
-  height: 20px;
-  transition: transform 0.3s ease;
-}
-
-.theme-fab:hover .theme-fab-icon {
-  transform: rotate(30deg);
+  width: 18px;
+  height: 18px;
 }
 
 .main-content {
-  flex: 1;
-  padding: 0 var(--sp-6);
-  max-width: 1000px;
-  width: 100%;
+  width: min(100%, 1180px);
   margin: 0 auto;
+  padding: var(--sp-6) var(--sp-8) 116px;
   box-sizing: border-box;
-  padding-bottom: 100px;
+}
+
+.dock-hotspot {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 50;
+  height: 28px;
 }
 
 .dock-pill {
   position: fixed;
   bottom: var(--sp-2);
   left: 50%;
-  transform: translateX(-50%);
-  z-index: 99;
+  z-index: 70;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 56px;
-  height: 20px;
+  width: 54px;
+  height: 18px;
+  padding: 0;
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-full);
-  background: rgba(255, 255, 255, 0.6);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  background: var(--color-bg-topbar);
   cursor: pointer;
-  transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
-  -webkit-tap-highlight-color: transparent;
-}
-
-html.dark .dock-pill {
-  background: rgba(60, 60, 65, 0.6);
-  border-color: rgba(255, 255, 255, 0.06);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
-}
-
-.dock-pill:hover {
-  background: rgba(255, 255, 255, 0.85);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
-  transform: translateX(-50%) scale(1.08);
-}
-
-html.dark .dock-pill:hover {
-  background: rgba(70, 70, 75, 0.85);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--shadow-sm);
+  transform: translateX(-50%);
 }
 
 .pill-bar {
-  width: 20px;
-  height: 4px;
-  border-radius: 2px;
+  width: 22px;
+  height: 3px;
+  border-radius: var(--radius-full);
   background: var(--color-text-secondary);
-  transition: background 0.2s ease, width 0.2s ease;
-}
-
-.dock-pill:hover .pill-bar {
-  background: var(--color-brand);
-  width: 24px;
-}
-
-.pill-enter-active {
-  transition: opacity 0.2s ease, transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.pill-leave-active {
-  transition: opacity 0.15s ease, transform 0.15s ease;
-}
-
-.pill-enter-from {
-  opacity: 0;
-  transform: translateX(-50%) scale(0.8);
-}
-
-.pill-leave-to {
-  opacity: 0;
-  transform: translateX(-50%) scale(0.6);
 }
 
 .dock {
   position: fixed;
   bottom: var(--sp-3);
   left: 50%;
-  transform: translateX(-50%);
-  z-index: 100;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  will-change: transform, opacity;
-  contain: layout style;
-}
-
-.dock-track {
+  z-index: 75;
   display: flex;
   align-items: flex-end;
-  gap: var(--sp-1);
-  padding: var(--sp-2) var(--sp-3);
-  background: rgba(255, 255, 255, 0.72);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.08);
-}
-
-html.dark .dock-track {
-  background: rgba(50, 50, 55, 0.72);
-  border-color: rgba(255, 255, 255, 0.08);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.3);
+  gap: var(--sp-2);
+  padding: var(--sp-2);
+  border: 1px solid var(--color-border);
+  border-radius: 18px;
+  background: var(--color-bg-topbar);
+  box-shadow: var(--shadow-lg);
+  transform: translateX(-50%);
 }
 
 .dock-item {
   display: flex;
   flex-direction: column;
   align-items: center;
-  text-decoration: none;
-  color: var(--color-text-regular);
-  cursor: pointer;
-  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  justify-content: center;
+  gap: 3px;
+  width: 58px;
+  min-height: 58px;
   padding: var(--sp-1);
-  border-radius: var(--radius-md);
-  position: relative;
-  -webkit-tap-highlight-color: transparent;
-  will-change: transform;
-  contain: layout style;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  color: var(--color-text-regular);
+  text-decoration: none;
+  transition: transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1), background-color var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
 }
 
 .dock-item:hover {
-  transform: translateY(-8px) scale(1.25);
   color: var(--color-text-primary);
+  background: var(--color-bg-hover);
+  transform: translateY(-7px);
 }
 
 .dock-item.active {
   color: var(--color-brand);
+  background: var(--color-brand-soft);
+  border-color: var(--color-brand-muted);
 }
 
-.dock-item.active .dock-icon-wrap {
-  background: rgba(51, 102, 255, 0.1);
-}
-
-html.dark .dock-item.active .dock-icon-wrap {
-  background: rgba(91, 138, 255, 0.15);
-}
-
-.dock-icon-wrap {
-  width: 48px;
-  height: 48px;
-  border-radius: 14px;
-  display: flex;
+.dock-icon {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: background-color 0.15s ease, transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.dock-item:hover .dock-icon-wrap {
-  background: var(--color-bg-hover);
 }
 
 .dock-label {
+  color: currentColor;
   font-size: var(--fs-xs);
-  font-weight: 500;
-  margin-top: 2px;
-  opacity: 0;
-  transition: opacity 0.15s ease;
-  white-space: nowrap;
-}
-
-.dock-item:hover .dock-label {
-  opacity: 1;
-}
-
-.dock-item.active .dock-label {
-  opacity: 1;
-}
-
-.dock-separator {
-  width: 1px;
-  height: 32px;
-  background: var(--color-border);
-  margin: 0 var(--sp-1);
-  align-self: center;
-}
-
-.dock-action {
-  background: none;
-  border: none;
-  font-family: inherit;
-}
-
-.dock-tooltip {
-  position: absolute;
-  bottom: 100%;
-  margin-bottom: var(--sp-2);
-  padding: var(--sp-1) var(--sp-3);
-  background: var(--color-bg-overlay);
-  color: #ffffff;
-  font-size: var(--fs-sm);
-  font-weight: 500;
-  border-radius: var(--radius-sm);
-  white-space: nowrap;
-  transform: translateX(-50%);
-  pointer-events: none;
-  box-shadow: var(--shadow-md);
-  z-index: 200;
-}
-
-.dock-tooltip::after {
-  content: '';
-  position: absolute;
-  top: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  border: 5px solid transparent;
-  border-top-color: var(--color-bg-overlay);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-tight);
 }
 
 .dock-enter-active {
-  transition: opacity 0.25s ease, transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: opacity 0.22s ease, transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 .dock-leave-active {
-  transition: opacity 0.2s ease, transform 0.2s ease;
+  transition: opacity 0.16s ease, transform 0.18s ease;
 }
 
 .dock-enter-from {
   opacity: 0;
-  transform: translateX(-50%) translateY(20px);
+  transform: translateX(-50%) translateY(18px) scale(0.96);
 }
 
 .dock-leave-to {
   opacity: 0;
-  transform: translateX(-50%) translateY(10px);
+  transform: translateX(-50%) translateY(14px) scale(0.98);
 }
 
-.tooltip-enter-active {
-  transition: opacity 0.15s ease, transform 0.15s ease;
+.pill-enter-active,
+.pill-leave-active {
+  transition: opacity 0.18s ease, transform 0.18s ease;
 }
 
-.tooltip-leave-active {
-  transition: opacity 0.1s ease;
-}
-
-.tooltip-enter-from {
+.pill-enter-from,
+.pill-leave-to {
   opacity: 0;
-  transform: translateX(-50%) translateY(4px);
+  transform: translateX(-50%) translateY(8px);
 }
 
 .fade-enter-active,
 .fade-leave-active {
-  transition: opacity 0.15s ease;
+  transition: opacity 0.12s ease;
 }
 
 .fade-enter-from,
@@ -525,49 +364,59 @@ html.dark .dock-item.active .dock-icon-wrap {
   opacity: 0;
 }
 
-@media (max-width: 767px) {
+@media (max-width: 900px) {
   .topbar {
+    min-height: 60px;
     padding: 0 var(--sp-4);
   }
+
+  .topbar-kicker {
+    display: none;
+  }
+
   .topbar-title {
-    font-size: var(--fs-md);
+    font-size: var(--fs-lg);
   }
+
+  .theme-fab {
+    top: 10px;
+    right: 14px;
+    width: 38px;
+    height: 38px;
+  }
+
   .main-content {
-    padding: 0 var(--sp-4) 100px;
+    padding: var(--sp-4) var(--sp-4) 106px;
   }
-  .dock-pill {
-    width: 48px;
-    height: 18px;
-    bottom: var(--sp-1);
+
+  .dock {
+    right: var(--sp-3);
+    left: var(--sp-3);
+    justify-content: space-around;
+    transform: none;
   }
-  .pill-bar {
-    width: 16px;
+
+  .dock-item {
+    width: 31%;
+    min-height: 54px;
   }
-  .dock-pill:hover .pill-bar {
-    width: 20px;
+
+  .dock-enter-from {
+    transform: translateY(18px) scale(0.96);
   }
-  .dock-track {
-    padding: var(--sp-2) var(--sp-2);
-    gap: 2px;
-  }
-  .dock-icon-wrap {
-    width: 44px;
-    height: 44px;
-    border-radius: 12px;
-  }
-  .dock-item:hover {
-    transform: translateY(-6px) scale(1.15);
+
+  .dock-leave-to {
+    transform: translateY(14px) scale(0.98);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .dock,
   .dock-item,
   .dock-enter-active,
   .dock-leave-active,
   .pill-enter-active,
   .pill-leave-active,
-  .tooltip-enter-active,
-  .tooltip-leave-active,
   .fade-enter-active,
   .fade-leave-active {
     transition-duration: 0.01ms !important;

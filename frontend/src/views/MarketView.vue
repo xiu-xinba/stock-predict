@@ -1,25 +1,26 @@
 <template>
   <div class="market-page">
-    <!-- 页面头部：标题 + 刷新状态 -->
-    <div class="page-header">
-      <div class="header-left">
+    <section class="page-head">
+      <div>
+        <p class="page-kicker">Market</p>
         <h1 class="page-title">市场行情</h1>
-        <span v-if="store.lastRefresh" class="refresh-time">
-          <svg class="refresh-icon" viewBox="0 0 24 24" width="12" height="12"><path fill="currentColor" d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/></svg>
-          {{ store.lastRefresh }}
-        </span>
+        <p class="page-desc">A 股、港股、美股指数与基金涨跌排行</p>
       </div>
-      <button
-        :class="['refresh-btn', { spinning: store.loading }]"
-        @click="store.fetchMarketData(true)"
-        :disabled="store.loading"
-        title="刷新数据"
-      >
-        <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
-      </button>
-    </div>
+      <div class="head-actions">
+        <span v-if="store.lastRefresh" class="refresh-time">{{ store.lastRefresh }}</span>
+        <span v-else class="refresh-time">等待同步</span>
+        <button
+          :class="['icon-btn', { spinning: store.loading }]"
+          type="button"
+          @click="store.fetchMarketData(true)"
+          :disabled="store.loading"
+          title="刷新数据"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+        </button>
+      </div>
+    </section>
 
-    <!-- 加载骨架屏 -->
     <div v-if="store.loading && store.indices.length === 0" class="skeleton-grid">
       <div v-for="i in 3" :key="i" class="skeleton-panel">
         <div class="sk-header"></div>
@@ -29,29 +30,25 @@
       </div>
     </div>
 
-    <!-- 错误状态 -->
     <div v-else-if="store.error && store.indices.length === 0" class="error-state">
       <div class="error-icon">
-        <svg viewBox="0 0 24 24" width="48" height="48"><path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
       </div>
       <p class="error-text">{{ store.error }}</p>
-      <button class="retry-btn" @click="store.fetchMarketData(true)">重新加载</button>
+      <button class="retry-btn" type="button" @click="store.fetchMarketData(true)">重新加载</button>
     </div>
 
-    <!-- 主内容区 -->
     <template v-else>
-      <!-- 市场指数三栏 -->
-      <div class="indices-row">
+      <section class="indices-row">
         <MarketSidebar label="A股" market="cn" :indices="cnIndices" />
         <MarketSidebar label="港股" market="hk" :indices="hkIndices" />
         <MarketSidebar label="美股" market="us" :indices="usIndices" />
-      </div>
+      </section>
 
-      <!-- 基金涨跌排行 -->
-      <div v-if="store.topGainers.length > 0 || store.topLosers.length > 0" class="ranking-row">
+      <section v-if="store.topGainers.length > 0 || store.topLosers.length > 0" class="ranking-row">
         <FundRanking title="领涨基金" type="gainers" :items="store.topGainers" />
         <FundRanking title="领跌基金" type="losers" :items="store.topLosers" />
-      </div>
+      </section>
     </template>
   </div>
 </template>
@@ -77,182 +74,210 @@ onUnmounted(() => store.stopRefresh())
   display: flex;
   flex-direction: column;
   gap: var(--sp-4);
-  min-height: calc(100vh - 56px);
-  padding-bottom: 100px;
 }
 
-/* 页面头部 */
-.page-header {
+.page-head {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
-  padding: var(--sp-4) 0 var(--sp-2);
+  gap: var(--sp-4);
+  padding: var(--sp-2) 0 var(--sp-1);
 }
-.header-left {
-  display: flex;
-  align-items: baseline;
-  gap: var(--sp-3);
-}
-.page-title {
-  font-size: var(--fs-2xl);
-  font-weight: var(--fw-extrabold);
-  color: var(--color-text-primary);
-  letter-spacing: var(--ls-tight);
-  margin: 0;
+
+.page-kicker {
+  margin: 0 0 var(--sp-1);
+  color: var(--color-brand);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
   line-height: var(--lh-tight);
 }
-.refresh-time {
+
+.page-title {
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: var(--fs-3xl);
+  font-weight: var(--fw-extrabold);
+  line-height: var(--lh-snug);
+}
+
+.page-desc {
+  margin: var(--sp-1) 0 0;
+  color: var(--color-text-secondary);
+  font-size: var(--fs-sm);
+}
+
+.head-actions {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--sp-2);
+  padding: var(--sp-1);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-card);
+}
+
+.refresh-time {
+  padding-left: var(--sp-2);
+  color: var(--color-text-secondary);
   font-size: var(--fs-xs);
-  color: var(--color-text-disabled);
-  font-variant-numeric: tabular-nums;
 }
-.refresh-icon {
-  opacity: 0.6;
-}
-.refresh-btn {
-  display: flex;
+
+.icon-btn {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
+  border: 1px solid transparent;
   border-radius: var(--radius-md);
-  border: 1px solid var(--color-border);
-  background: var(--color-bg-card);
-  color: var(--color-text-regular);
+  background: transparent;
+  color: var(--color-text-secondary);
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: background-color var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
 }
-.refresh-btn:hover {
-  background: var(--color-bg-hover);
+
+.icon-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.icon-btn:hover {
   color: var(--color-brand);
-  border-color: var(--color-brand);
+  background: var(--color-brand-soft);
+  border-color: var(--color-brand-muted);
 }
-.refresh-btn:active {
-  transform: scale(0.92);
+
+.icon-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
 }
-.refresh-btn.spinning svg {
+
+.icon-btn.spinning svg {
   animation: spin 0.8s linear infinite;
 }
-.refresh-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
+
 @keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
 
-/* 指数三栏 */
 .indices-row {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: var(--sp-3);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--sp-4);
   align-items: start;
 }
 
-/* 基金排行双栏 */
 .ranking-row {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: var(--sp-3);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-4);
 }
 
-/* 骨架屏 */
 .skeleton-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: var(--sp-3);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--sp-4);
 }
+
 .skeleton-panel {
-  background: var(--color-bg-card);
-  border-radius: var(--radius-lg);
-  padding: var(--sp-4);
-  border: 1px solid var(--color-border-light);
   display: flex;
   flex-direction: column;
   gap: var(--sp-3);
+  padding: var(--sp-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-card);
 }
+
 .sk-header,
 .sk-value,
 .sk-row,
 .sk-chart {
+  position: relative;
+  overflow: hidden;
   border-radius: var(--radius-sm);
-  background: linear-gradient(90deg, var(--color-bg-hover) 25%, var(--color-border-light) 50%, var(--color-bg-hover) 75%);
+  background: var(--color-bg-hover);
+}
+
+.sk-header::after,
+.sk-value::after,
+.sk-row::after,
+.sk-chart::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent 25%, var(--color-border-light) 50%, transparent 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s ease-in-out infinite;
 }
-.sk-header { height: 20px; width: 60%; }
-.sk-value { height: 28px; width: 45%; }
-.sk-row { height: 14px; width: 80%; }
-.sk-chart { height: 40px; width: 100%; margin-top: var(--sp-1); }
+
+.sk-header { width: 60%; height: 18px; }
+.sk-value { width: 45%; height: 28px; }
+.sk-row { width: 80%; height: 14px; }
+.sk-chart { width: 100%; height: 54px; }
+
 @keyframes shimmer {
   0% { background-position: 200% 0; }
   100% { background-position: -200% 0; }
 }
 
-/* 错误状态 */
 .error-state {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: var(--sp-12) var(--sp-4);
+  min-height: 300px;
+  padding: var(--sp-8);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-card);
   text-align: center;
 }
+
 .error-icon {
-  color: var(--color-text-disabled);
-  margin-bottom: var(--sp-4);
-}
-.error-text {
-  font-size: var(--fs-base);
-  color: var(--color-text-secondary);
-  margin: 0 0 var(--sp-4);
-}
-.retry-btn {
-  padding: var(--sp-2) var(--sp-5);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--color-brand);
-  background: var(--color-brand);
-  color: #fff;
-  font-size: var(--fs-sm);
-  font-weight: var(--fw-semibold);
-  cursor: pointer;
-  transition: all var(--transition-fast);
-}
-.retry-btn:hover {
-  background: var(--color-brand);
-  opacity: 0.9;
-  box-shadow: 0 2px 8px rgba(51, 102, 255, 0.3);
-}
-.retry-btn:active {
-  transform: scale(0.96);
+  width: 44px;
+  height: 44px;
+  color: var(--color-warning);
 }
 
-/* 响应式 */
-@media (max-width: 768px) {
-  .indices-row {
-    grid-template-columns: 1fr;
-  }
-  .ranking-row {
-    grid-template-columns: 1fr;
-  }
+.error-text {
+  margin: var(--sp-4) 0;
+  color: var(--color-text-secondary);
+  font-size: var(--fs-base);
+}
+
+.retry-btn {
+  min-height: 34px;
+  padding: 0 var(--sp-4);
+  border: 1px solid var(--color-brand);
+  border-radius: var(--radius-md);
+  background: var(--color-brand);
+  color: var(--color-brand-contrast);
+  cursor: pointer;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+}
+
+@media (max-width: 1100px) {
+  .indices-row,
   .skeleton-grid {
     grid-template-columns: 1fr;
   }
-  .page-title {
-    font-size: var(--fs-xl);
-  }
 }
 
-@media (max-width: 480px) {
-  .market-page {
-    gap: var(--sp-3);
+@media (max-width: 760px) {
+  .page-head {
+    align-items: flex-start;
+    flex-direction: column;
   }
-  .page-header {
-    padding: var(--sp-3) 0 var(--sp-1);
+
+  .head-actions {
+    width: 100%;
+  }
+
+  .ranking-row {
+    grid-template-columns: 1fr;
   }
 }
 </style>

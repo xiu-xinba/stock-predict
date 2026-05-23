@@ -1,10 +1,8 @@
 <template>
-  <div class="hero-search">
-    <h1 class="hero-title">基金涨跌预测</h1>
-    <p class="hero-subtitle">输入基金代码或名称，AI 模型实时预测当日涨跌方向</p>
+  <div class="search-panel">
     <div class="search-box">
       <div class="search-field">
-        <svg class="search-icon" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg"><path fill="currentColor" d="m795.904 750.72 124.992 124.928a32 32 0 0 1-45.248 45.248L750.656 795.904a416 416 0 1 1 45.248-45.248zM480 832a352 352 0 1 0 0-704 352 352 0 0 0 0 704"/></svg>
+        <svg class="search-icon" viewBox="0 0 1024 1024" aria-hidden="true"><path fill="currentColor" d="m795.904 750.72 124.992 124.928a32 32 0 0 1-45.248 45.248L750.656 795.904a416 416 0 1 1 45.248-45.248zM480 832a352 352 0 1 0 0-704 352 352 0 0 0 0 704"/></svg>
         <input
           v-model="keyword"
           type="text"
@@ -19,31 +17,30 @@
         <button
           class="filter-toggle-btn"
           :class="{ active: showFilterPanel }"
+          type="button"
           title="筛选"
           @mousedown.prevent="toggleFilterPanel"
         >
-          <svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg"><path fill="currentColor" d="M384 523.392V928a32 32 0 0 0 46.336 28.608l192-96A32 32 0 0 0 640 832V523.392l280.768-343.104a32 32 0 0 0-24.768-52.288H128a32 32 0 0 0-24.768 52.288L384 523.392z"/></svg>
+          <svg viewBox="0 0 1024 1024" aria-hidden="true"><path fill="currentColor" d="M384 523.392V928a32 32 0 0 0 46.336 28.608l192-96A32 32 0 0 0 640 832V523.392l280.768-343.104a32 32 0 0 0-24.768-52.288H128a32 32 0 0 0-24.768 52.288L384 523.392z"/></svg>
         </button>
         <transition name="dropdown">
           <div v-if="showDropdown && (suggestions.length > 0 || searchHistory.length > 0)" class="search-dropdown">
-            <!-- Search history -->
             <div v-if="searchHistory.length > 0 && !keyword.trim()" class="dropdown-section">
               <div class="dropdown-section-header">
                 <span>搜索历史</span>
-                <button class="clear-history-btn" @mousedown.prevent="clearHistory">清除</button>
+                <button class="clear-history-btn" type="button" @mousedown.prevent="clearHistory">清除</button>
               </div>
               <div
                 v-for="item in searchHistory"
                 :key="'history-' + item.code"
-                class="dropdown-item"
+                class="dropdown-item history-row"
                 @mousedown.prevent="onSelectHistory(item)"
               >
-                <svg class="history-icon" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg"><path fill="currentColor" d="M512 896a384 384 0 1 0 0-768 384 384 0 0 0 0 768zm0 64a448 448 0 1 1 0-896 448 448 0 0 1 0 896z"/><path fill="currentColor" d="M480 256a32 32 0 0 1 32 32v224h160a32 32 0 0 1 0 64H480a32 32 0 0 1-32-32V288a32 32 0 0 1 32-32z"/></svg>
+                <svg class="history-icon" viewBox="0 0 1024 1024" aria-hidden="true"><path fill="currentColor" d="M512 896a384 384 0 1 0 0-768 384 384 0 0 0 0 768zm0 64a448 448 0 1 1 0-896 448 448 0 0 1 0 896z"/><path fill="currentColor" d="M480 256a32 32 0 0 1 32 32v224h160a32 32 0 0 1 0 64H480a32 32 0 0 1-32-32V288a32 32 0 0 1 32-32z"/></svg>
                 <span class="dropdown-code">{{ item.code }}</span>
                 <span class="dropdown-name">{{ item.name }}</span>
               </div>
             </div>
-            <!-- Search suggestions -->
             <div v-if="suggestions.length > 0" class="dropdown-section">
               <div
                 v-for="item in suggestions"
@@ -60,18 +57,13 @@
           </div>
         </transition>
       </div>
-      <button
-        class="predict-btn"
-        :disabled="store.loading"
-        @click="doPredict"
-      >
-        <svg v-if="!store.loading" class="btn-icon" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg"><path fill="currentColor" d="M512 64h64v192h-64zm0 576h64v192h-64zM160 480v-64h192v64zm576 0v-64h192v64zM249.856 199.04l45.248-45.184L430.848 289.6 385.6 334.848 249.856 199.104zM657.152 606.4l45.248-45.248 135.744 135.744-45.248 45.248zM114.048 923.2 68.8 877.952l316.8-316.8 45.248 45.248zM702.4 334.848 657.152 289.6l135.744-135.744 45.248 45.248z"/></svg>
-        <svg v-else class="btn-icon spinning" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg"><path fill="currentColor" d="M512 64a32 32 0 0 1 32 32v192a32 32 0 0 1-64 0V96a32 32 0 0 1 32-32zm0 640a32 32 0 0 1 32 32v192a32 32 0 0 1-64 0V736a32 32 0 0 1 32-32zM195.2 195.2a32 32 0 0 1 45.248 0L376.32 331.008a32 32 0 0 1-45.248 45.248L195.2 240.448a32 32 0 0 1 0-45.248zm407.424 407.424a32 32 0 0 1 45.248 0l135.808 135.872a32 32 0 0 1-45.248 45.248l-135.808-135.872a32 32 0 0 1 0-45.248zM64 512a32 32 0 0 1 32-32h192a32 32 0 0 1 0 64H96a32 32 0 0 1-32-32zm640 0a32 32 0 0 1 32-32h192a32 32 0 0 1 0 64H736a32 32 0 0 1-32-32zM195.2 828.8a32 32 0 0 1 0-45.248l135.872-135.808a32 32 0 0 1 45.248 45.248L240.448 828.8a32 32 0 0 1-45.248 0zm407.424-407.424a32 32 0 0 1 0-45.248l135.872-135.808a32 32 0 0 1 45.248 45.248L647.872 421.376a32 32 0 0 1-45.248 0z"/></svg>
-        预测
+      <button class="predict-btn" type="button" :disabled="store.loading" @click="doPredict">
+        <svg v-if="!store.loading" class="btn-icon" viewBox="0 0 1024 1024" aria-hidden="true"><path fill="currentColor" d="M512 64h64v192h-64zm0 576h64v192h-64zM160 480v-64h192v64zm576 0v-64h192v64zM249.856 199.04l45.248-45.184L430.848 289.6 385.6 334.848 249.856 199.104zM657.152 606.4l45.248-45.248 135.744 135.744-45.248 45.248zM114.048 923.2 68.8 877.952l316.8-316.8 45.248 45.248zM702.4 334.848 657.152 289.6l135.744-135.744 45.248 45.248z"/></svg>
+        <svg v-else class="btn-icon spinning" viewBox="0 0 1024 1024" aria-hidden="true"><path fill="currentColor" d="M512 64a32 32 0 0 1 32 32v192a32 32 0 0 1-64 0V96a32 32 0 0 1 32-32zm0 640a32 32 0 0 1 32 32v192a32 32 0 0 1-64 0V736a32 32 0 0 1 32-32zM195.2 195.2a32 32 0 0 1 45.248 0L376.32 331.008a32 32 0 0 1-45.248 45.248L195.2 240.448a32 32 0 0 1 0-45.248zm407.424 407.424a32 32 0 0 1 45.248 0l135.808 135.872a32 32 0 0 1-45.248 45.248l-135.808-135.872a32 32 0 0 1 0-45.248zM64 512a32 32 0 0 1 32-32h192a32 32 0 0 1 0 64H96a32 32 0 0 1-32-32zm640 0a32 32 0 0 1 32-32h192a32 32 0 0 1 0 64H736a32 32 0 0 1-32-32zM195.2 828.8a32 32 0 0 1 0-45.248l135.872-135.808a32 32 0 0 1 45.248 45.248L240.448 828.8a32 32 0 0 1-45.248 0zm407.424-407.424a32 32 0 0 1 0-45.248l135.872-135.808a32 32 0 0 1 45.248 45.248L647.872 421.376a32 32 0 0 1-45.248 0z"/></svg>
+        <span>预测</span>
       </button>
     </div>
 
-    <!-- Filter panel -->
     <transition name="filter-panel">
       <div v-if="showFilterPanel" class="filter-panel">
         <div class="filter-row">
@@ -108,7 +100,7 @@
           </div>
         </div>
         <div class="filter-actions">
-          <button class="filter-reset-btn" @click="resetFilters">重置筛选</button>
+          <button class="filter-reset-btn" type="button" @click="resetFilters">重置筛选</button>
         </div>
       </div>
     </transition>
@@ -152,6 +144,12 @@ interface HistoryItem {
 
 const searchHistory = ref<HistoryItem[]>([])
 
+function isHistoryItem(value: unknown): value is HistoryItem {
+  if (!value || typeof value !== 'object') return false
+  const candidate = value as Partial<Record<keyof HistoryItem, unknown>>
+  return typeof candidate.code === 'string' && typeof candidate.name === 'string'
+}
+
 onMounted(() => {
   loadHistory()
   store.loadFilters()
@@ -163,9 +161,7 @@ function loadHistory() {
     if (raw) {
       const parsed = JSON.parse(raw)
       if (Array.isArray(parsed)) {
-        searchHistory.value = parsed.filter(
-          (h: any) => h && typeof h.code === 'string' && typeof h.name === 'string'
-        )
+        searchHistory.value = parsed.filter(isHistoryItem)
       }
     }
   } catch { /* ignore */ }
@@ -246,7 +242,6 @@ function doPredict() {
   }
   clearSuggestions()
   store.predict(code)
-  // Save history after predict (fundName will be set asynchronously)
   const nameMatch = keyword.value.match(/^(.+?)\s*\(\d{6}\)/)
   const name = nameMatch ? nameMatch[1] : code
   saveHistory(code, name)
@@ -254,383 +249,355 @@ function doPredict() {
 </script>
 
 <style scoped>
-.hero-search {
-  text-align: center;
-  padding: 48px 0 40px;
+.search-panel {
+  padding: var(--sp-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-card);
 }
-.hero-title {
-  font-size: var(--fs-4xl);
-  font-weight: 700;
-  color: var(--color-text-primary);
-  margin-bottom: var(--sp-2);
-  letter-spacing: -0.5px;
-}
-.hero-subtitle {
-  font-size: var(--fs-md);
-  color: var(--color-text-secondary);
-  margin-bottom: var(--sp-8);
-}
+
 .search-box {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 112px;
   gap: var(--sp-3);
-  max-width: 600px;
-  margin: 0 auto;
   align-items: stretch;
-  height: 52px;
 }
+
 .search-field {
-  flex: 1;
-  min-width: 0;
   position: relative;
-  height: 52px;
+  min-width: 0;
+  height: 44px;
 }
+
 .search-icon {
   position: absolute;
-  left: 16px;
   top: 50%;
-  transform: translateY(-50%);
-  width: 18px;
-  height: 18px;
+  left: 14px;
+  z-index: 1;
+  width: 16px;
+  height: 16px;
   color: var(--color-text-secondary);
   pointer-events: none;
-  z-index: 1;
+  transform: translateY(-50%);
 }
+
 .search-input {
   width: 100%;
-  height: 52px;
-  padding: 0 44px 0 44px;
+  height: 44px;
   margin: 0;
-  border: 2px solid transparent;
-  border-radius: 14px;
-  background: var(--color-bg-card);
-  color: var(--color-text-primary);
-  font-size: var(--fs-md);
-  font-family: inherit;
-  line-height: 48px;
-  box-sizing: border-box;
+  padding: 0 46px 0 40px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
   outline: none;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
-  transition: border-color 0.2s, box-shadow 0.2s;
+  background: var(--color-bg-page);
+  color: var(--color-text-primary);
+  font-size: var(--fs-base);
+  line-height: 42px;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast), background-color var(--transition-fast);
 }
+
 .search-input::placeholder {
   color: var(--color-text-secondary);
 }
+
 .search-input:hover {
-  border-color: var(--color-brand);
+  border-color: var(--color-brand-muted);
 }
+
 .search-input:focus {
   border-color: var(--color-brand);
-  box-shadow: 0 2px 16px rgba(51, 102, 255, 0.15);
-}
-html.dark .search-input {
   background: var(--color-bg-card);
-  color: var(--color-text-primary);
+  box-shadow: 0 0 0 3px var(--color-brand-light);
 }
+
 .filter-toggle-btn {
   position: absolute;
-  right: 8px;
   top: 50%;
-  transform: translateY(-50%);
-  width: 32px;
-  height: 32px;
-  border: none;
-  border-radius: 8px;
+  right: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--color-text-secondary);
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background 0.15s, color 0.15s;
-  padding: 0;
+  transform: translateY(-50%);
+  transition: background-color var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
 }
+
 .filter-toggle-btn svg {
-  width: 16px;
-  height: 16px;
+  width: 15px;
+  height: 15px;
 }
-.filter-toggle-btn:hover {
-  background: var(--color-bg-hover);
-  color: var(--color-brand);
-}
+
+.filter-toggle-btn:hover,
 .filter-toggle-btn.active {
   color: var(--color-brand);
-  background: rgba(51, 102, 255, 0.1);
+  background: var(--color-brand-soft);
+  border-color: var(--color-brand-muted);
 }
-.search-dropdown {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
-  right: 0;
-  background: var(--color-bg-card);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
-  z-index: 100;
-  max-height: 320px;
-  overflow-y: auto;
-}
-.dropdown-section {
-  padding: 4px 0;
-}
-.dropdown-section + .dropdown-section {
-  border-top: 1px solid var(--color-border);
-}
-.dropdown-section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 6px 16px;
-  font-size: var(--fs-xs);
-  color: var(--color-text-secondary);
-}
-.clear-history-btn {
-  border: none;
-  background: none;
-  color: var(--color-brand);
-  font-size: var(--fs-xs);
-  cursor: pointer;
-  padding: 0;
-}
-.clear-history-btn:hover {
-  text-decoration: underline;
-}
-.dropdown-item {
-  display: flex;
-  align-items: center;
-  padding: 10px 16px;
-  cursor: pointer;
-  transition: background 0.15s;
-  gap: var(--sp-2);
-}
-.dropdown-item:hover {
-  background: var(--color-bg-hover);
-}
-.dropdown-item:first-child {
-  border-radius: var(--radius-md) var(--radius-md) 0 0;
-}
-.dropdown-item:last-child {
-  border-radius: 0 0 var(--radius-md) var(--radius-md);
-}
-.history-icon {
-  width: 14px;
-  height: 14px;
-  color: var(--color-text-secondary);
-  flex-shrink: 0;
-}
-.dropdown-code {
-  color: var(--color-text-regular);
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  min-width: 60px;
-}
-.dropdown-name {
-  flex: 1;
-  color: var(--color-text-primary);
-  font-size: var(--fs-sm);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.dropdown-risk {
-  font-size: var(--fs-xs);
-  padding: 1px 6px;
-  border-radius: 4px;
-  font-weight: 500;
-  flex-shrink: 0;
-}
-.dropdown-risk.risk-low { background: #e8f5e9; color: #2e7d32; }
-.dropdown-risk.risk-medium-low { background: #f1f8e9; color: #558b2f; }
-.dropdown-risk.risk-medium { background: #fff8e1; color: #f57f17; }
-.dropdown-risk.risk-medium-high { background: #fff3e0; color: #e65100; }
-.dropdown-risk.risk-high { background: #fce4ec; color: #c62828; }
-html.dark .dropdown-risk.risk-low { background: #1b3a1b; color: #66bb6a; }
-html.dark .dropdown-risk.risk-medium-low { background: #2a3a1b; color: #9ccc65; }
-html.dark .dropdown-risk.risk-medium { background: #3a3510; color: #ffca28; }
-html.dark .dropdown-risk.risk-medium-high { background: #3a2510; color: #ff9800; }
-html.dark .dropdown-risk.risk-high { background: #3a1b1b; color: #ef5350; }
-.dropdown-type {
-  color: var(--color-text-secondary);
-  font-size: var(--fs-xs);
-  flex-shrink: 0;
-}
-.dropdown-enter-active,
-.dropdown-leave-active {
-  transition: opacity 0.15s, transform 0.15s;
-}
-.dropdown-enter-from,
-.dropdown-leave-to {
-  opacity: 0;
-  transform: translateY(-4px);
-}
+
 .predict-btn {
-  height: 52px;
-  min-width: 120px;
-  border: 2px solid transparent;
-  border-radius: 14px;
-  padding: 0 28px;
-  margin: 0;
-  box-sizing: border-box;
-  background: var(--color-brand);
-  color: #ffffff;
-  font-size: var(--fs-md);
-  font-weight: 600;
-  font-family: inherit;
-  letter-spacing: 2px;
-  line-height: 48px;
-  cursor: pointer;
-  flex-shrink: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  box-shadow: 0 4px 16px rgba(51, 102, 255, 0.3);
-  transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
-  user-select: none;
-  -webkit-tap-highlight-color: transparent;
-  outline: none;
+  gap: var(--sp-2);
+  height: 44px;
+  padding: 0 var(--sp-4);
+  border: 1px solid var(--color-brand);
+  border-radius: var(--radius-md);
+  background: var(--color-brand);
+  color: var(--color-brand-contrast);
+  cursor: pointer;
+  font-size: var(--fs-base);
+  font-weight: var(--fw-semibold);
+  line-height: 1;
+  transition: background-color var(--transition-fast), border-color var(--transition-fast), opacity var(--transition-fast);
 }
+
 .predict-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(51, 102, 255, 0.4);
-  background: #2952e6;
+  background: var(--color-brand-hover);
+  border-color: var(--color-brand-hover);
 }
-html.dark .predict-btn:hover {
-  box-shadow: 0 6px 20px rgba(91, 138, 255, 0.4);
-  background: #4d7aff;
-}
-.predict-btn:active {
-  transform: translateY(0);
-  box-shadow: 0 4px 16px rgba(51, 102, 255, 0.3);
-}
+
 .predict-btn:disabled {
-  opacity: 0.7;
   cursor: not-allowed;
-  transform: none;
+  opacity: 0.65;
 }
-.predict-btn:focus-visible {
-  border-color: #ffffff;
-  box-shadow: 0 4px 16px rgba(51, 102, 255, 0.3), 0 0 0 2px var(--color-brand);
-}
+
 .btn-icon {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   flex-shrink: 0;
 }
+
 .btn-icon.spinning {
   animation: spin 1s linear infinite;
 }
+
 @keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
 
-/* Filter panel */
-.filter-panel {
-  max-width: 600px;
-  margin: var(--sp-3) auto 0;
-  background: var(--color-bg-card);
+.search-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  left: 0;
+  z-index: 100;
+  max-height: 320px;
+  overflow-y: auto;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  padding: var(--sp-4);
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
-  z-index: 10;
-  position: relative;
+  background: var(--color-bg-card);
+  box-shadow: var(--shadow-md);
 }
-.filter-row {
+
+.dropdown-section {
+  padding: var(--sp-1) 0;
+}
+
+.dropdown-section + .dropdown-section {
+  border-top: 1px solid var(--color-border-light);
+}
+
+.dropdown-section-header {
   display: flex;
-  gap: var(--sp-3);
-  flex-wrap: wrap;
-}
-.filter-group {
-  flex: 1;
-  min-width: 120px;
-}
-.filter-label {
-  display: block;
-  font-size: var(--fs-xs);
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--sp-1) var(--sp-3);
   color: var(--color-text-secondary);
-  margin-bottom: 4px;
-  font-weight: 500;
+  font-size: var(--fs-xs);
 }
-.filter-select {
-  width: 100%;
-  height: 36px;
-  padding: 0 8px;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  background: var(--color-bg-primary);
+
+.clear-history-btn {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-brand);
+  cursor: pointer;
+  font-size: var(--fs-xs);
+}
+
+.dropdown-item {
+  display: grid;
+  grid-template-columns: 70px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--sp-2);
+  min-height: 42px;
+  padding: 0 var(--sp-3);
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+
+.dropdown-item.history-row {
+  grid-template-columns: 22px 70px minmax(0, 1fr);
+}
+
+.dropdown-item:hover {
+  background: var(--color-bg-hover);
+}
+
+.history-icon {
+  width: 14px;
+  height: 14px;
+  color: var(--color-text-secondary);
+}
+
+.dropdown-code {
+  color: var(--color-text-regular);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-bold);
+}
+
+.dropdown-name {
+  overflow: hidden;
   color: var(--color-text-primary);
   font-size: var(--fs-sm);
-  font-family: inherit;
-  outline: none;
-  cursor: pointer;
-  transition: border-color 0.15s;
-  box-sizing: border-box;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.filter-select:focus {
-  border-color: var(--color-brand);
+
+.dropdown-risk {
+  flex-shrink: 0;
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
 }
-.filter-actions {
-  margin-top: var(--sp-3);
-  display: flex;
-  justify-content: flex-end;
+
+.dropdown-risk.risk-low,
+.dropdown-risk.risk-medium-low {
+  color: var(--color-down);
+  background: var(--color-down-bg);
 }
-.filter-reset-btn {
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  background: transparent;
-  color: var(--color-text-secondary);
-  font-size: var(--fs-sm);
-  padding: 4px 16px;
-  cursor: pointer;
-  transition: color 0.15s, border-color 0.15s;
-}
-.filter-reset-btn:hover {
+
+.dropdown-risk.risk-medium {
   color: var(--color-brand);
-  border-color: var(--color-brand);
+  background: var(--color-brand-soft);
 }
+
+.dropdown-risk.risk-medium-high,
+.dropdown-risk.risk-high {
+  color: var(--color-up);
+  background: var(--color-up-bg);
+}
+
+.dropdown-type {
+  flex-shrink: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--fs-xs);
+}
+
+.dropdown-enter-active,
+.dropdown-leave-active,
 .filter-panel-enter-active,
 .filter-panel-leave-active {
-  transition: opacity 0.2s, transform 0.2s;
+  transition: opacity var(--transition-fast), transform var(--transition-fast);
 }
+
+.dropdown-enter-from,
+.dropdown-leave-to,
 .filter-panel-enter-from,
 .filter-panel-leave-to {
   opacity: 0;
-  transform: translateY(-8px);
+  transform: translateY(-4px);
 }
 
-@media (max-width: 767px) {
-  .hero-search {
-    padding: 32px 0 28px;
-  }
-  .hero-title {
-    font-size: var(--fs-2xl);
-  }
-  .hero-subtitle {
-    font-size: var(--fs-base);
-  }
+.filter-panel {
+  margin-top: var(--sp-3);
+  padding-top: var(--sp-3);
+  border-top: 1px solid var(--color-border-light);
+}
+
+.filter-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--sp-3);
+}
+
+.filter-group {
+  min-width: 0;
+}
+
+.filter-label {
+  display: block;
+  margin-bottom: var(--sp-1);
+  color: var(--color-text-secondary);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+}
+
+.filter-select {
+  width: 100%;
+  height: 34px;
+  padding: 0 var(--sp-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  outline: none;
+  background: var(--color-bg-page);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  font-size: var(--fs-sm);
+}
+
+.filter-select:focus {
+  border-color: var(--color-brand);
+  box-shadow: 0 0 0 3px var(--color-brand-light);
+}
+
+.filter-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--sp-3);
+}
+
+.filter-reset-btn {
+  min-height: 30px;
+  padding: 0 var(--sp-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  font-size: var(--fs-sm);
+}
+
+.filter-reset-btn:hover {
+  color: var(--color-brand);
+  border-color: var(--color-brand-muted);
+  background: var(--color-brand-soft);
+}
+
+@media (max-width: 760px) {
   .search-box {
-    flex-direction: column;
-    height: auto;
+    grid-template-columns: 1fr;
   }
-  .search-field {
-    height: 48px;
-  }
-  .search-input {
-    height: 48px;
-    line-height: 44px;
-  }
+
   .predict-btn {
     width: 100%;
-    min-width: unset;
-    height: 48px;
-    line-height: 44px;
   }
+
   .filter-row {
-    flex-direction: column;
+    grid-template-columns: 1fr;
   }
-  .filter-group {
-    min-width: 100%;
+
+  .dropdown-item {
+    grid-template-columns: 62px minmax(0, 1fr);
+  }
+
+  .dropdown-item.history-row {
+    grid-template-columns: 22px 62px minmax(0, 1fr);
+  }
+
+  .dropdown-risk,
+  .dropdown-type {
+    display: none;
   }
 }
 </style>

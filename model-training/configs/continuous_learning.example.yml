@@ -1,0 +1,124 @@
+project: index_fund_continuous_learning
+created_at: 2026-05-23
+
+logging:
+  prediction_table: prediction_log
+  required_fields:
+    - prediction_id
+    - fund_code
+    - horizon
+    - asof_time
+    - created_at
+    - model_version
+    - feature_snapshot_id
+    - predicted_return
+    - predicted_direction
+    - confidence
+    - is_actionable
+    - label_due_time
+
+label_backfill:
+  intraday_3m:
+    delay_minutes: 3
+    label_columns:
+      - actual_return
+      - actual_direction
+  intraday_5m:
+    delay_minutes: 5
+    label_columns:
+      - actual_return
+      - actual_direction
+  daily:
+    delay_trading_days: 1
+    label_columns:
+      - actual_return
+      - actual_direction
+  weekly:
+    delay_trading_days: 5
+    label_columns:
+      - actual_return
+      - actual_direction
+
+drift_detection:
+  schedule:
+    intraday: every_trading_day_close
+    daily_weekly: every_trading_day_close
+  data_drift:
+    methods:
+      - psi
+      - ks_test
+      - wasserstein_distance
+    alert_when:
+      psi_warning: 0.10
+      psi_critical: 0.25
+  stream_drift:
+    methods:
+      - adwin
+      - page_hinkley
+      - kswin
+  financial_drift:
+    monitor:
+      - ic_decay
+      - rank_ic_decay
+      - high_confidence_accuracy
+      - high_confidence_coverage
+      - cost_adjusted_return
+      - calibration_ece
+    alert_when:
+      high_confidence_days_below_threshold: 5
+      cost_adjusted_return_below_zero_days: 5
+
+retraining:
+  fixed_schedule:
+    intraday_models: weekly
+    daily_weekly_models: monthly
+    sentiment_model: monthly
+    panic_factor_weights: weekly
+    probability_calibrators: daily
+  event_triggers:
+    - feature_drift_critical
+    - concept_drift_warning
+    - market_regime_change
+    - policy_or_geopolitical_shock
+    - option_volatility_jump
+    - futures_basis_relationship_break
+  training_windows:
+    short_window_trading_days: 60
+    medium_window_years: 2
+    long_window_years: 8
+    event_replay_buffer: enabled
+
+model_lifecycle:
+  aliases:
+    champion: production model
+    challenger: newly retrained candidate
+    shadow: serving predictions without user exposure
+    rollback: last stable champion
+  promotion_requires:
+    - beats_current_champion
+    - passes_walk_forward_backtest
+    - passes_regime_breakdown
+    - calibration_not_worse
+    - no_coverage_collapse
+    - shadow_run_min_trading_days
+  shadow_run_min_trading_days: 10
+  rollback_triggers:
+    - data_quality_critical
+    - prediction_distribution_outlier
+    - high_confidence_accuracy_breach
+    - inference_latency_breach
+    - unexplained_baseline_divergence
+
+tools:
+  drift:
+    - river
+    - evidently
+  registry:
+    - mlflow_model_registry
+  orchestration:
+    - airflow
+    - prefect
+    - dagster
+  feature_store:
+    - feast
+    - custom_feature_store
