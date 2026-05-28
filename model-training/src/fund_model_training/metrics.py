@@ -36,4 +36,86 @@ def build_report(y_true, y_pred, probabilities, accuracy_target: float = 0.98) -
             ))
         else:
             report["high_confidence_accuracy"] = None
+        report["calibration"] = probability_calibration_report(y_true, y_pred, probabilities)
     return report
+
+
+def probability_calibration_report(
+    y_true,
+    y_pred,
+    probabilities,
+    bins: int = 10,
+    class_count: int = 3,
+) -> dict[str, Any]:
+    if probabilities is None or len(probabilities) == 0:
+        return {
+            "ece": None,
+            "mce": None,
+            "brier_score": None,
+            "bins": [],
+        }
+
+    probs = np.asarray(probabilities, dtype="float64")
+    if probs.ndim != 2 or probs.shape[0] == 0:
+        return {
+            "ece": None,
+            "mce": None,
+            "brier_score": None,
+            "bins": [],
+        }
+
+    y_true_arr = np.asarray(y_true, dtype="int64")
+    y_pred_arr = np.asarray(y_pred)
+    confidences = np.max(probs, axis=1)
+    correct = (y_pred_arr == y_true_arr).astype("float64")
+
+    edges = np.linspace(0.0, 1.0, bins + 1)
+    ece = 0.0
+    mce = 0.0
+    bin_reports: list[dict[str, Any]] = []
+    for idx in range(bins):
+        left = edges[idx]
+        right = edges[idx + 1]
+        if idx == bins - 1:
+            mask = (confidences >= left) & (confidences <= right)
+        else:
+            mask = (confidences >= left) & (confidences < right)
+        count = int(np.sum(mask))
+        if count == 0:
+            bin_reports.append({
+                "lower": round(float(left), 4),
+                "upper": round(float(right), 4),
+                "count": 0,
+                "accuracy": None,
+                "confidence": None,
+                "gap": None,
+            })
+            continue
+        accuracy = float(np.mean(correct[mask]))
+        confidence = float(np.mean(confidences[mask]))
+        gap = abs(accuracy - confidence)
+        weight = count / len(confidences)
+        ece += weight * gap
+        mce = max(mce, gap)
+        bin_reports.append({
+            "lower": round(float(left), 4),
+            "upper": round(float(right), 4),
+            "count": count,
+            "accuracy": round(accuracy, 6),
+            "confidence": round(confidence, 6),
+            "gap": round(gap, 6),
+        })
+
+    brier_score = None
+    if probs.shape[1] == class_count:
+        target = np.zeros((len(y_true_arr), class_count), dtype="float64")
+        valid = (y_true_arr >= 0) & (y_true_arr < class_count)
+        target[np.arange(len(y_true_arr))[valid], y_true_arr[valid].astype(int)] = 1.0
+        brier_score = float(np.mean(np.sum((probs - target) ** 2, axis=1)))
+
+    return {
+        "ece": round(float(ece), 6),
+        "mce": round(float(mce), 6),
+        "brier_score": round(brier_score, 6) if brier_score is not None else None,
+        "bins": bin_reports,
+    }

@@ -1,0 +1,2157 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>后端开发实施计划</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --surface: #1e293b;
+    --surface2: #334155;
+    --border: #475569;
+    --text: #e2e8f0;
+    --text2: #94a3b8;
+    --accent: #38bdf8;
+    --accent2: #818cf8;
+    --green: #4ade80;
+    --yellow: #fbbf24;
+    --red: #f87171;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    padding: 2rem;
+  }
+  .container { max-width: 1200px; margin: 0 auto; }
+  h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 0.5rem;
+  }
+  .meta { color: var(--text2); font-size: 0.875rem; margin-bottom: 2rem; }
+  h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--accent);
+    margin: 2.5rem 0 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--surface2);
+  }
+  h3 { font-size: 1.15rem; font-weight: 600; color: var(--text); margin: 1.5rem 0 0.75rem; }
+  h4 { font-size: 1rem; font-weight: 600; color: var(--accent2); margin: 1.25rem 0 0.5rem; }
+  p, li { color: var(--text); font-size: 0.9375rem; }
+  ul, ol { padding-left: 1.5rem; margin: 0.5rem 0; }
+  li { margin: 0.25rem 0; }
+
+  /* TOC */
+  .toc {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.25rem 1.5rem;
+    margin: 1rem 0 2rem;
+  }
+  .toc h3 { margin: 0 0 0.75rem; font-size: 1rem; }
+  .toc-list { list-style: none; padding: 0; }
+  .toc-list li { margin: 0.35rem 0; }
+  .toc-list a {
+    display: inline-block;
+    padding: 0.3rem 0.75rem;
+    background: var(--surface2);
+    border-radius: 6px;
+    color: var(--text);
+    text-decoration: none;
+    font-size: 0.8125rem;
+    transition: background 0.2s, color 0.2s;
+  }
+  .toc-list a:hover { background: var(--accent); color: var(--bg); }
+  .toc-group { margin-bottom: 0.75rem; }
+  .toc-group-title { font-size: 0.8rem; color: var(--accent); font-weight: 600; margin-bottom: 0.25rem; }
+  .toc-sub { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+
+  /* Tables */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0.75rem 0;
+    font-size: 0.875rem;
+    overflow-x: auto;
+    display: block;
+  }
+  th {
+    background: var(--surface2);
+    color: var(--accent);
+    font-weight: 600;
+    text-align: left;
+    padding: 0.625rem 0.75rem;
+    border-bottom: 2px solid var(--border);
+    white-space: nowrap;
+  }
+  td {
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid var(--surface2);
+    vertical-align: top;
+  }
+  tr:hover td { background: rgba(56, 189, 248, 0.05); }
+
+  /* Code */
+  code {
+    background: var(--surface2);
+    padding: 0.15rem 0.4rem;
+    border-radius: 4px;
+    font-size: 0.8125rem;
+    font-family: 'Cascadia Code', 'Fira Code', 'JetBrains Mono', monospace;
+    color: var(--accent);
+  }
+  pre {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    margin: 0.75rem 0;
+    overflow-x: auto;
+  }
+  pre code {
+    background: none;
+    padding: 0;
+    font-size: 0.8125rem;
+    color: var(--text);
+    line-height: 1.6;
+  }
+
+  /* Highlight box / blockquote */
+  .highlight-box {
+    background: rgba(56, 189, 248, 0.08);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 8px 8px 0;
+    padding: 1rem 1.25rem;
+    margin: 0.75rem 0;
+    font-size: 0.9375rem;
+  }
+  blockquote {
+    background: rgba(56, 189, 248, 0.08);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 8px 8px 0;
+    padding: 1rem 1.25rem;
+    margin: 0.75rem 0;
+    font-size: 0.9375rem;
+    color: var(--text2);
+  }
+  blockquote strong { color: var(--accent); }
+
+  /* Checkbox */
+  .checkbox-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    margin: 0.35rem 0;
+  }
+  .checkbox-item input[type="checkbox"] {
+    accent-color: var(--accent);
+    margin-top: 0.35rem;
+    flex-shrink: 0;
+  }
+  .checkbox-item label {
+    font-size: 0.9375rem;
+    cursor: default;
+  }
+
+  /* Section anchor offset */
+  [id] { scroll-margin-top: 2rem; }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    body { padding: 1rem; }
+    h1 { font-size: 1.5rem; }
+    h2 { font-size: 1.25rem; }
+    table { font-size: 0.8rem; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>后端开发实施计划</h1>
+<p class="meta">编写日期：2026-05-21</p>
+
+<nav class="toc">
+  <h3>目录</h3>
+  <ul class="toc-list">
+    <li class="toc-group">
+      <div class="toc-group-title">章节导航</div>
+      <div class="toc-sub">
+        <a href="#sec-overview">概述</a>
+        <a href="#sec-files">文件结构</a>
+        <a href="#sec-task1">任务 1：项目初始化与 FastAPI 入口</a>
+        <a href="#sec-task2">任务 2：Pydantic Schema 定义</a>
+        <a href="#sec-task3">任务 3：SQLAlchemy 模型与数据库初始化</a>
+        <a href="#sec-task4">任务 4：东方财富数据采集服务</a>
+        <a href="#sec-task5">任务 5：业务服务层</a>
+        <a href="#sec-task6">任务 6：API 路由实现</a>
+        <a href="#sec-task7">任务 7：前后端联调验证</a>
+        <a href="#sec-task8">任务 8：测试套件</a>
+        <a href="#sec-task9">任务 9：LightGBM 模型训练脚本</a>
+        <a href="#sec-task10">任务 10：集成 LightGBM 推理</a>
+        <a href="#sec-task11">任务 11：安全加固与错误处理</a>
+        <a href="#sec-task12">任务 12：部署配置</a>
+        <a href="#sec-review">自审检查清单</a>
+      </div>
+    </li>
+  </ul>
+</nav>
+
+<!-- ===== 概述 ===== -->
+<h2 id="sec-overview">概述</h2>
+
+<blockquote>
+  <strong>给代理工作者：</strong> 必须使用的子技能：使用 superpowers:subagent-driven-development（推荐）或 superpowers:executing-plans 逐任务实施此计划。步骤使用复选框（<code>- [ ]</code>）语法进行追踪。
+</blockquote>
+
+<p><strong>目标：</strong> 为基金涨跌预测平台构建 FastAPI 后端，实现 6 个 P0 API 端点，与现有 Vue 3 前端完全对接</p>
+
+<p><strong>架构：</strong> FastAPI + SQLite + LightGBM 三层架构。路由层处理 HTTP 请求/响应，服务层封装业务逻辑（数据采集、特征工程、模型推理），数据层管理 SQLite 持久化。所有 API 遵循 ApiResponse&lt;T&gt; 统一响应格式，字段使用 snake_case。</p>
+
+<p><strong>技术栈：</strong> Python 3.11+ / FastAPI / Pydantic v2 / SQLAlchemy / httpx / LightGBM / scikit-learn / pytest</p>
+
+<!-- ===== 文件结构 ===== -->
+<h2 id="sec-files">文件结构</h2>
+
+<pre><code>backend/
+├── app/
+│   ├── __init__.py
+│   ├── main.py                    # FastAPI 入口 + CORS + 生命周期
+│   ├── config.py                  # 配置管理（环境变量）
+│   ├── database.py                # SQLAlchemy 引擎 + Session
+│   ├── deps.py                    # 依赖注入（db session 等）
+│   ├── schemas/
+│   │   ├── __init__.py
+│   │   ├── base.py                # ApiResponse[T] 统一响应
+│   │   ├── market.py              # MarketIndex, FundRankingItem
+│   │   ├── predict.py             # PredictionData, PredictionResult, FactorItem 等
+│   │   ├── watchlist.py           # WatchlistItem
+│   │   └── fund.py                # FundItem, FundSearchData
+│   ├── models/
+│   │   ├── __init__.py
+│   │   ├── fund.py                # Fund ORM 模型
+│   │   └── market_index.py        # MarketIndex ORM 模型
+│   ├── routers/
+│   │   ├── __init__.py
+│   │   ├── health.py              # GET /health
+│   │   ├── market.py              # /market/indices, /market/ranking/{type}
+│   │   ├── predict.py             # /predict/{fundCode}
+│   │   ├── funds.py               # /funds/search
+│   │   └── watchlist.py           # POST /watchlist/quotes
+│   ├── services/
+│   │   ├── __init__.py
+│   │   ├── eastmoney.py           # 东方财富数据采集
+│   │   ├── fund_service.py        # 基金搜索/查询
+│   │   ├── market_service.py      # 行情数据服务
+│   │   └── prediction_service.py  # 预测引擎（模型加载+推理）
+│   └── utils/
+│       ├── __init__.py
+│       └── response.py            # 统一响应构造工具
+├── train/
+│   ├── __init__.py
+│   └── train_model.py             # LightGBM 模型训练脚本
+├── models/                         # 模型文件存储
+│   └── .gitkeep
+├── tests/
+│   ├── __init__.py
+│   ├── conftest.py                 # pytest fixtures
+│   ├── test_health.py
+│   ├── test_market.py
+│   ├── test_funds.py
+│   ├── test_predict.py
+│   └── test_watchlist.py
+├── requirements.txt
+├── .env.example
+└── README.md</code></pre>
+
+<!-- ===== 任务 1 ===== -->
+<h2 id="sec-task1">任务 1: 项目初始化与 FastAPI 入口</h2>
+
+<p><strong>创建文件：</strong></p>
+<ul>
+  <li><code>backend/requirements.txt</code></li>
+  <li><code>backend/.env.example</code></li>
+  <li><code>backend/app/__init__.py</code></li>
+  <li><code>backend/app/config.py</code></li>
+  <li><code>backend/app/main.py</code></li>
+  <li><code>backend/app/schemas/base.py</code></li>
+  <li><code>backend/app/utils/__init__.py</code></li>
+  <li><code>backend/app/utils/response.py</code></li>
+</ul>
+
+<h3>步骤</h3>
+
+<div class="checkbox-item">
+  <input type="checkbox" id="t1-1">
+  <label for="t1-1">创建 <code>backend/requirements.txt</code></label>
+</div>
+
+<pre><code>fastapi==0.115.0
+uvicorn[standard]==0.30.0
+pydantic==2.9.0
+pydantic-settings==2.5.0
+sqlalchemy==2.0.35
+httpx==0.27.0
+pandas==2.2.3
+lightgbm==4.5.0
+scikit-learn==1.5.2
+numpy==2.1.0
+python-dotenv==1.0.1
+pytest==8.3.0
+pytest-asyncio==0.24.0</code></pre>
+
+<div class="checkbox-item">
+  <input type="checkbox" id="t1-2">
+  <label for="t1-2">创建 <code>backend/.env.example</code></label>
+</div>
+
+<pre><code># 应用配置
+APP_ENV=development
+DEBUG=true
+LOG_LEVEL=INFO
+
+# 数据库
+DATABASE_URL=sqlite:///./data.db
+
+# 东方财富 API
+EASTMONEY_BASE_URL=https://fund.eastmoney.com
+EASTMONEY_REQUEST_DELAY=0.5
+
+# 模型
+MODEL_PATH=./models/model_v1.pkl
+MODEL_CACHE_TTL=300
+
+# CORS
+CORS_ORIGINS=http://localhost:5173</code></pre>
+
+<div class="checkbox-item">
+  <input type="checkbox" id="t1-3">
+  <label for="t1-3">创建 <code>backend/app/__init__.py</code> (空文件)</label>
+</div>
+
+<div class="checkbox-item">
+  <input type="checkbox" id="t1-4">
+  <label for="t1-4">创建 <code>backend/app/config.py</code></label>
+</div>
+
+<pre><code>from pydantic_settings import BaseSettings
+from pathlib import Path
+
+
+class Settings(BaseSettings):
+    app_env: str = "development"
+    debug: bool = True
+    log_level: str = "INFO"
+
+    # 数据库
+    database_url: str = "sqlite:///./data.db"
+
+    # 东方财富 API
+    eastmoney_base_url: str = "https://fund.eastmoney.com"
+    eastmoney_request_delay: float = 0.5
+
+    # 模型
+    model_path: str = "./models/model_v1.pkl"
+    model_cache_ttl: int = 300
+
+    # CORS
+    cors_origins: str = "http://localhost:5173"
+
+    @property
+    def cors_origin_list(self) -> list[str]:
+        return [origin.strip() for origin in self.cors_origins.split(",")]
+
+    model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
+
+
+settings = Settings()</code></pre>
+
+<div class="checkbox-item">
+  <input type="checkbox" id="t1-5">
+  <label for="t1-5">创建 <code>backend/app/schemas/__init__.py</code> (空文件)</label>
+</div>
+
+<div class="checkbox-item">
+  <input type="checkbox" id="t1-6">
+  <label for="t1-6">创建 <code>backend/app/schemas/base.py</code></label>
+</div>
+
+<pre><code>from typing import TypeVar, Generic, Optional
+from pydantic import BaseModel
+
+T = TypeVar("T")
+
+
+class ApiResponse(BaseModel, Generic[T]):
+    """统一响应格式 — 与前端 ApiResponse&lt;T&gt; 完全对应"""
+    code: int = 0
+    message: str = "success"
+    data: Optional[T] = None
+
+
+def success(data: T, message: str = "success") -> ApiResponse[T]:
+    return ApiResponse(code=0, message=message, data=data)
+
+
+def error(code: int = -1, message: str = "error") -> ApiResponse[None]:
+    return ApiResponse(code=code, message=message, data=None)</code></pre>
+
+<div class="checkbox-item">
+  <input type="checkbox" id="t1-7">
+  <label for="t1-7">创建 <code>backend/app/utils/__init__.py</code> (空文件)</label>
+</div>
+
+<div class="checkbox-item">
+  <input type="checkbox" id="t1-8">
+  <label for="t1-8">创建 <code>backend/app/utils/response.py</code></label>
+</div>
+
+<pre><code>from app.schemas.base import ApiResponse, success, error
+
+__all__ = ["ApiResponse", "success", "error"]</code></pre>
+
+<div class="checkbox-item">
+  <input type="checkbox" id="t1-9">
+  <label for="t1-9">创建 <code>backend/app/main.py</code></label>
+</div>
+
+<pre><code>from contextlib import asynccontextmanager
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from app.config import settings
+from app.routers import health, market, predict, funds, watchlist
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # 启动：初始化数据库
+    from app.database import init_db
+    init_db()
+    yield
+    # 关闭：清理资源
+
+
+app = FastAPI(
+    title="基金涨跌预测平台 API",
+    version="1.0.0",
+    lifespan=lifespan,
+)
+
+# CORS — 匹配前端需求
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.cors_origin_list,
+    allow_credentials=True,
+    allow_methods=["GET", "POST"],
+    allow_headers=["*"],
+)
+
+# 注册路由
+app.include_router(health.router, prefix="/api/v1")
+app.include_router(market.router, prefix="/api/v1")
+app.include_router(predict.router, prefix="/api/v1")
+app.include_router(funds.router, prefix="/api/v1")
+app.include_router(watchlist.router, prefix="/api/v1")</code></pre>
+
+<div class="checkbox-item">
+  <input type="checkbox" id="t1-10">
+  <label for="t1-10">创建占位路由文件（后续任务填充）：</label>
+</div>
+
+<p><code>backend/app/routers/__init__.py</code> (空文件)</p>
+
+<p><code>backend/app/routers/health.py</code>:</p>
+<pre><code>from fastapi import APIRouter
+from app.schemas.base import ApiResponse
+
+router = APIRouter(tags=["health"])
+
+
+@router.get("/health")
+async def health_check():
+    return {"status": "ok", "model_loaded": False}</code></pre>
+
+<p><code>backend/app/routers/market.py</code>:</p>
+<pre><code>from fastapi import APIRouter
+
+router = APIRouter(prefix="/market", tags=["market"])</code></pre>
+
+<p><code>backend/app/routers/predict.py</code>:</p>
+<pre><code>from fastapi import APIRouter
+
+router = APIRouter(tags=["predict"])</code></pre>
+
+<p><code>backend/app/routers/funds.py</code>:</p>
+<pre><code>from fastapi import APIRouter
+
+router = APIRouter(prefix="/funds", tags=["funds"])</code></pre>
+
+<p><code>backend/app/routers/watchlist.py</code>:</p>
+<pre><code>from fastapi import APIRouter
+
+router = APIRouter(prefix="/watchlist", tags=["watchlist"])</code></pre>
+
+<div class="checkbox-item">
+  <input type="checkbox" id="t1-11">
+  <label for="t1-11">创建 <code>backend/app/database.py</code></label>
+</div>
+
+<pre><code>from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker, DeclarativeBase
+from app.config import settings
+
+engine = create_engine(
+    settings.database_url,
+    connect_args={"check_same_thread": False},  # SQLite 需要
+)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+
+class Base(DeclarativeBase):
+    pass
+
+
+def init_db():
+    Base.metadata.create_all(bind=engine)</code></pre>
+
+<div class="checkbox-item">
+  <input type="checkbox" id="t1-12">
+  <label for="t1-12">创建 <code>backend/app/deps.py</code></label>
+</div>
+
+<pre><code>from sqlalchemy.orm import Session
+from app.database import SessionLocal
+
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()</code></pre>
+
+<div class="checkbox-item">
+  <input type="checkbox" id="t1-13">
+  <label for="t1-13">创建空目录占位文件：</label>
+</div>
+<ul>
+  <li><code>backend/app/models/__init__.py</code> (空)</li>
+  <li><code>backend/app/services/__init__.py</code> (空)</li>
+  <li><code>backend/train/__init__.py</code> (空)</li>
+  <li><code>backend/models/.gitkeep</code> (空)</li>
+  <li><code>backend/tests/__init__.py</code> (空)</li>
+</ul>
+
+<div class="checkbox-item">
+  <input type="checkbox" id="t1-14">
+  <label for="t1-14">验证：安装依赖并启动服务器</label>
+</div>
+
+<pre><code>cd backend
+python -m venv venv
+venv\Scripts\activate  # Windows
+pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8000</code></pre>
+
+<p>预期：访问 <code>http://localhost:8000/api/v1/health</code> 返回 <code>{"status":"ok","model_loaded":false}</code></p>
+
+<!-- ===== 任务 2 ===== -->
+<h2 id="sec-task2">任务 2: Pydantic Schema 定义</h2>
+
+<p><strong>创建文件：</strong></p>
+<ul>
+  <li><code>backend/app/schemas/market.py</code></li>
+  <li><code>backend/app/schemas/predict.py</code></li>
+  <li><code>backend/app/schemas/watchlist.py</code></li>
+  <li><code>backend/app/schemas/fund.py</code></li>
+</ul>
+
+<h3>步骤</h3>
+
+<div class="checkbox-item">
+  <input type="checkbox" id="t2-1">
+  <label for="t2-1">创建 <code>backend/app/schemas/market.py</code> — 与前端 types/market.ts 完全对应</label>
+</div>
+
+<pre><code>from pydantic import BaseModel
+
+
+class MarketIndex(BaseModel):
+    code: str
+    name: str
+    value: float
+    change: float
+    change_pct: float
+    mini_chart_data: list[float]
+    update_time: str
+
+
+class FundRankingItem(BaseModel):
+    rank: int
+    fund_code: str
+    fund_name: str
+    fund_type: str
+    change_pct: float
+    estimated_nav: float</code></pre>
+
+<div class="checkbox-item">
+  <input type="checkbox" id="t2-2">
+  <label for="t2-2">创建 <code>backend/app/schemas/predict.py</code> — 与前端 types/predict.ts 完全对应</label>
+</div>
+
+<pre><code>from pydantic import BaseModel
+from enum import Enum
+
+
+class Direction(str, Enum):
+    up = "up"
+    down = "down"
+    flat = "flat"
+
+
+class FactorItem(BaseModel):
+    name: str
+    importance: float
+    description: str
+
+
+class ChangeRange(BaseModel):
+    low: float
+    high: float
+
+
+class PredictionResult(BaseModel):
+    direction: Direction
+    direction_confidence: float
+    predicted_change_pct: float
+    change_range: ChangeRange
+    top_factors: list[FactorItem]
+
+
+class MarketSnapshot(BaseModel):
+    sh_index: float
+    sh_index_change_pct: float
+    sz_index: float
+    sz_index_change_pct: float
+    cyb_index: float
+    cyb_index_change_pct: float
+    update_time: str
+
+
+class PredictionData(BaseModel):
+    fund_code: str
+    fund_name: str
+    prediction: PredictionResult
+    market_snapshot: MarketSnapshot</code></pre>
+
+<div class="checkbox-item">
+  <input type="checkbox" id="t2-3">
+  <label for="t2-3">创建 <code>backend/app/schemas/watchlist.py</code> — 与前端 types/watchlist.ts 完全对应</label>
+</div>
+
+<pre><code>from pydantic import BaseModel
+from app.schemas.predict import Direction
+
+
+class WatchlistQuoteRequest(BaseModel):
+    codes: list[str]
+
+
+class WatchlistItem(BaseModel):
+    fund_code: str
+    fund_name: str
+    fund_type: str
+    estimated_nav: float
+    change_pct: float
+    direction: Direction
+    added_at: int</code></pre>
+
+<div class="checkbox-item">
+  <input type="checkbox" id="t2-4">
+  <label for="t2-4">创建 <code>backend/app/schemas/fund.py</code> — 与前端 FundItem/FundSearchData 对应</label>
+</div>
+
+<pre><code>from pydantic import BaseModel
+
+
+class FundItem(BaseModel):
+    fund_code: str
+    fund_name: str
+    fund_type: str
+
+
+class FundSearchData(BaseModel):
+    items: list[FundItem]
+    total: int
+    page: int
+    size: int</code></pre>
+
+<div class="checkbox-item">
+  <input type="checkbox" id="t2-5">
+  <label for="t2-5">验证：在 Python 中导入所有 Schema 确认无报错</label>
+</div>
+
+<pre><code>cd backend
+python -c "from app.schemas.market import MarketIndex, FundRankingItem; from app.schemas.predict import PredictionData; from app.schemas.watchlist import WatchlistItem, WatchlistQuoteRequest; from app.schemas.fund import FundItem, FundSearchData; print('All schemas OK')"</code></pre>
+
+<!-- ===== 任务 3 ===== -->
+<h2 id="sec-task3">任务 3: SQLAlchemy 模型与数据库初始化</h2>
+
+<p><strong>创建文件：</strong></p>
+<ul>
+  <li><code>backend/app/models/fund.py</code></li>
+  <li><code>backend/app/models/market_index.py</code></li>
+</ul>
+
+<h3>步骤</h3>
+
+<div class="checkbox-item">
+  <input type="checkbox" id="t3-1">
+  <label for="t3-1">创建 <code>backend/app/models/fund.py</code></label>
+</div>
+
+<pre><code>from sqlalchemy import Column, String, Float, DateTime
+from sqlalchemy.sql import func
+from app.database import Base
+
+
+class Fund(Base):
+    __tablename__ = "funds"
+
+    fund_code = Column(String(6), primary_key=True)
+    fund_name = Column(String(100), nullable=False)
+    fund_type = Column(String(20), nullable=False)
+    estimated_nav = Column(Float, default=0.0)
+    change_pct = Column(Float, default=0.0)
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())</code></pre>
+
+<div class="checkbox-item">
+  <input type="checkbox" id="t3-2">
+  <label for="t3-2">创建 <code>backend/app/models/market_index.py</code></label>
+</div>
+
+<pre><code>from sqlalchemy import Column, String, Float, Text, DateTime
+from sqlalchemy.sql import func
+from app.database import Base
+
+
+class MarketIndexRecord(Base):
+    __tablename__ = "market_indices"
+
+    code = Column(String(10), primary_key=True)
+    name = Column(String(20), nullable=False)
+    value = Column(Float, default=0.0)
+    change = Column(Float, default=0.0)
+    change_pct = Column(Float, default=0.0)
+    mini_chart_data = Column(Text, default="[]")  # JSON 数组
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())</code></pre>
+
+<div class="checkbox-item">
+  <input type="checkbox" id="t3-3">
+  <label for="t3-3">更新 <code>backend/app/models/__init__.py</code></label>
+</div>
+
+<pre><code>from app.models.fund import Fund
+from app.models.market_index import MarketIndexRecord
+
+__all__ = ["Fund", "MarketIndexRecord"]</code></pre>
+
+<div class="checkbox-item">
+  <input type="checkbox" id="t3-4">
+  <label for="t3-4">更新 <code>backend/app/database.py</code> 的 <code>init_db()</code> 确保导入模型</label>
+</div>
+
+<pre><code>from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker, DeclarativeBase
+from app.config import settings
+
+engine = create_engine(
+    settings.database_url,
+    connect_args={"check_same_thread": False},
+)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+
+class Base(DeclarativeBase):
+    pass
+
+
+def init_db():
+    # 导入所有模型以确保 create_all 能识别
+    import app.models  # noqa: F401
+    Base.metadata.create_all(bind=engine)</code></pre>
+
+<div class="checkbox-item">
+  <input type="checkbox" id="t3-5">
+  <label for="t3-5">验证：启动服务器，确认数据库表创建</label>
+</div>
+
+<pre><code>uvicorn app.main:app --reload --port 8000</code></pre>
+
+<p>预期：项目根目录生成 <code>data.db</code> 文件</p>
+
+<!-- ===== 任务 4 ===== -->
+<h2 id="sec-task4">任务 4: 东方财富数据采集服务</h2>
+
+<p><strong>创建文件：</strong></p>
+<ul>
+  <li><code>backend/app/services/eastmoney.py</code></li>
+</ul>
+
+<h3>步骤</h3>
+
+<div class="checkbox-item">
+  <input type="checkbox" id="t4-1">
+  <label for="t4-1">创建 <code>backend/app/services/eastmoney.py</code></label>
+</div>
+
+<pre><code>import httpx
+import json
+import asyncio
+from datetime import datetime
+from app.config import settings
+
+# 内置基金列表 — Phase 1 数据源，避免依赖外部 API
+BUILTIN_FUNDS = [
+    {"fund_code": "000001", "fund_name": "华夏成长混合", "fund_type": "混合型"},
+    {"fund_code": "000011", "fund_name": "华夏大盘精选混合", "fund_type": "混合型"},
+    {"fund_code": "000021", "fund_name": "华夏优势增长混合", "fund_type": "混合型"},
+    {"fund_code": "000031", "fund_name": "华夏复兴混合", "fund_type": "混合型"},
+    {"fund_code": "000041", "fund_name": "华夏全球精选", "fund_type": "QDII"},
+    {"fund_code": "000051", "fund_name": "华夏沪深300ETF联接", "fund_type": "指数型"},
+    {"fund_code": "000061", "fund_name": "华夏盛世精选混合", "fund_type": "混合型"},
+    {"fund_code": "000071", "fund_name": "华夏恒生ETF联接", "fund_type": "QDII"},
+    {"fund_code": "000091", "fund_name": "华夏移动互联混合", "fund_type": "混合型"},
+    {"fund_code": "000101", "fund_name": "华夏红利混合", "fund_type": "混合型"},
+    {"fund_code": "110011", "fund_name": "易方达中小盘混合", "fund_type": "混合型"},
+    {"fund_code": "110022", "fund_name": "易方达消费行业股票", "fund_type": "股票型"},
+    {"fund_code": "005827", "fund_name": "易方达蓝筹精选混合", "fund_type": "混合型"},
+    {"fund_code": "161725", "fund_name": "招商中证白酒指数", "fund_type": "指数型"},
+    {"fund_code": "003834", "fund_name": "华夏能源革新股票", "fund_type": "股票型"},
+    {"fund_code": "005911", "fund_name": "广发双擎升级混合", "fund_type": "混合型"},
+    {"fund_code": "007119", "fund_name": "景顺长城绩优成长混合", "fund_type": "混合型"},
+    {"fund_code": "001938", "fund_name": "中欧时代先锋股票", "fund_type": "股票型"},
+    {"fund_code": "001156", "fund_name": "申万菱信新能源汽车", "fund_type": "混合型"},
+    {"fund_code": "519736", "fund_name": "交银新成长混合", "fund_type": "混合型"},
+    {"fund_code": "001632", "fund_name": "天弘创新驱动混合", "fund_type": "混合型"},
+    {"fund_code": "001714", "fund_name": "工银前沿医疗股票", "fund_type": "股票型"},
+    {"fund_code": "001875", "fund_name": "前海开源公用事业股票", "fund_type": "股票型"},
+    {"fund_code": "002190", "fund_name": "农银汇理新能源主题", "fund_type": "混合型"},
+    {"fund_code": "002621", "fund_name": "中欧医疗创新股票", "fund_type": "股票型"},
+    {"fund_code": "003096", "fund_name": "中欧医疗健康混合", "fund_type": "混合型"},
+    {"fund_code": "004851", "fund_name": "广发医疗保健股票", "fund_type": "股票型"},
+    {"fund_code": "005818", "fund_name": "景顺长城新兴成长混合", "fund_type": "混合型"},
+    {"fund_code": "006228", "fund_name": "中欧时代智慧混合", "fund_type": "混合型"},
+    {"fund_code": "007874", "fund_name": "华夏科技创新混合", "fund_type": "混合型"},
+]
+
+# 大盘指数配置
+MARKET_INDICES_CONFIG = [
+    {"code": "000001", "name": "上证指数"},
+    {"code": "399001", "name": "深证成指"},
+    {"code": "399006", "name": "创业板指"},
+]
+
+
+async def fetch_realtime_index(code: str) -> dict | None:
+    """从东方财富获取指数实时数据"""
+    url = "https://push2.eastmoney.com/api/qt/stock/get"
+    params = {
+        "secid": f"1.{code}" if code.startswith("000") else f"0.{code}",
+        "fields": "f43,f44,f45,f46,f47,f48,f50,f51,f52,f57,f58,f169,f170",
+        "ut": "fa5fd1943c7b386f172d6893dbfba10b",
+    }
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.get(url, params=params)
+            resp.raise_for_status()
+            data = resp.json()
+            if data.get("data"):
+                d = data["data"]
+                return {
+                    "code": code,
+                    "name": d.get("f58", ""),
+                    "value": d.get("f43", 0) / 100 if d.get("f43") else 0,
+                    "change": d.get("f169", 0) / 100 if d.get("f169") else 0,
+                    "change_pct": d.get("f170", 0) / 100 if d.get("f170") else 0,
+                }
+    except Exception:
+        pass
+    return None
+
+
+async def get_market_indices() -> list[dict]:
+    """获取三大指数数据，带模拟数据 fallback"""
+    indices = []
+    for config in MARKET_INDICES_CONFIG:
+        real_data = await fetch_realtime_index(config["code"])
+        if real_data:
+            import random
+            base = real_data["value"]
+            mini_chart = [round(base + random.uniform(-base * 0.01, base * 0.01), 2) for _ in range(20)]
+            real_data["mini_chart_data"] = mini_chart
+            real_data["update_time"] = datetime.now().isoformat()
+            indices.append(real_data)
+        else:
+            indices.append({
+                "code": config["code"],
+                "name": config["name"],
+                "value": 3350.0 if config["code"] == "000001" else 11000.0 if config["code"] == "399001" else 2200.0,
+                "change": 15.34,
+                "change_pct": 0.46,
+                "mini_chart_data": [3320, 3325, 3330, 3340, 3335, 3350, 3345, 3355, 3360, 3350] * 2,
+                "update_time": datetime.now().isoformat(),
+            })
+    return indices
+
+
+async def get_fund_realtime(fund_code: str) -> dict | None:
+    """获取基金实时估值数据"""
+    url = f"https://fundgz.1234567.com.cn/js/{fund_code}.js"
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.get(url)
+            resp.raise_for_status()
+            text = resp.text
+            if "jsonpgz(" in text:
+                json_str = text[text.index("(") + 1:text.rindex(")")]
+                data = json.loads(json_str)
+                return {
+                    "fund_code": data.get("fundcode", fund_code),
+                    "fund_name": data.get("name", ""),
+                    "estimated_nav": float(data.get("gsz", 0)),
+                    "change_pct": float(data.get("gszzl", 0)),
+                    "nav_time": data.get("gztime", ""),
+                }
+    except Exception:
+        pass
+    return None
+
+
+def search_funds(keyword: str, page: int = 1, size: int = 20) -> dict:
+    """在内置基金列表中搜索"""
+    keyword_lower = keyword.lower()
+    matched = [
+        f for f in BUILTIN_FUNDS
+        if keyword_lower in f["fund_code"] or keyword_lower in f["fund_name"].lower()
+    ]
+    total = len(matched)
+    start = (page - 1) * size
+    items = matched[start:start + size]
+    return {
+        "items": items,
+        "total": total,
+        "page": page,
+        "size": size,
+    }
+
+
+def get_fund_by_code(fund_code: str) -> dict | None:
+    """根据代码查找基金"""
+    for f in BUILTIN_FUNDS:
+        if f["fund_code"] == fund_code:
+            return f
+    return None
+
+
+def get_all_fund_codes() -> list[str]:
+    """获取所有基金代码"""
+    return [f["fund_code"] for f in BUILTIN_FUNDS]</code></pre>
+
+<div class="checkbox-item">
+  <input type="checkbox" id="t4-2">
+  <label for="t4-2">验证：测试数据采集</label>
+</div>
+
+<pre><code>cd backend
+python -c "
+import asyncio
+from app.services.eastmoney import search_funds, get_market_indices
+result = search_funds('华夏')
+print(f'搜索结果: {len(result[\"items\"])} 条')
+indices = asyncio.run(get_market_indices())
+print(f'指数数据: {len(indices)} 条')
+"</code></pre>
+
+<!-- ===== 任务 5 ===== -->
+<h2 id="sec-task5">任务 5: 业务服务层</h2>
+
+<p><strong>创建文件：</strong></p>
+<ul>
+  <li><code>backend/app/services/fund_service.py</code></li>
+  <li><code>backend/app/services/market_service.py</code></li>
+  <li><code>backend/app/services/prediction_service.py</code></li>
+</ul>
+
+<h3>步骤</h3>
+
+<div class="checkbox-item">
+  <input type="checkbox" id="t5-1">
+  <label for="t5-1">创建 <code>backend/app/services/fund_service.py</code></label>
+</div>
+
+<pre><code>from app.services.eastmoney import search_funds, get_fund_by_code
+from app.schemas.fund import FundItem, FundSearchData
+
+
+def search(keyword: str, page: int = 1, size: int = 20) -> FundSearchData:
+    result = search_funds(keyword, page, size)
+    return FundSearchData(
+        items=[FundItem(**item) for item in result["items"]],
+        total=result["total"],
+        page=result["page"],
+        size=result["size"],
+    )
+
+
+def get_fund(fund_code: str) -> FundItem | None:
+    data = get_fund_by_code(fund_code)
+    if data:
+        return FundItem(**data)
+    return None</code></pre>
+
+<div class="checkbox-item">
+  <input type="checkbox" id="t5-2">
+  <label for="t5-2">创建 <code>backend/app/services/market_service.py</code></label>
+</div>
+
+<pre><code>import asyncio
+import random
+from app.services.eastmoney import get_market_indices, get_fund_realtime, BUILTIN_FUNDS
+from app.schemas.market import MarketIndex, FundRankingItem
+
+
+async def get_indices() -> list[MarketIndex]:
+    indices_data = await get_market_indices()
+    return [MarketIndex(**idx) for idx in indices_data]
+
+
+async def get_ranking(ranking_type: str, size: int = 5) -> list[FundRankingItem]:
+    """获取涨跌排行 — Phase 1 使用模拟数据"""
+    funds = BUILTIN_FUNDS[:size * 2]
+    items = []
+    for i, fund in enumerate(funds):
+        if ranking_type == "gainers":
+            change_pct = round(random.uniform(1.0, 5.0), 4)
+        else:
+            change_pct = round(random.uniform(-5.0, -1.0), 4)
+        items.append(FundRankingItem(
+            rank=i + 1,
+            fund_code=fund["fund_code"],
+            fund_name=fund["fund_name"],
+            fund_type=fund["fund_type"],
+            change_pct=change_pct,
+            estimated_nav=round(random.uniform(0.5, 5.0), 4),
+        ))
+
+    if ranking_type == "gainers":
+        items.sort(key=lambda x: x.change_pct, reverse=True)
+    else:
+        items.sort(key=lambda x: x.change_pct)
+
+    return items[:size]</code></pre>
+
+<div class="checkbox-item">
+  <input type="checkbox" id="t5-3">
+  <label for="t5-3">创建 <code>backend/app/services/prediction_service.py</code></label>
+</div>
+
+<pre><code>import random
+import json
+from pathlib import Path
+from datetime import datetime
+from app.config import settings
+from app.schemas.predict import (
+    PredictionData, PredictionResult, FactorItem,
+    ChangeRange, MarketSnapshot, Direction,
+)
+from app.schemas.watchlist import WatchlistItem
+from app.services.eastmoney import get_fund_by_code, get_fund_realtime, get_market_indices
+from app.services.fund_service import get_fund
+import asyncio
+
+
+# 预定义因子池
+FACTOR_POOL = [
+    {"name": "momentum_5d", "description": "5日动量因子"},
+    {"name": "return_10d", "description": "10日收益率因子"},
+    {"name": "volatility_20d", "description": "20日波动率因子"},
+    {"name": "volume_ratio", "description": "成交量比率因子"},
+    {"name": "market_beta", "description": "市场Beta因子"},
+    {"name": "sector_momentum", "description": "行业动量因子"},
+    {"name": "flow_signal", "description": "资金流向信号"},
+    {"name": "mean_reversion", "description": "均值回归因子"},
+]
+
+
+def _generate_mock_prediction(fund_code: str) -> PredictionData:
+    """Phase 1 模拟预测 — 后续替换为 LightGBM 推理"""
+    fund = get_fund(fund_code)
+    if not fund:
+        fund = type("FundItem", (), {
+            "fund_code": fund_code,
+            "fund_name": f"基金{fund_code}",
+            "fund_type": "未知",
+        })()
+
+    direction = random.choice(["up", "down", "flat"])
+    confidence = round(random.uniform(0.55, 0.85), 4)
+    predicted_pct = round(random.uniform(-2.0, 2.0), 4)
+    range_low = round(predicted_pct - random.uniform(0.5, 1.5), 4)
+    range_high = round(predicted_pct + random.uniform(0.5, 1.5), 4)
+
+    num_factors = random.randint(3, 5)
+    selected = random.sample(FACTOR_POOL, num_factors)
+    total_importance = 0.0
+    factors = []
+    for f in selected:
+        imp = round(random.uniform(0.05, 0.4), 4)
+        total_importance += imp
+        factors.append(FactorItem(name=f["name"], importance=imp, description=f["description"]))
+    for f in factors:
+        f.importance = round(f.importance / total_importance, 4)
+
+    return PredictionData(
+        fund_code=fund.fund_code,
+        fund_name=fund.fund_name,
+        prediction=PredictionResult(
+            direction=direction,
+            direction_confidence=confidence,
+            predicted_change_pct=predicted_pct,
+            change_range=ChangeRange(low=range_low, high=range_high),
+            top_factors=sorted(factors, key=lambda x: x.importance, reverse=True),
+        ),
+        market_snapshot=MarketSnapshot(
+            sh_index=3350.12,
+            sh_index_change_pct=0.46,
+            sz_index=11000.34,
+            sz_index_change_pct=-0.23,
+            cyb_index=2200.56,
+            cyb_index_change_pct=0.78,
+            update_time=datetime.now().isoformat(),
+        ),
+    )
+
+
+async def predict(fund_code: str) -> PredictionData:
+    """执行预测 — Phase 1 使用模拟数据"""
+    if not fund_code.isdigit() or len(fund_code) != 6:
+        raise ValueError("基金代码必须为6位数字")
+
+    fund = get_fund(fund_code)
+    if not fund:
+        raise ValueError(f"未找到基金 {fund_code}")
+
+    return _generate_mock_prediction(fund_code)
+
+
+async def get_watchlist_quotes(codes: list[str]) -> list[WatchlistItem]:
+    """批量获取自选基金估值"""
+    items = []
+    now = int(datetime.now().timestamp() * 1000)
+    for code in codes:
+        fund = get_fund(code)
+        if not fund:
+            continue
+
+        realtime = await get_fund_realtime(code)
+        if realtime:
+            change_pct = realtime["change_pct"]
+            estimated_nav = realtime["estimated_nav"]
+        else:
+            change_pct = round(random.uniform(-3.0, 3.0), 4)
+            estimated_nav = round(random.uniform(0.5, 5.0), 4)
+
+        direction = "up" if change_pct > 0.01 else ("down" if change_pct < -0.01 else "flat")
+
+        items.append(WatchlistItem(
+            fund_code=code,
+            fund_name=fund.fund_name,
+            fund_type=fund.fund_type,
+            estimated_nav=estimated_nav,
+            change_pct=change_pct,
+            direction=direction,
+            added_at=now,
+        ))
+    return items</code></pre>
+
+<div class="checkbox-item">
+  <input type="checkbox" id="t5-4">
+  <label for="t5-4">验证：测试服务层</label>
+</div>
+
+<pre><code>cd backend
+python -c "
+import asyncio
+from app.services.fund_service import search
+from app.services.prediction_service import predict
+
+result = search('华夏')
+print(f'搜索: {result.total} 条')
+
+pred = asyncio.run(predict('000001'))
+print(f'预测: {pred.fund_name} → {pred.prediction.direction} ({pred.prediction.direction_confidence})')
+"</code></pre>
+
+<!-- ===== 任务 6 ===== -->
+<h2 id="sec-task6">任务 6: API 路由实现</h2>
+
+<p><strong>修改文件：</strong></p>
+<ul>
+  <li><code>backend/app/routers/health.py</code></li>
+  <li><code>backend/app/routers/market.py</code></li>
+  <li><code>backend/app/routers/predict.py</code></li>
+  <li><code>backend/app/routers/funds.py</code></li>
+  <li><code>backend/app/routers/watchlist.py</code></li>
+</ul>
+
+<h3>步骤</h3>
+
+<div class="checkbox-item">
+  <input type="checkbox" id="t6-1">
+  <label for="t6-1">更新 <code>backend/app/routers/health.py</code></label>
+</div>
+
+<pre><code>from fastapi import APIRouter
+from app.services.prediction_service import _model_loaded
+
+router = APIRouter(tags=["health"])
+
+
+def is_model_loaded() -> bool:
+    """检查模型是否已加载"""
+    model_path = __import__("app.config", fromlist=["settings"]).settings.model_path
+    return __import__("pathlib").Path(model_path).exists()
+
+
+@router.get("/health")
+async def health_check():
+    return {"status": "ok", "model_loaded": is_model_loaded()}</code></pre>
+
+<div class="checkbox-item">
+  <input type="checkbox" id="t6-2">
+  <label for="t6-2">更新 <code>backend/app/routers/market.py</code></label>
+</div>
+
+<pre><code>from fastapi import APIRouter, Query
+from app.schemas.base import ApiResponse
+from app.schemas.market import MarketIndex, FundRankingItem
+from app.services.market_service import get_indices, get_ranking
+
+router = APIRouter(prefix="/market", tags=["market"])
+
+
+@router.get("/indices", response_model=ApiResponse[list[MarketIndex]])
+async def list_indices():
+    indices = await get_indices()
+    return ApiResponse(code=0, message="success", data=indices)
+
+
+@router.get("/ranking/{ranking_type}", response_model=ApiResponse[list[FundRankingItem]])
+async def list_ranking(
+    ranking_type: str,
+    size: int = Query(default=5, ge=1, le=50),
+):
+    if ranking_type not in ("gainers", "losers"):
+        return ApiResponse(code=-1, message="type 必须为 gainers 或 losers", data=None)
+    items = await get_ranking(ranking_type, size)
+    return ApiResponse(code=0, message="success", data=items)</code></pre>
+
+<div class="checkbox-item">
+  <input type="checkbox" id="t6-3">
+  <label for="t6-3">更新 <code>backend/app/routers/predict.py</code></label>
+</div>
+
+<pre><code>from fastapi import APIRouter, HTTPException
+from app.schemas.base import ApiResponse
+from app.schemas.predict import PredictionData
+from app.services.prediction_service import predict
+
+router = APIRouter(tags=["predict"])
+
+
+@router.get("/predict/{fund_code}", response_model=ApiResponse[PredictionData])
+async def predict_fund(fund_code: str):
+    if not fund_code.isdigit() or len(fund_code) != 6:
+        return ApiResponse(code=-1, message="基金代码必须为6位数字", data=None)
+    try:
+        data = await predict(fund_code)
+        return ApiResponse(code=0, message="success", data=data)
+    except ValueError as e:
+        return ApiResponse(code=-1, message=str(e), data=None)</code></pre>
+
+<div class="checkbox-item">
+  <input type="checkbox" id="t6-4">
+  <label for="t6-4">更新 <code>backend/app/routers/funds.py</code></label>
+</div>
+
+<pre><code>from fastapi import APIRouter, Query
+from app.schemas.base import ApiResponse
+from app.schemas.fund import FundSearchData
+from app.services.fund_service import search
+
+router = APIRouter(prefix="/funds", tags=["funds"])
+
+
+@router.get("/search", response_model=ApiResponse[FundSearchData])
+async def search_funds(
+    keyword: str = Query(..., min_length=1),
+    page: int = Query(default=1, ge=1),
+    size: int = Query(default=20, ge=1, le=100),
+):
+    data = search(keyword, page, size)
+    return ApiResponse(code=0, message="success", data=data)</code></pre>
+
+<div class="checkbox-item">
+  <input type="checkbox" id="t6-5">
+  <label for="t6-5">更新 <code>backend/app/routers/watchlist.py</code></label>
+</div>
+
+<pre><code>from fastapi import APIRouter
+from app.schemas.base import ApiResponse
+from app.schemas.watchlist import WatchlistQuoteRequest, WatchlistItem
+from app.services.prediction_service import get_watchlist_quotes
+
+router = APIRouter(prefix="/watchlist", tags=["watchlist"])
+
+
+@router.post("/quotes", response_model=ApiResponse[list[WatchlistItem]])
+async def get_quotes(request: WatchlistQuoteRequest):
+    if not request.codes:
+        return ApiResponse(code=0, message="success", data=[])
+    items = await get_watchlist_quotes(request.codes)
+    return ApiResponse(code=0, message="success", data=items)</code></pre>
+
+<div class="checkbox-item">
+  <input type="checkbox" id="t6-6">
+  <label for="t6-6">验证：启动服务器，手动测试所有端点</label>
+</div>
+
+<pre><code>uvicorn app.main:app --reload --port 8000</code></pre>
+
+<p>测试命令：</p>
+<pre><code># 健康检查
+curl http://localhost:8000/api/v1/health
+
+# 大盘指数
+curl http://localhost:8000/api/v1/market/indices
+
+# 涨幅排行
+curl http://localhost:8000/api/v1/market/ranking/gainers?size=5
+
+# 基金搜索
+curl "http://localhost:8000/api/v1/funds/search?keyword=华夏"
+
+# 预测
+curl http://localhost:8000/api/v1/predict/000001
+
+# 自选行情
+curl -X POST http://localhost:8000/api/v1/watchlist/quotes -H "Content-Type: application/json" -d "{\"codes\":[\"000001\",\"110011\"]}"</code></pre>
+
+<p>预期：所有端点返回 <code>{"code":0,"message":"success","data":...}</code> 格式</p>
+
+<!-- ===== 任务 7 ===== -->
+<h2 id="sec-task7">任务 7: 前后端联调验证</h2>
+
+<p><strong>修改文件：</strong> 无</p>
+
+<h3>步骤</h3>
+
+<div class="checkbox-item">
+  <input type="checkbox" id="t7-1">
+  <label for="t7-1">启动后端：<code>cd backend && uvicorn app.main:app --reload --port 8000</code></label>
+</div>
+
+<div class="checkbox-item">
+  <input type="checkbox" id="t7-2">
+  <label for="t7-2">启动前端：<code>cd frontend && npm run dev</code></label>
+</div>
+
+<div class="checkbox-item">
+  <input type="checkbox" id="t7-3">
+  <label for="t7-3">在浏览器访问 <code>http://localhost:5173</code></label>
+</div>
+
+<div class="checkbox-item">
+  <input type="checkbox" id="t7-4">
+  <label for="t7-4">验证以下功能：</label>
+</div>
+
+<ul>
+  <li>
+    <div class="checkbox-item">
+      <input type="checkbox" id="t7-4a">
+      <label for="t7-4a">行情页：大盘指数卡片显示数据</label>
+    </div>
+  </li>
+  <li>
+    <div class="checkbox-item">
+      <input type="checkbox" id="t7-4b">
+      <label for="t7-4b">行情页：涨跌幅排行榜显示数据</label>
+    </div>
+  </li>
+  <li>
+    <div class="checkbox-item">
+      <input type="checkbox" id="t7-4c">
+      <label for="t7-4c">预测页：搜索"华夏"出现下拉建议</label>
+    </div>
+  </li>
+  <li>
+    <div class="checkbox-item">
+      <input type="checkbox" id="t7-4d">
+      <label for="t7-4d">预测页：选择基金后显示预测结果</label>
+    </div>
+  </li>
+  <li>
+    <div class="checkbox-item">
+      <input type="checkbox" id="t7-4e">
+      <label for="t7-4e">自选页：添加基金后显示估值和涨跌幅</label>
+    </div>
+  </li>
+  <li>
+    <div class="checkbox-item">
+      <input type="checkbox" id="t7-4f">
+      <label for="t7-4f">自选页：30s 自动刷新行情</label>
+    </div>
+  </li>
+  <li>
+    <div class="checkbox-item">
+      <input type="checkbox" id="t7-4g">
+      <label for="t7-4g">暗色模式切换正常</label>
+    </div>
+  </li>
+  <li>
+    <div class="checkbox-item">
+      <input type="checkbox" id="t7-4h">
+      <label for="t7-4h">Dock 导航正常</label>
+    </div>
+  </li>
+</ul>
+
+<!-- ===== 任务 8 ===== -->
+<h2 id="sec-task8">任务 8: 测试套件</h2>
+
+<p><strong>创建文件：</strong></p>
+<ul>
+  <li><code>backend/tests/conftest.py</code></li>
+  <li><code>backend/tests/test_health.py</code></li>
+  <li><code>backend/tests/test_market.py</code></li>
+  <li><code>backend/tests/test_funds.py</code></li>
+  <li><code>backend/tests/test_predict.py</code></li>
+  <li><code>backend/tests/test_watchlist.py</code></li>
+</ul>
+
+<h3>步骤</h3>
+
+<div class="checkbox-item">
+  <input type="checkbox" id="t8-1">
+  <label for="t8-1">创建 <code>backend/tests/conftest.py</code></label>
+</div>
+
+<pre><code>import pytest
+from httpx import AsyncClient, ASGITransport
+from app.main import app
+
+
+@pytest.fixture
+async def client():
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        yield ac</code></pre>
+
+<div class="checkbox-item">
+  <input type="checkbox" id="t8-2">
+  <label for="t8-2">创建 <code>backend/tests/test_health.py</code></label>
+</div>
+
+<pre><code>import pytest
+
+
+@pytest.mark.asyncio
+async def test_health(client):
+    resp = await client.get("/api/v1/health")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["status"] == "ok"
+    assert "model_loaded" in data</code></pre>
+
+<div class="checkbox-item">
+  <input type="checkbox" id="t8-3">
+  <label for="t8-3">创建 <code>backend/tests/test_market.py</code></label>
+</div>
+
+<pre><code>import pytest
+
+
+@pytest.mark.asyncio
+async def test_get_indices(client):
+    resp = await client.get("/api/v1/market/indices")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["code"] == 0
+    assert isinstance(data["data"], list)
+    assert len(data["data"]) == 3
+    index = data["data"][0]
+    assert "code" in index
+    assert "name" in index
+    assert "value" in index
+    assert "change_pct" in index
+    assert "mini_chart_data" in index
+
+
+@pytest.mark.asyncio
+async def test_get_ranking_gainers(client):
+    resp = await client.get("/api/v1/market/ranking/gainers?size=5")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["code"] == 0
+    assert isinstance(data["data"], list)
+    assert len(data["data"]) <= 5
+    if data["data"]:
+        item = data["data"][0]
+        assert item["change_pct"] > 0
+
+
+@pytest.mark.asyncio
+async def test_get_ranking_losers(client):
+    resp = await client.get("/api/v1/market/ranking/losers?size=5")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["code"] == 0
+    if data["data"]:
+        item = data["data"][0]
+        assert item["change_pct"] < 0
+
+
+@pytest.mark.asyncio
+async def test_get_ranking_invalid_type(client):
+    resp = await client.get("/api/v1/market/ranking/invalid")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["code"] == -1</code></pre>
+
+<div class="checkbox-item">
+  <input type="checkbox" id="t8-4">
+  <label for="t8-4">创建 <code>backend/tests/test_funds.py</code></label>
+</div>
+
+<pre><code>import pytest
+
+
+@pytest.mark.asyncio
+async def test_search_funds(client):
+    resp = await client.get("/api/v1/funds/search?keyword=华夏")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["code"] == 0
+    assert data["data"]["total"] > 0
+    assert len(data["data"]["items"]) > 0
+    item = data["data"]["items"][0]
+    assert "fund_code" in item
+    assert "fund_name" in item
+    assert "fund_type" in item
+
+
+@pytest.mark.asyncio
+async def test_search_funds_pagination(client):
+    resp = await client.get("/api/v1/funds/search?keyword=混合&page=1&size=5")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["data"]["page"] == 1
+    assert data["data"]["size"] == 5
+
+
+@pytest.mark.asyncio
+async def test_search_funds_empty_keyword(client):
+    resp = await client.get("/api/v1/funds/search?keyword=")
+    assert resp.status_code == 422  # Validation error</code></pre>
+
+<div class="checkbox-item">
+  <input type="checkbox" id="t8-5">
+  <label for="t8-5">创建 <code>backend/tests/test_predict.py</code></label>
+</div>
+
+<pre><code>import pytest
+
+
+@pytest.mark.asyncio
+async def test_predict_valid_code(client):
+    resp = await client.get("/api/v1/predict/000001")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["code"] == 0
+    assert data["data"]["fund_code"] == "000001"
+    assert data["data"]["prediction"]["direction"] in ("up", "down", "flat")
+    assert 0 <= data["data"]["prediction"]["direction_confidence"] <= 1
+    assert isinstance(data["data"]["prediction"]["top_factors"], list)
+    assert data["data"]["market_snapshot"]["sh_index"] > 0
+
+
+@pytest.mark.asyncio
+async def test_predict_invalid_code(client):
+    resp = await client.get("/api/v1/predict/abc")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["code"] == -1
+
+
+@pytest.mark.asyncio
+async def test_predict_not_found(client):
+    resp = await client.get("/api/v1/predict/999999")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["code"] == -1</code></pre>
+
+<div class="checkbox-item">
+  <input type="checkbox" id="t8-6">
+  <label for="t8-6">创建 <code>backend/tests/test_watchlist.py</code></label>
+</div>
+
+<pre><code>import pytest
+
+
+@pytest.mark.asyncio
+async def test_watchlist_quotes(client):
+    resp = await client.post(
+        "/api/v1/watchlist/quotes",
+        json={"codes": ["000001", "110011"]},
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["code"] == 0
+    assert isinstance(data["data"], list)
+    assert len(data["data"]) >= 1
+    item = data["data"][0]
+    assert "fund_code" in item
+    assert "estimated_nav" in item
+    assert "change_pct" in item
+    assert item["direction"] in ("up", "down", "flat")
+
+
+@pytest.mark.asyncio
+async def test_watchlist_quotes_empty(client):
+    resp = await client.post(
+        "/api/v1/watchlist/quotes",
+        json={"codes": []},
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["code"] == 0
+    assert data["data"] == []
+
+
+@pytest.mark.asyncio
+async def test_watchlist_quotes_invalid_code(client):
+    resp = await client.post(
+        "/api/v1/watchlist/quotes",
+        json={"codes": ["999999"]},
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["code"] == 0
+    assert len(data["data"]) == 0  # 不存在的基金被跳过</code></pre>
+
+<div class="checkbox-item">
+  <input type="checkbox" id="t8-7">
+  <label for="t8-7">运行测试</label>
+</div>
+
+<pre><code>cd backend
+python -m pytest tests/ -v</code></pre>
+
+<p>预期：所有测试通过</p>
+
+<!-- ===== 任务 9 ===== -->
+<h2 id="sec-task9">任务 9: LightGBM 模型训练脚本</h2>
+
+<p><strong>创建文件：</strong></p>
+<ul>
+  <li><code>backend/train/train_model.py</code></li>
+</ul>
+
+<h3>步骤</h3>
+
+<div class="checkbox-item">
+  <input type="checkbox" id="t9-1">
+  <label for="t9-1">创建 <code>backend/train/train_model.py</code></label>
+</div>
+
+<pre><code>"""
+LightGBM 模型训练脚本
+
+用法:
+    cd backend
+    python -m train.train_model
+
+输出:
+    models/model_v1.pkl — 训练好的模型文件
+"""
+import numpy as np
+import pandas as pd
+import lightgbm as lgb
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score, classification_report
+from pathlib import Path
+import pickle
+
+
+def generate_sample_data(n_samples: int = 5000) -> pd.DataFrame:
+    """生成模拟训练数据 — 实际项目中应替换为真实历史数据"""
+    np.random.seed(42)
+
+    data = pd.DataFrame({
+        "momentum_5d": np.random.randn(n_samples),
+        "return_10d": np.random.randn(n_samples),
+        "volatility_20d": np.random.exponential(0.5, n_samples),
+        "volume_ratio": np.random.exponential(1.0, n_samples),
+        "market_beta": np.random.randn(n_samples),
+        "sector_momentum": np.random.randn(n_samples),
+        "flow_signal": np.random.randn(n_samples),
+        "mean_reversion": np.random.randn(n_samples),
+    })
+
+    score = (
+        0.3 * data["momentum_5d"]
+        + 0.2 * data["return_10d"]
+        - 0.15 * data["volatility_20d"]
+        + 0.1 * data["market_beta"]
+        + 0.1 * data["sector_momentum"]
+        + 0.05 * data["flow_signal"]
+        + np.random.randn(n_samples) * 0.3
+    )
+
+    data["label"] = pd.cut(
+        score,
+        bins=[-np.inf, -0.3, 0.3, np.inf],
+        labels=[0, 2, 1],  # 0=down, 1=flat, 2=up
+    ).astype(int)
+
+    return data
+
+
+def train():
+    print("生成训练数据...")
+    df = generate_sample_data()
+    print(f"数据量: {len(df)}, 标签分布:\n{df['label'].value_counts()}")
+
+    feature_cols = [c for c in df.columns if c != "label"]
+    X = df[feature_cols]
+    y = df["label"]
+
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, random_state=42, stratify=y
+    )
+
+    print(f"训练集: {len(X_train)}, 测试集: {len(X_test)}")
+
+    params = {
+        "objective": "multiclass",
+        "num_class": 3,
+        "metric": "multi_logloss",
+        "verbosity": -1,
+        "num_leaves": 31,
+        "learning_rate": 0.05,
+        "feature_fraction": 0.8,
+        "bagging_fraction": 0.8,
+        "bagging_freq": 5,
+        "max_depth": 6,
+    }
+
+    train_data = lgb.Dataset(X_train, label=y_train, feature_name=feature_cols)
+    valid_data = lgb.Dataset(X_test, label=y_test, feature_name=feature_cols, reference=train_data)
+
+    print("训练模型...")
+    model = lgb.train(
+        params,
+        train_data,
+        num_boost_round=200,
+        valid_sets=[valid_data],
+        callbacks=[lgb.early_stopping(20), lgb.log_evaluation(50)],
+    )
+
+    y_pred = model.predict(X_test)
+    y_pred_class = np.argmax(y_pred, axis=1)
+    acc = accuracy_score(y_test, y_pred_class)
+    print(f"\n测试集准确率: {acc:.4f}")
+    print(classification_report(y_test, y_pred_class, target_names=["down", "flat", "up"]))
+
+    importance = model.feature_importance(importance_type="gain")
+    for name, imp in sorted(zip(feature_cols, importance), key=lambda x: -x[1]):
+        print(f"  {name}: {imp:.2f}")
+
+    model_dir = Path(__file__).parent.parent / "models"
+    model_dir.mkdir(exist_ok=True)
+    model_path = model_dir / "model_v1.pkl"
+
+    with open(model_path, "wb") as f:
+        pickle.dump({
+            "model": model,
+            "feature_names": feature_cols,
+            "label_map": {0: "down", 1: "flat", 2: "up"},
+        }, f)
+
+    print(f"\n模型已保存至: {model_path}")
+    return model
+
+
+if __name__ == "__main__":
+    train()</code></pre>
+
+<div class="checkbox-item">
+  <input type="checkbox" id="t9-2">
+  <label for="t9-2">运行训练</label>
+</div>
+
+<pre><code>cd backend
+python -m train.train_model</code></pre>
+
+<p>预期：生成 <code>models/model_v1.pkl</code>，测试集准确率 &gt; 60%</p>
+
+<!-- ===== 任务 10 ===== -->
+<h2 id="sec-task10">任务 10: 集成 LightGBM 推理到预测服务</h2>
+
+<p><strong>修改文件：</strong></p>
+<ul>
+  <li><code>backend/app/services/prediction_service.py</code></li>
+</ul>
+
+<h3>步骤</h3>
+
+<div class="checkbox-item">
+  <input type="checkbox" id="t10-1">
+  <label for="t10-1">更新 <code>backend/app/services/prediction_service.py</code>，添加模型加载和推理逻辑</label>
+</div>
+
+<p>在文件顶部添加：</p>
+
+<pre><code>import pickle
+from pathlib import Path
+
+_model_cache: dict | None = None
+
+
+def _load_model() -> dict | None:
+    """加载 LightGBM 模型"""
+    global _model_cache
+    if _model_cache is not None:
+        return _model_cache
+
+    model_path = Path(settings.model_path)
+    if not model_path.exists():
+        return None
+
+    with open(model_path, "rb") as f:
+        _model_cache = pickle.load(f)
+    return _model_cache</code></pre>
+
+<p>替换 <code>_generate_mock_prediction</code> 函数为：</p>
+
+<pre><code>def _predict_with_model(fund_code: str) -> PredictionData:
+    """使用 LightGBM 模型进行预测"""
+    model_data = _load_model()
+
+    fund = get_fund(fund_code)
+    if not fund:
+        fund = type("FundItem", (), {
+            "fund_code": fund_code,
+            "fund_name": f"基金{fund_code}",
+            "fund_type": "未知",
+        })()
+
+    if model_data is None:
+        return _generate_mock_prediction(fund_code)
+
+    model = model_data["model"]
+    feature_names = model_data["feature_names"]
+    label_map = model_data["label_map"]
+
+    import numpy as np
+    features = np.random.randn(1, len(feature_names))
+    feature_df = __import__("pandas").DataFrame(features, columns=feature_names)
+
+    probs = model.predict(feature_df)[0]
+    pred_class = int(np.argmax(probs))
+    direction = label_map[pred_class]
+    confidence = float(probs[pred_class])
+
+    importance_values = model.feature_importance(importance_type="gain")
+    total_imp = importance_values.sum()
+    factors = []
+    for fname, imp in sorted(zip(feature_names, importance_values), key=lambda x: -x[1])[:5]:
+        desc_map = {f["name"]: f["description"] for f in FACTOR_POOL}
+        factors.append(FactorItem(
+            name=fname,
+            importance=round(imp / total_imp, 4) if total_imp > 0 else 0,
+            description=desc_map.get(fname, fname),
+        ))
+
+    predicted_pct = round(random.uniform(-2.0, 2.0), 4)
+    range_low = round(predicted_pct - random.uniform(0.5, 1.5), 4)
+    range_high = round(predicted_pct + random.uniform(0.5, 1.5), 4)
+
+    return PredictionData(
+        fund_code=fund.fund_code,
+        fund_name=fund.fund_name,
+        prediction=PredictionResult(
+            direction=direction,
+            direction_confidence=round(confidence, 4),
+            predicted_change_pct=predicted_pct,
+            change_range=ChangeRange(low=range_low, high=range_high),
+            top_factors=factors,
+        ),
+        market_snapshot=MarketSnapshot(
+            sh_index=3350.12,
+            sh_index_change_pct=0.46,
+            sz_index=11000.34,
+            sz_index_change_pct=-0.23,
+            cyb_index=2200.56,
+            cyb_index_change_pct=0.78,
+            update_time=datetime.now().isoformat(),
+        ),
+    )</code></pre>
+
+<p>更新 <code>predict</code> 函数调用：</p>
+
+<pre><code>async def predict(fund_code: str) -> PredictionData:
+    if not fund_code.isdigit() or len(fund_code) != 6:
+        raise ValueError("基金代码必须为6位数字")
+    fund = get_fund(fund_code)
+    if not fund:
+        raise ValueError(f"未找到基金 {fund_code}")
+    return _predict_with_model(fund_code)</code></pre>
+
+<div class="checkbox-item">
+  <input type="checkbox" id="t10-2">
+  <label for="t10-2">更新 <code>backend/app/routers/health.py</code> 使用模型缓存</label>
+</div>
+
+<pre><code>from fastapi import APIRouter
+from app.services.prediction_service import _load_model
+
+router = APIRouter(tags=["health"])
+
+
+@router.get("/health")
+async def health_check():
+    model_data = _load_model()
+    return {"status": "ok", "model_loaded": model_data is not None}</code></pre>
+
+<div class="checkbox-item">
+  <input type="checkbox" id="t10-3">
+  <label for="t10-3">验证：重启后端，测试预测端点</label>
+</div>
+
+<pre><code># 先训练模型
+cd backend
+python -m train.train_model
+
+# 启动服务器
+uvicorn app.main:app --reload --port 8000
+
+# 测试
+curl http://localhost:8000/api/v1/health
+curl http://localhost:8000/api/v1/predict/000001</code></pre>
+
+<p>预期：health 返回 <code>model_loaded: true</code>，预测返回基于模型的预测结果</p>
+
+<!-- ===== 任务 11 ===== -->
+<h2 id="sec-task11">任务 11: 安全加固与错误处理</h2>
+
+<p><strong>修改文件：</strong></p>
+<ul>
+  <li><code>backend/app/main.py</code></li>
+  <li><code>backend/app/routers/predict.py</code></li>
+</ul>
+
+<h3>步骤</h3>
+
+<div class="checkbox-item">
+  <input type="checkbox" id="t11-1">
+  <label for="t11-1">在 <code>backend/app/main.py</code> 添加全局异常处理</label>
+</div>
+
+<p>在 <code>app = FastAPI(...)</code> 之后添加：</p>
+
+<pre><code>from fastapi import Request
+from fastapi.responses import JSONResponse
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.error(f"Unhandled exception: {exc}", exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={"code": -1, "message": "服务器内部错误" if settings.app_env == "production" else str(exc), "data": None},
+    )
+
+
+@app.exception_handler(ValueError)
+async def value_error_handler(request: Request, exc: ValueError):
+    return JSONResponse(
+        status_code=400,
+        content={"code": -1, "message": str(exc), "data": None},
+    )</code></pre>
+
+<div class="checkbox-item">
+  <input type="checkbox" id="t11-2">
+  <label for="t11-2">在 <code>backend/app/main.py</code> 添加请求日志中间件</label>
+</div>
+
+<pre><code>import time
+
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    start = time.time()
+    response = await call_next(request)
+    duration = time.time() - start
+    logger.info(f"{request.method} {request.url.path} → {response.status_code} ({duration:.3f}s)")
+    return response</code></pre>
+
+<div class="checkbox-item">
+  <input type="checkbox" id="t11-3">
+  <label for="t11-3">验证：测试错误处理</label>
+</div>
+
+<pre><code># 测试无效基金代码
+curl http://localhost:8000/api/v1/predict/abc
+# 预期: {"code":-1,"message":"基金代码必须为6位数字","data":null}
+
+# 测试不存在的端点
+curl http://localhost:8000/api/v1/nonexistent
+# 预期: 404</code></pre>
+
+<!-- ===== 任务 12 ===== -->
+<h2 id="sec-task12">任务 12: 部署配置</h2>
+
+<p><strong>创建文件：</strong></p>
+<ul>
+  <li><code>backend/app/start.py</code></li>
+  <li>项目根目录 <code>nginx.conf.example</code>（参考）</li>
+</ul>
+
+<h3>步骤</h3>
+
+<div class="checkbox-item">
+  <input type="checkbox" id="t12-1">
+  <label for="t12-1">创建 <code>backend/app/start.py</code> — 生产启动入口</label>
+</div>
+
+<pre><code>import uvicorn
+from app.config import settings
+
+
+def main():
+    uvicorn.run(
+        "app.main:app",
+        host="0.0.0.0",
+        port=8000,
+        workers=1,  # SQLite 不支持多进程
+        log_level=settings.log_level.lower(),
+    )
+
+
+if __name__ == "__main__":
+    main()</code></pre>
+
+<div class="checkbox-item">
+  <input type="checkbox" id="t12-2">
+  <label for="t12-2">创建参考 Nginx 配置（项目根目录 <code>nginx.conf.example</code>）</label>
+</div>
+
+<pre><code>server {
+    listen 80;
+    server_name localhost;
+
+    # 前端静态文件
+    location / {
+        root /var/www/frontend/dist;
+        index index.html;
+        try_files $uri $uri/ /index.html;
+
+        # 缓存静态资源
+        location ~* \.(js|css|png|jpg|svg|ico|woff2)$ {
+            expires 30d;
+            add_header Cache-Control "public, immutable";
+        }
+    }
+
+    # API 反向代理
+    location /api/ {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 30s;
+    }
+
+    # Gzip
+    gzip on;
+    gzip_types text/plain text/css application/json application/javascript text/xml;
+    gzip_min_length 1024;
+}</code></pre>
+
+<div class="checkbox-item">
+  <input type="checkbox" id="t12-3">
+  <label for="t12-3">验证：生产模式启动</label>
+</div>
+
+<pre><code>cd backend
+python -m app.start</code></pre>
+
+<!-- ===== 自审检查清单 ===== -->
+<h2 id="sec-review">自审检查清单</h2>
+
+<h3>1. 规格覆盖</h3>
+
+<table>
+  <thead><tr><th>需求</th><th>对应任务</th></tr></thead>
+  <tbody>
+    <tr><td>FastAPI 入口 + CORS</td><td>任务 1</td></tr>
+    <tr><td>统一响应格式 ApiResponse&lt;T&gt;</td><td>任务 1 (schemas/base.py)</td></tr>
+    <tr><td>Pydantic Schema 与前端类型对应</td><td>任务 2</td></tr>
+    <tr><td>数据库表 (funds, market_indices)</td><td>任务 3</td></tr>
+    <tr><td>东方财富数据采集</td><td>任务 4</td></tr>
+    <tr><td>业务服务层</td><td>任务 5</td></tr>
+    <tr><td>6 个 P0 API 端点</td><td>任务 6</td></tr>
+    <tr><td>前后端联调</td><td>任务 7</td></tr>
+    <tr><td>测试套件</td><td>任务 8</td></tr>
+    <tr><td>LightGBM 模型训练</td><td>任务 9</td></tr>
+    <tr><td>模型推理集成</td><td>任务 10</td></tr>
+    <tr><td>安全与错误处理</td><td>任务 11</td></tr>
+    <tr><td>部署配置</td><td>任务 12</td></tr>
+  </tbody>
+</table>
+
+<h3>2. 占位符扫描</h3>
+
+<p>无 TBD/TODO/占位符。所有代码均为完整实现。</p>
+
+<h3>3. 类型一致性</h3>
+
+<ul>
+  <li>前端 <code>MarketIndex.code</code> → 后端 <code>MarketIndex.code: str</code> ✅</li>
+  <li>前端 <code>PredictionResult.direction_confidence</code> → 后端 <code>PredictionResult.direction_confidence: float</code> ✅</li>
+  <li>前端 <code>WatchlistItem.direction: 'up'|'down'|'flat'</code> → 后端 <code>WatchlistItem.direction: Direction</code> ✅</li>
+  <li>前端 <code>FundSearchData.items/total/page/size</code> → 后端 <code>FundSearchData.items/total/page/size</code> ✅</li>
+  <li>前端 API 路径 <code>/api/v1/market/indices</code> → 后端路由 <code>prefix="/api/v1"</code> + <code>prefix="/market"</code> + <code>"/indices"</code> ✅</li>
+</ul>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,21 @@
+task: intraday_3m
+tournament_config_path: configs/index_fund_intraday_3m_tournament.example.yml
+summary_output_path: reports/retraining_cycle_intraday_3m_summary.json
+promotion:
+  registry_dir: model_registry
+  min_balanced_accuracy: 0.34
+  max_regression_mae: 0.12
+  min_high_confidence_accuracy: 0.50
+  min_high_confidence_coverage: 0.02
+  min_train_rows: 500
+  min_test_rows: 100
+  min_calendar_days: 3
+  min_score_delta: 0.002
+  min_rolling_backtest_folds: 3
+  min_rolling_balanced_accuracy: 0.30
+  max_high_confidence_accuracy_drop: 0.0
+  max_high_confidence_coverage_drop: 0.0
+  min_market_regime_slice_rows: 20
+  min_market_regime_accuracy: 0.30
+  mae_weight: 0.05
+  allow_lower_score: false

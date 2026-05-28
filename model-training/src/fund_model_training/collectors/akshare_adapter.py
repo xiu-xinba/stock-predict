@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+import time
 from typing import Any
 
 from .common import (
@@ -14,6 +16,9 @@ from .common import (
     standardize_code,
     text_series,
 )
+
+MOOTDX_PAGE_SIZE = 800
+MOOTDX_DEFAULT_PAGES = 4
 
 
 def require_akshare():
@@ -89,14 +94,44 @@ def collect_etf_intraday(
     adjust: str = "",
     skip_validation: bool = False,
 ):
-    ak = require_akshare()
     pd = require_pandas()
-    kwargs = {"symbol": symbol, "period": period, "adjust": adjust}
-    if start_date:
-        kwargs["start_date"] = start_date
-    if end_date:
-        kwargs["end_date"] = end_date
-    raw = ak.fund_etf_hist_min_em(**kwargs)
+    raw = None
+    if period in {"1", "5", "1m", "5m"}:
+        try:
+            raw = _call_mootdx_std_bars(
+                symbol=standardize_code(symbol),
+                period=period,
+                start_date=start_date,
+                end_date=end_date,
+            )
+        except Exception:
+            raw = None
+    if raw is None or raw.empty:
+        ak = require_akshare()
+        kwargs = {"symbol": symbol, "period": period, "adjust": adjust}
+        if start_date:
+            kwargs["start_date"] = start_date
+        if end_date:
+            kwargs["end_date"] = end_date
+        try:
+            raw = ak.fund_etf_hist_min_em(**kwargs)
+        except Exception:
+            if period != "1":
+                raise
+            code = standardize_code(symbol)
+            try:
+                raw = _call_eastmoney_trends(
+                    symbol=code,
+                    market_ids=(_market_id_for_cn_symbol(code),),
+                    start_date=start_date,
+                    end_date=end_date,
+                )
+            except Exception:
+                raw = _call_tencent_minute(
+                    quote_symbol=_tencent_fund_symbol(code),
+                    start_date=start_date,
+                    end_date=end_date,
+                )
     timestamp = datetime_series(raw, ("时间", "日期", "timestamp", "time"))
 
     out = pd.DataFrame({
@@ -174,6 +209,44 @@ def _sina_exchange_symbol(symbol: str) -> str:
     return code
 
 
+def _market_id_for_cn_symbol(symbol: str) -> int:
+    code = standardize_code(symbol)
+    return 1 if code.startswith(("5", "6")) else 0
+
+
+def _normalize_index_symbol(symbol: str) -> str:
+    raw = str(symbol).strip()
+    lowered = raw.lower()
+    if lowered.startswith(("sh", "sz")):
+        return raw[2:]
+    return raw
+
+
+def _candidate_index_market_ids(symbol: str) -> tuple[int, ...]:
+    lowered = str(symbol).strip().lower()
+    if lowered.startswith("sh"):
+        return (1, 0, 47)
+    if lowered.startswith("sz"):
+        return (0, 1, 47)
+    return (1, 0, 47)
+
+
+def _tencent_fund_symbol(symbol: str) -> str:
+    code = standardize_code(symbol)
+    return f"sh{code}" if code.startswith(("5", "6")) else f"sz{code}"
+
+
+def _tencent_index_symbol(symbol: str) -> str:
+    raw = str(symbol).strip()
+    lowered = raw.lower()
+    if lowered.startswith(("sh", "sz", "hk")):
+        return raw
+    if raw.upper() in {"HSI", "HSTECH"}:
+        return f"hk{raw.upper()}"
+    code = _normalize_index_symbol(raw)
+    return f"sz{code}" if code.startswith(("399", "3")) else f"sh{code}"
+
+
 def collect_index_daily(symbol: str, start_date: str | None = None, end_date: str | None = None, skip_validation: bool = False):
     ak = require_akshare()
     pd = require_pandas()
@@ -201,9 +274,38 @@ def collect_index_intraday(
     end_date: str | None = None,
     skip_validation: bool = False,
 ):
-    ak = require_akshare()
     pd = require_pandas()
-    raw = _call_index_intraday(ak, symbol=symbol, period=period, start_date=start_date, end_date=end_date)
+    raw = None
+    if period in {"1", "5", "1m", "5m"}:
+        try:
+            raw = _call_mootdx_index_bars(
+                symbol=symbol,
+                period=period,
+                start_date=start_date,
+                end_date=end_date,
+            )
+        except Exception:
+            raw = None
+    if raw is None or raw.empty:
+        ak = require_akshare()
+        try:
+            raw = _call_index_intraday(ak, symbol=symbol, period=period, start_date=start_date, end_date=end_date)
+        except Exception:
+            if period != "1":
+                raise
+            try:
+                raw = _call_eastmoney_trends(
+                    symbol=_normalize_index_symbol(symbol),
+                    market_ids=_candidate_index_market_ids(symbol),
+                    start_date=start_date,
+                    end_date=end_date,
+                )
+            except Exception:
+                raw = _call_tencent_minute(
+                    quote_symbol=_tencent_index_symbol(symbol),
+                    start_date=start_date,
+                    end_date=end_date,
+                )
     timestamp = datetime_series(raw, ("时间", "日期", "timestamp", "time"))
     out = pd.DataFrame({
         "index_code": symbol,
@@ -259,6 +361,321 @@ def _call_first_available(ak, names: tuple[str, ...]):
             last_error = exc
     available = ", ".join(names)
     raise RuntimeError(f"None of the AkShare functions succeeded: {available}. Last error: {last_error}")
+
+
+def _call_eastmoney_trends(
+    symbol: str,
+    market_ids: tuple[int, ...],
+    start_date: str | None = None,
+    end_date: str | None = None,
+    retries: int = 3,
+):
+    last_error: Exception | None = None
+    for market_id in market_ids:
+        params = {
+            "fields1": "f1,f2,f3,f4,f5,f6,f7,f8,f9,f10,f11,f12,f13",
+            "fields2": "f51,f52,f53,f54,f55,f56,f57,f58",
+            "ut": "7eea3edcaed734bea9cbfc24409ed989",
+            "ndays": "5",
+            "iscr": "0",
+            "secid": f"{market_id}.{symbol}",
+        }
+        for attempt in range(retries):
+            try:
+                data_json = _eastmoney_get_json(params, trust_env=attempt % 2 == 0)
+                frame = _eastmoney_trends_to_frame(data_json, start_date=start_date, end_date=end_date)
+                if not frame.empty:
+                    return frame
+            except Exception as exc:  # pragma: no cover - network dependent
+                last_error = exc
+                time.sleep(0.6 * (attempt + 1))
+    raise RuntimeError(f"Eastmoney trends fallback failed for {symbol}: {last_error}")
+
+
+def _call_tencent_minute(quote_symbol: str, start_date: str | None = None, end_date: str | None = None):
+    last_error: Exception | None = None
+    for base_url in (
+        "https://web.ifzq.gtimg.cn/appstock/app/minute/query",
+        "http://web.ifzq.gtimg.cn/appstock/app/minute/query",
+    ):
+        try:
+            data_json = _tencent_get_json(base_url, quote_symbol)
+            frame = _tencent_minute_to_frame(data_json, quote_symbol, start_date=start_date, end_date=end_date)
+            if not frame.empty:
+                return frame
+        except Exception as exc:  # pragma: no cover - network dependent
+            last_error = exc
+            time.sleep(0.5)
+    raise RuntimeError(f"Tencent minute fallback failed for {quote_symbol}: {last_error}")
+
+
+def _call_mootdx_std_bars(
+    symbol: str,
+    period: str = "1",
+    start_date: str | None = None,
+    end_date: str | None = None,
+):
+    try:
+        from mootdx.quotes import Quotes
+    except ImportError as exc:
+        raise RuntimeError("mootdx is not installed") from exc
+
+    client = Quotes.factory(market="std")
+    return _mootdx_collect_pages(
+        fetch_page=lambda start, offset: client.bars(
+            symbol=standardize_code(symbol),
+            frequency=_mootdx_frequency(period),
+            start=start,
+            offset=offset,
+        ),
+        start_date=start_date,
+        end_date=end_date,
+    )
+
+
+def _call_mootdx_index_bars(
+    symbol: str,
+    period: str = "1",
+    start_date: str | None = None,
+    end_date: str | None = None,
+):
+    mapping = _mootdx_index_mapping(symbol)
+    if mapping is None:
+        raise RuntimeError(f"mootdx index mapping not configured for {symbol}")
+    try:
+        from mootdx.quotes import Quotes
+    except ImportError as exc:
+        raise RuntimeError("mootdx is not installed") from exc
+
+    market, code = mapping
+    client = Quotes.factory(market="ext")
+    return _mootdx_collect_pages(
+        fetch_page=lambda start, offset: client.bars(
+            market=market,
+            symbol=code,
+            frequency=_mootdx_frequency(period),
+            start=start,
+            offset=offset,
+        ),
+        start_date=start_date,
+        end_date=end_date,
+    )
+
+
+def _mootdx_collect_pages(fetch_page, start_date: str | None = None, end_date: str | None = None):
+    pd = require_pandas()
+    pages = _mootdx_page_count()
+    frames = []
+    cutoff = pd.to_datetime(start_date, errors="coerce") if start_date else None
+    for page in range(pages):
+        raw = fetch_page(page * MOOTDX_PAGE_SIZE, MOOTDX_PAGE_SIZE)
+        if raw is None or raw.empty:
+            break
+        frame = _mootdx_bars_to_frame(raw)
+        if frame.empty:
+            break
+        frames.append(frame)
+        if cutoff is not None:
+            earliest = pd.to_datetime(frame["时间"], errors="coerce").min()
+            if pd.notna(earliest) and earliest <= cutoff:
+                break
+    if not frames:
+        return pd.DataFrame(columns=["时间", "开盘", "收盘", "最高", "最低", "成交量", "成交额", "均价"])
+    return _filter_intraday_frame(
+        pd.concat(frames, ignore_index=True),
+        start_date=start_date,
+        end_date=end_date,
+    )
+
+
+def _mootdx_bars_to_frame(raw):
+    pd = require_pandas()
+    if raw is None or raw.empty:
+        return pd.DataFrame(columns=["时间", "开盘", "收盘", "最高", "最低", "成交量", "成交额", "均价"])
+    frame = raw.copy()
+    time_values = frame["datetime"] if "datetime" in frame.columns else frame.index
+    out = pd.DataFrame({
+        "时间": pd.to_datetime(time_values, errors="coerce"),
+        "开盘": pd.to_numeric(frame.get("open"), errors="coerce"),
+        "收盘": pd.to_numeric(frame.get("close"), errors="coerce"),
+        "最高": pd.to_numeric(frame.get("high"), errors="coerce"),
+        "最低": pd.to_numeric(frame.get("low"), errors="coerce"),
+        "成交量": pd.to_numeric(_first_frame_column(frame, ("volume", "vol", "position", "trade")), errors="coerce"),
+        "成交额": pd.to_numeric(_first_frame_column(frame, ("amount",)), errors="coerce"),
+    })
+    out["均价"] = (out["开盘"] + out["收盘"]) / 2
+    out = out.dropna(subset=["时间", "收盘"]).sort_values("时间")
+    out = out.drop_duplicates(subset=["时间"], keep="last")
+    out["时间"] = out["时间"].astype(str)
+    return out.reset_index(drop=True)
+
+
+def _filter_intraday_frame(frame, start_date: str | None = None, end_date: str | None = None):
+    pd = require_pandas()
+    out = frame.copy()
+    out["时间"] = pd.to_datetime(out["时间"], errors="coerce")
+    out = out.dropna(subset=["时间"])
+    if start_date:
+        start = pd.to_datetime(start_date, errors="coerce")
+        if pd.notna(start):
+            out = out.loc[out["时间"] >= start]
+    if end_date:
+        end = pd.to_datetime(end_date, errors="coerce")
+        if pd.notna(end):
+            out = out.loc[out["时间"] <= end]
+    out = out.sort_values("时间").drop_duplicates(subset=["时间"], keep="last")
+    out["时间"] = out["时间"].astype(str)
+    return out.reset_index(drop=True)
+
+
+def _first_frame_column(frame, names: tuple[str, ...]):
+    pd = require_pandas()
+    for name in names:
+        if name in frame.columns:
+            return frame[name]
+    return pd.Series([0.0] * len(frame), index=frame.index)
+
+
+def _mootdx_frequency(period: str) -> str:
+    raw = str(period).lower().strip()
+    if raw in {"1", "1m", "1min"}:
+        return "1m"
+    if raw in {"5", "5m", "5min"}:
+        return "5m"
+    raise ValueError(f"Unsupported mootdx intraday period: {period}")
+
+
+def _mootdx_page_count() -> int:
+    raw = os.environ.get("FUND_MOOTDX_INTRADAY_PAGES")
+    if not raw:
+        return MOOTDX_DEFAULT_PAGES
+    try:
+        return max(int(raw), 1)
+    except ValueError:
+        return MOOTDX_DEFAULT_PAGES
+
+
+def _mootdx_index_mapping(symbol: str) -> tuple[int, str] | None:
+    code = _normalize_index_symbol(symbol)
+    csi_market = 62
+    if code in {"000300", "000905", "000852", "000903", "000906"}:
+        return csi_market, code
+    return None
+
+
+def _tencent_get_json(base_url: str, quote_symbol: str) -> dict[str, Any]:
+    try:
+        import requests
+    except ImportError as exc:
+        raise SystemExit("Missing dependency: requests. Run `pip install requests`.") from exc
+
+    session = requests.Session()
+    session.trust_env = False
+    response = session.get(
+        base_url,
+        params={"code": quote_symbol},
+        timeout=15,
+        headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json,text/plain,*/*"},
+    )
+    response.raise_for_status()
+    return response.json()
+
+
+def _tencent_minute_to_frame(
+    data_json: dict[str, Any],
+    quote_symbol: str,
+    start_date: str | None = None,
+    end_date: str | None = None,
+):
+    pd = require_pandas()
+    columns = ["时间", "开盘", "收盘", "最高", "最低", "成交量", "成交额", "均价"]
+    raw_data = ((data_json.get("data") or {}).get(quote_symbol) or {}).get("data") or {}
+    trade_date = str(raw_data.get("date") or "")
+    minute_rows = raw_data.get("data") or []
+    if not trade_date or not minute_rows:
+        return pd.DataFrame(columns=columns)
+
+    date_value = pd.to_datetime(trade_date, format="%Y%m%d", errors="coerce")
+    if pd.isna(date_value):
+        return pd.DataFrame(columns=columns)
+
+    rows: list[dict[str, Any]] = []
+    for item in minute_rows:
+        parts = str(item).split()
+        if len(parts) < 4:
+            continue
+        hhmm, price, volume, amount = parts[:4]
+        timestamp = pd.to_datetime(f"{date_value.date()} {hhmm[:2]}:{hhmm[2:]}:00", errors="coerce")
+        rows.append({
+            "时间": timestamp,
+            "开盘": price,
+            "收盘": price,
+            "最高": price,
+            "最低": price,
+            "成交量": volume,
+            "成交额": amount,
+            "均价": price,
+        })
+    frame = pd.DataFrame(rows, columns=columns)
+    frame = frame.dropna(subset=["时间"]).sort_values("时间")
+    if start_date:
+        start = pd.to_datetime(start_date, errors="coerce")
+        if pd.notna(start):
+            frame = frame.loc[frame["时间"] >= start]
+    if end_date:
+        end = pd.to_datetime(end_date, errors="coerce")
+        if pd.notna(end):
+            frame = frame.loc[frame["时间"] <= end]
+    for column in columns[1:]:
+        frame[column] = pd.to_numeric(frame[column], errors="coerce")
+    frame["时间"] = frame["时间"].astype(str)
+    return frame.reset_index(drop=True)
+
+
+def _eastmoney_get_json(params: dict[str, str], trust_env: bool = False) -> dict[str, Any]:
+    try:
+        import requests
+    except ImportError as exc:
+        raise SystemExit("Missing dependency: requests. Run `pip install requests`.") from exc
+
+    session = requests.Session()
+    session.trust_env = trust_env
+    response = session.get(
+        "https://push2his.eastmoney.com/api/qt/stock/trends2/get",
+        params=params,
+        timeout=15,
+        headers={
+            "User-Agent": "Mozilla/5.0",
+            "Referer": "https://quote.eastmoney.com/",
+            "Accept": "application/json,text/plain,*/*",
+        },
+    )
+    response.raise_for_status()
+    return response.json()
+
+
+def _eastmoney_trends_to_frame(data_json: dict[str, Any], start_date: str | None = None, end_date: str | None = None):
+    pd = require_pandas()
+    trends = (data_json.get("data") or {}).get("trends") or []
+    columns = ["时间", "开盘", "收盘", "最高", "最低", "成交量", "成交额", "均价"]
+    if not trends:
+        return pd.DataFrame(columns=columns)
+    temp_df = pd.DataFrame([item.split(",") for item in trends]).iloc[:, :8]
+    temp_df.columns = columns
+    temp_df["时间"] = pd.to_datetime(temp_df["时间"], errors="coerce")
+    temp_df = temp_df.dropna(subset=["时间"]).sort_values("时间")
+    if start_date:
+        start = pd.to_datetime(start_date, errors="coerce")
+        if pd.notna(start):
+            temp_df = temp_df.loc[temp_df["时间"] >= start]
+    if end_date:
+        end = pd.to_datetime(end_date, errors="coerce")
+        if pd.notna(end):
+            temp_df = temp_df.loc[temp_df["时间"] <= end]
+    for column in columns[1:]:
+        temp_df[column] = pd.to_numeric(temp_df[column], errors="coerce")
+    temp_df["时间"] = temp_df["时间"].astype(str)
+    return temp_df.reset_index(drop=True)
 
 
 def _call_index_daily(ak, symbol: str, start_date: str | None, end_date: str | None):

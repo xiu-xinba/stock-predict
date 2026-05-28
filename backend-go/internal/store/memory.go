@@ -1,9 +1,7 @@
 package store
 
 import (
-	"hash/fnv"
 	"sort"
-	"strings"
 	"sync"
 
 	"stock-predict-go/internal/dto"
@@ -12,6 +10,7 @@ import (
 type MemoryStore struct {
 	mu    sync.RWMutex
 	funds map[string]dto.FundItem
+	path  string
 }
 
 func NewMemoryStore() *MemoryStore {
@@ -21,7 +20,6 @@ func NewMemoryStore() *MemoryStore {
 func NewMemoryStoreWithFunds(funds []dto.FundItem) *MemoryStore {
 	s := &MemoryStore{funds: make(map[string]dto.FundItem, len(funds))}
 	for _, fund := range funds {
-		fund = enrichFund(fund)
 		s.funds[fund.FundCode] = fund
 	}
 	return s
@@ -45,6 +43,18 @@ func (s *MemoryStore) CountFunds() int {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return len(s.funds)
+}
+
+func (s *MemoryStore) CountQuotedFunds() int {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	count := 0
+	for _, fund := range s.funds {
+		if fund.QuoteSource != "" {
+			count++
+		}
+	}
+	return count
 }
 
 func (s *MemoryStore) FindFund(code string) (dto.FundItem, bool) {
@@ -87,34 +97,4 @@ func seedFunds() []dto.FundItem {
 		{FundCode: "006228", FundName: "中欧时代智慧混合", FundType: "混合型", Company: "中欧基金", Manager: "周蔚文", InceptionDate: "2018-10-12", RiskLevel: "中高"},
 		{FundCode: "007874", FundName: "华夏科技创新混合", FundType: "混合型", Company: "华夏基金", Manager: "张帆", InceptionDate: "2019-05-06", RiskLevel: "中高"},
 	}
-}
-
-func enrichFund(f dto.FundItem) dto.FundItem {
-	h := stableHash(f.FundCode)
-	f.LatestNAV = round4(0.8 + float64(h%2200)/1000)
-	f.CumulativeNAV = round4(f.LatestNAV * (1.05 + float64((h/7)%180)/100))
-	f.Return1M = round2(float64(int(h%1800)-700) / 100)
-	f.Return3M = round2(float64(int((h/3)%3200)-1200) / 100)
-	f.Return6M = round2(float64(int((h/5)%4800)-1800) / 100)
-	f.Return1Y = round2(float64(int((h/11)%7000)-2500) / 100)
-	f.Return3Y = round2(float64(int((h/13)%12000)-3500) / 100)
-	f.ChangePct = round2(float64(int((h/17)%500)-250) / 100)
-	f.EstimatedNAV = round4(f.LatestNAV * (1 + f.ChangePct/100))
-	return f
-}
-
-func stableHash(value string) uint32 {
-	h := fnv.New32a()
-	_, _ = h.Write([]byte(strings.ToLower(value)))
-	return h.Sum32()
-}
-
-func round2(v float64) float64 { return float64(int(v*100+sign(v)*0.5)) / 100 }
-func round4(v float64) float64 { return float64(int(v*10000+sign(v)*0.5)) / 10000 }
-
-func sign(v float64) float64 {
-	if v < 0 {
-		return -1
-	}
-	return 1
 }

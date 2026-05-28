@@ -28,6 +28,8 @@ export const usePredictionStore = defineStore('prediction', () => {
   }) {
     if (!keyword.trim() && !filterParams) {
       searchResults.value = []
+      searchTotal.value = 0
+      searchPage.value = 1
       return
     }
     const seq = ++searchSeq
@@ -41,6 +43,8 @@ export const usePredictionStore = defineStore('prediction', () => {
       if (seq !== searchSeq) return
       if (e instanceof CancelError) return
       searchResults.value = []
+      searchTotal.value = 0
+      searchPage.value = 1
     }
   }
 

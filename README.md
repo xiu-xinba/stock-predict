@@ -6,7 +6,7 @@
 
 - **市场行情** — A股/港股/美股主要指数实时展示，迷你走势图，基金涨跌排行
 - **自选基金** — 添加/删除关注基金，实时报价刷新，排序筛选
-- **智能预测** — 提供隔日和盘中 5 分钟预测接口，当前为 Go 基线逻辑，预留新模型接入
+- **智能预测** — 提供隔日、未来一周和盘中 3/5 分钟预测接口；可分别接入 Python 冠军模型服务，输出 `signal_status`、经验预测区间和收益拆解，异常时回退 Go 基线逻辑
 
 ## 技术栈
 
@@ -24,9 +24,9 @@
 | 技术 | 用途 |
 |------|------|
 | Go 1.22+ | Web API |
-| Go 标准库 net/http | 路由、中间件、HTTP 服务 |
+| Gin + net/http | 路由、中间件、HTTP 服务 |
 | 内存种子数据 | 当前开发期数据仓库 |
-| Python / ONNX 预留 | 后续训练模型服务或运行时模型接入 |
+| Python 模型服务 / ONNX 预留 | 训练模型在线推理，后续可扩展运行时模型接入 |
 
 ## 项目结构
 
@@ -56,7 +56,7 @@ stock-predict/
 
 - Node.js >= 18
 - Go >= 1.22
-- Python 3.11/3.12（训练模型时需要）
+- Conda + Python 3.11-3.13（训练模型时需要，依赖通过 conda 环境内的 pip 安装）
 
 ### 启动后端
 
@@ -66,6 +66,63 @@ go run ./cmd/api
 ```
 
 后端默认运行在 `http://localhost:5070`
+
+如需启用当前训练出的指数基金冠军模型，先启动模型服务，再启动后端：
+
+```powershell
+cd model-training
+$env:PYTHONPATH="src"
+python -m fund_model_training.serve_model --model artifacts/public_mvp_index_fund_tournament_champion.joblib --samples data/processed/public_mvp_daily_weekly_index_fund_samples.csv --port 8090
+
+cd ../backend-go
+$env:MODEL_SERVICE_URL="http://127.0.0.1:8090"
+go run ./cmd/api
+```
+
+未来一周模型和短周期模型可用独立模型服务接入；其中周频模型需要先通过
+`retraining_cycle_weekly` 的高置信准确率门禁并生成
+`model_registry/weekly_index_fund/current.json`：
+`WEEKLY_MODEL_SERVICE_URL=http://127.0.0.1:8092`，
+`INTRADAY_MODEL_SERVICE_URL=http://127.0.0.1:8091`。
+
+交付前可运行统一检查脚本：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\prediction-model-delivery-check.ps1
+```
+
+需要重跑训练和端到端 smoke 时增加参数：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\prediction-model-delivery-check.ps1 -RunTraining -RunSmoke
+```
+
+多基金 API 验收可运行：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\start-acceptance-services.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\prediction-api-acceptance.ps1
+```
+
+本地验收服务启动后可用下面命令停止：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\stop-acceptance-services.ps1
+```
+
+基金搜索底库默认会从东财全量基金代码列表补全，并合并东财净值排行里的
+最新净值、日增长率和近 1 月/1 年收益；如果本地
+`backend-go/data/funds.json` 少于 1000 条，或旧数据没有可信
+`quote_source`，开发启动时会自动同步。自选刷新会优先用腾讯场内基金行情
+和东财基金估值覆盖本地净值排行数据。
+也可以手动触发：
+
+```powershell
+cd backend-go
+$env:FUND_UNIVERSE_URL="https://fund.eastmoney.com/js/fundcode_search.js"
+$env:FUND_REALTIME_QUOTES_ENABLED="true"
+Invoke-RestMethod -Method Post -Uri "http://localhost:5070/api/v1/funds/sync"
+```
 
 ### 启动前端
 

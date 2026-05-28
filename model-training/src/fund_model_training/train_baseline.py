@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import warnings
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -12,6 +13,16 @@ import pandas as pd
 
 from fund_model_training.features import prepare_features
 from fund_model_training.labels import ensure_label
+from fund_model_training.metrics import probability_calibration_report
+from fund_model_training.onnx_export import default_classifier_onnx_path, export_classifier_sidecar
+from fund_model_training.prediction_interval import empirical_prediction_interval_report
+from fund_model_training.regime_evaluation import market_regime_report
+from fund_model_training.return_decomposition import (
+    ensure_return_decomposition_targets,
+    fit_return_decomposition,
+    predict_return,
+    return_decomposition_metadata,
+)
 from fund_model_training.schema import ID_TO_LABEL
 
 
@@ -22,6 +33,7 @@ class BaselineConfig:
     report_output_path: Path
     metadata_output_path: Path
     model_output_path: Path
+    classifier_onnx_output_path: Path | None = None
     feature_set: str = "index_fund_daily_v1"
     label_column: str = "label"
     future_return_column: str = "future_return_pct_next_day"
@@ -30,6 +42,7 @@ class BaselineConfig:
     test_size: float = 0.2
     random_seed: int = 20260523
     high_confidence_threshold: float = 0.60
+    require_classifier_onnx: bool = False
 
 
 def main() -> None:
@@ -81,6 +94,7 @@ def load_baseline_config(path: str | Path) -> BaselineConfig:
         report_output_path=resolve(str(raw.get("report_output_path", "reports/index_fund_baseline_report.json"))),
         metadata_output_path=resolve(str(raw.get("metadata_output_path", "artifacts/index_fund_baseline_metadata.json"))),
         model_output_path=resolve(str(raw.get("model_output_path", "artifacts/index_fund_baseline.joblib"))),
+        classifier_onnx_output_path=resolve(str(raw["classifier_onnx_output_path"])) if raw.get("classifier_onnx_output_path") else None,
         feature_set=str(raw.get("feature_set", "index_fund_daily_v1")),
         label_column=str(raw.get("label_column", "label")),
         future_return_column=str(raw.get("future_return_column", "future_return_pct_next_day")),
@@ -89,6 +103,7 @@ def load_baseline_config(path: str | Path) -> BaselineConfig:
         test_size=float(raw.get("test_size", 0.2)),
         random_seed=int(raw.get("random_seed", 20260523)),
         high_confidence_threshold=float(raw.get("high_confidence_threshold", 0.60)),
+        require_classifier_onnx=bool(raw.get("require_classifier_onnx", False)),
     )
 
 
@@ -114,7 +129,8 @@ def train_baseline(cfg: BaselineConfig) -> dict[str, Any]:
     raw = pd.read_csv(cfg.data_path)
     labeled = ensure_label(raw, cfg.label_column, cfg.future_return_column, cfg.flat_threshold_pct)
     samples, feature_names = prepare_features(labeled, cfg.feature_set)
-    samples = samples.dropna(subset=[cfg.label_column, cfg.regression_target, "asof_time"]).copy()
+    samples, decomposition_target_cols = ensure_return_decomposition_targets(samples, cfg.regression_target)
+    samples = samples.dropna(subset=[cfg.label_column, cfg.regression_target, "asof_time", *decomposition_target_cols]).copy()
     samples["asof_time"] = pd.to_datetime(samples["asof_time"], errors="coerce")
     samples = samples.dropna(subset=["asof_time"]).sort_values("asof_time").reset_index(drop=True)
 
@@ -135,9 +151,11 @@ def train_baseline(cfg: BaselineConfig) -> dict[str, Any]:
     )
     cls_model.fit(x_train, y_train_cls)
     reg_model.fit(x_train, y_train_reg)
+    return_decomposition = fit_return_decomposition(reg_model, x_train, train_df, cfg.regression_target)
 
     cls_pred = cls_model.predict(x_test)
-    reg_pred = reg_model.predict(x_test)
+    return_prediction = predict_return(reg_model, x_test, return_decomposition)
+    reg_pred = return_prediction["prediction"]
     probabilities = _predict_proba(cls_model, x_test)
 
     report = {
@@ -161,6 +179,21 @@ def train_baseline(cfg: BaselineConfig) -> dict[str, Any]:
         },
         "naive_baselines": _naive_baselines(test_df, y_test_cls, y_test_reg, cfg.flat_threshold_pct),
         "high_confidence": _high_confidence_report(y_test_cls.to_numpy(), cls_pred, probabilities, cfg.high_confidence_threshold),
+        "calibration": probability_calibration_report(y_test_cls.to_numpy(), cls_pred, probabilities),
+        "prediction_interval": empirical_prediction_interval_report(y_test_reg.to_numpy(), reg_pred),
+        "return_decomposition": {
+            **return_decomposition_metadata(return_decomposition),
+            **_return_component_metrics(return_prediction, test_df, cfg.regression_target),
+        },
+        "market_regime": market_regime_report(
+            test_df=test_df,
+            y_true_cls=y_test_cls.to_numpy(),
+            y_pred_cls=cls_pred,
+            y_true_reg=y_test_reg.to_numpy(),
+            y_pred_reg=reg_pred,
+            probabilities=probabilities,
+            high_confidence_threshold=cfg.high_confidence_threshold,
+        ),
         "feature_importance": _feature_importance(cls_model, x_test, y_test_cls, feature_names, permutation_importance),
         "walk_forward": {
             "train_rows": int(len(train_df)),
@@ -178,18 +211,31 @@ def train_baseline(cfg: BaselineConfig) -> dict[str, Any]:
     model_bundle = {
         "classifier": cls_model,
         "regressor": reg_model,
+        "return_decomposition": return_decomposition,
+        "prediction_interval": report["prediction_interval"],
         "feature_names": feature_names,
         "config": asdict(cfg),
+        "architecture": "tracking_index_plus_error" if return_decomposition else "direct_fund_return",
     }
     cfg.model_output_path.parent.mkdir(parents=True, exist_ok=True)
     joblib.dump(model_bundle, cfg.model_output_path)
+    classifier_onnx = export_classifier_sidecar(
+        model=cls_model,
+        feature_count=len(feature_names),
+        output_path=cfg.classifier_onnx_output_path or default_classifier_onnx_path(cfg.model_output_path),
+        required=cfg.require_classifier_onnx,
+    )
 
     metadata = {
         "task": cfg.task,
         "created_at": report["created_at"],
         "feature_set": cfg.feature_set,
         "features": feature_names,
+        "return_decomposition": return_decomposition_metadata(return_decomposition),
+        "prediction_interval": report["prediction_interval"],
+        "market_regime": report["market_regime"],
         "model_output_path": str(cfg.model_output_path),
+        "classifier_onnx": classifier_onnx,
         "report_output_path": str(cfg.report_output_path),
         "train_rows": report["walk_forward"]["train_rows"],
         "test_rows": report["walk_forward"]["test_rows"],
@@ -200,6 +246,10 @@ def train_baseline(cfg: BaselineConfig) -> dict[str, Any]:
             "regression_rmse": report["regression"]["rmse"],
             "high_confidence_coverage": report["high_confidence"]["coverage"],
             "high_confidence_accuracy": report["high_confidence"]["accuracy"],
+            "calibration_ece": report["calibration"]["ece"],
+            "calibration_brier_score": report["calibration"]["brier_score"],
+            "prediction_interval_enabled": bool(report["prediction_interval"].get("enabled")),
+            "return_decomposition_enabled": bool(return_decomposition),
         },
     }
     cfg.metadata_output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -270,6 +320,43 @@ def _naive_baselines(test_df, y_test_cls, y_test_reg, flat_threshold_pct: float)
     }
 
 
+def _return_component_metrics(return_prediction: dict[str, Any], test_df, regression_target: str) -> dict[str, Any]:
+    from sklearn.metrics import mean_absolute_error
+
+    if return_prediction.get("method") != "tracking_index_plus_error":
+        return {}
+    target_columns = _component_target_columns(regression_target)
+    if target_columns is None:
+        return {}
+    index_col, tracking_error_col = target_columns
+    if index_col not in test_df.columns or tracking_error_col not in test_df.columns:
+        return {}
+
+    metrics: dict[str, Any] = {}
+    index_pred = return_prediction.get("index_return")
+    tracking_error_pred = return_prediction.get("tracking_error")
+    direct_pred = return_prediction.get("direct_fund_return")
+    if index_pred is not None:
+        metrics["index_return_mae"] = float(mean_absolute_error(pd.to_numeric(test_df[index_col], errors="coerce"), index_pred))
+    if tracking_error_pred is not None:
+        metrics["tracking_error_mae"] = float(mean_absolute_error(pd.to_numeric(test_df[tracking_error_col], errors="coerce"), tracking_error_pred))
+    if direct_pred is not None:
+        metrics["direct_fund_return_mae"] = float(mean_absolute_error(pd.to_numeric(test_df[regression_target], errors="coerce"), direct_pred))
+    return metrics
+
+
+def _component_target_columns(regression_target: str) -> tuple[str, str] | None:
+    if regression_target == "future_return_pct_next_day":
+        return "future_index_return_pct_next_day", "future_tracking_error_pct_next_day"
+    if regression_target == "future_return_pct_1w":
+        return "future_index_return_pct_1w", "future_tracking_error_pct_1w"
+    if regression_target == "future_return_pct_3m":
+        return "future_index_return_pct_3m", "future_tracking_error_pct_3m"
+    if regression_target == "future_return_pct_5m":
+        return "future_index_return_pct_5m", "future_tracking_error_pct_5m"
+    return None
+
+
 def _baseline_metrics(y_cls, y_reg, pred_return, flat_threshold_pct, accuracy_score, mean_absolute_error, mean_squared_error):
     return {
         "direction_accuracy": float(accuracy_score(y_cls, _labels_from_returns(pred_return, flat_threshold_pct))),
@@ -280,7 +367,13 @@ def _baseline_metrics(y_cls, y_reg, pred_return, flat_threshold_pct, accuracy_sc
 
 def _feature_importance(model, x_test, y_test, feature_names: list[str], permutation_importance) -> list[dict[str, Any]]:
     try:
-        result = permutation_importance(model, x_test, y_test, n_repeats=5, random_state=20260523)
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                "ignore",
+                message="`sklearn.utils.parallel.delayed` should be used with `sklearn.utils.parallel.Parallel`.*",
+                category=UserWarning,
+            )
+            result = permutation_importance(model, x_test, y_test, n_repeats=5, random_state=20260523)
     except Exception:
         return []
     order = np.argsort(result.importances_mean)[::-1][:20]

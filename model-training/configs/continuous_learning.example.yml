@@ -11,6 +11,7 @@ logging:
     - created_at
     - model_version
     - feature_snapshot_id
+    - feature_snapshot_json
     - predicted_return
     - predicted_direction
     - confidence

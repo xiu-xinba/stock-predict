@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>预测模型交付状态报告</title>
+<style>
+  body { margin: 0; padding: 32px; background: #f8fafc; color: #0f172a; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif; line-height: 1.7; }
+  main { max-width: 1120px; margin: 0 auto; }
+  h1 { margin: 0 0 8px; font-size: 30px; }
+  h2 { margin: 32px 0 12px; padding-bottom: 8px; border-bottom: 1px solid #cbd5e1; font-size: 21px; }
+  p { margin: 8px 0; }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0 20px; background: white; border: 1px solid #cbd5e1; }
+  th, td { padding: 10px 12px; border-bottom: 1px solid #e2e8f0; text-align: left; vertical-align: top; }
+  th { background: #e2e8f0; font-weight: 700; }
+  code, pre { font-family: "Cascadia Code", Consolas, monospace; }
+  code { padding: 2px 5px; background: #e2e8f0; border-radius: 4px; }
+  pre { overflow: auto; padding: 14px 16px; background: #0f172a; color: #e2e8f0; border-radius: 8px; }
+  .ok { color: #067647; font-weight: 700; }
+  .warn { color: #b54708; font-weight: 700; }
+  .muted { color: #64748b; }
+</style>
+</head>
+<body>
+<main>
+  <h1>预测模型交付状态报告</h1>
+  <p class="muted">日期：2026-05-27；最新验收刷新：2026-05-27 23:16:22 +08:00；依据：<code>docs/design/01-fund-prediction-model.html</code></p>
+
+  <h2>结论</h2>
+  <p><span class="ok">工程闭环已达到可交付状态。</span> 当前实现已经覆盖设计文件要求的收益拆解、模型锦标赛、滚动回测、分市场状态评估、经验残差预测区间、低置信/无信号控制、预测日志、监控和 shadow/challenger 评估。收益拆解和预测区间已从 Python 模型服务贯穿到 Go API 与前端预测卡片。</p>
+  <p><span class="warn">模型效果仍受样本跨度限制。</span> 现有 public MVP 数据可验证链路，但不能等同于稳定实盘质量；弱模型会被晋级门槛和在线可行动闸门拦住，避免只因单次置信度偏高或极少数样本看似准确就输出 <code>is_actionable=true</code>。</p>
+
+  <h2>设计要求落地情况</h2>
+  <table>
+    <thead><tr><th>设计要求</th><th>实现状态</th><th>对应模块</th></tr></thead>
+    <tbody>
+      <tr><td>基金收益拆解为跟踪指数收益 + 跟踪误差</td><td class="ok">已完成</td><td><code>return_decomposition.py</code>、daily/weekly/intraday 样本构建、baseline/tournament/predict</td></tr>
+      <tr><td>次日、未来一周、日内 3/5 分钟分开训练和择优</td><td class="ok">已完成</td><td>daily/weekly/intraday tournament config 与 pipeline</td></tr>
+      <tr><td>滚动 walk-forward 回测，日内使用 purged split 与 embargo</td><td class="ok">已完成</td><td><code>train_tournament.py</code></td></tr>
+      <tr><td>牛熊震荡、恐慌、波动分市场状态评估</td><td class="ok">已完成</td><td><code>regime_evaluation.py</code>、promotion gates</td></tr>
+      <tr><td>收益率回归、方向分类、置信区间三个任务</td><td class="ok">已完成</td><td><code>prediction_interval.py</code>、baseline/tournament reports、Go <code>PredictionResult.prediction_interval</code>、前端预测区间说明</td></tr>
+      <tr><td>低置信输出 <code>low_confidence</code>，平盘输出 <code>no_signal</code></td><td class="ok">已完成</td><td><code>predict_model.py</code>、<code>prediction_logging.py</code>、Go DTO、前端卡片</td></tr>
+      <tr><td>纸面交易/质量门槛通过后才允许 <code>is_actionable=true</code></td><td class="ok">已完成</td><td>预测时检查模型级高置信准确率、高置信覆盖率和校准 ECE，弱模型强制降为 <code>low_confidence</code></td></tr>
+      <tr><td>预测结果展示跟踪指数收益、跟踪误差和直接回归输出</td><td class="ok">已完成</td><td>Go <code>PredictionResult.return_decomposition</code>、前端收益拆解面板</td></tr>
+      <tr><td>预测日志、标签回填、成本后纸面收益和 shadow 评估</td><td class="ok">已完成</td><td><code>prediction_logging.py</code>、<code>run_monitoring_cycle.py</code>、<code>shadow_evaluation.py</code></td></tr>
+    </tbody>
+  </table>
+
+  <h2>最新本地验证结果</h2>
+  <table>
+    <thead><tr><th>链路</th><th>样本/测试</th><th>当前结果</th><th>结论</th></tr></thead>
+    <tbody>
+      <tr><td>Python 模型训练测试</td><td>88 tests</td><td>88 passed</td><td class="ok">通过</td></tr>
+      <tr><td>Go 后端测试</td><td><code>go test ./...</code></td><td>passed</td><td class="ok">通过</td></tr>
+      <tr><td>前端生产构建</td><td><code>npm run build</code></td><td>passed</td><td class="ok">通过</td></tr>
+      <tr><td>多基金 API 验收</td><td>510300、510050、510500、159915</td><td><code>signal_status=low_confidence</code>、<code>is_actionable=false</code>、<code>return_decomposition.enabled=true</code>、<code>prediction_interval.method=empirical_residual_quantile</code></td><td class="ok">符合设计</td></tr>
+    </tbody>
+  </table>
+
+  <h2>当前模型产物摘要</h2>
+  <table>
+    <thead><tr><th>周期</th><th>Champion</th><th>关键指标</th><th>晋级/使用建议</th></tr></thead>
+    <tbody>
+      <tr><td>次日</td><td><code>extra_trees</code></td><td>balanced accuracy 0.3725；高置信准确率 0.5938；90% 经验区间覆盖率 0.8904；收益拆解启用；rolling folds=3</td><td class="ok">可作为 MVP champion 继续 shadow</td></tr>
+      <tr><td>未来一周</td><td><code>gradient_boosting</code></td><td>balanced accuracy 0.3476；高置信准确率 0.3448；90% 经验区间覆盖率 0.8857；收益拆解启用；rolling folds=3</td><td class="warn">工程可用，效果不足，在线闸门会降为低置信</td></tr>
+      <tr><td>日内 5 分钟</td><td><code>logistic_ridge</code></td><td>balanced accuracy 0.3326；高置信准确率 0.5625 但覆盖率仅 1.27%；90% 经验区间覆盖率 0.8997；收益拆解启用；rolling folds=3</td><td class="warn">工程链路可用，低于 5% 覆盖率闸门，继续低置信 shadow</td></tr>
+      <tr><td>日内 3 分钟</td><td><code>logistic_ridge</code></td><td>balanced accuracy 0.3308；高置信准确率 0；90% 经验区间覆盖率 0.9000；收益拆解启用；rolling folds=3</td><td class="warn">工程链路可用，禁止作为行动信号</td></tr>
+    </tbody>
+  </table>
+
+  <h2>交付检查命令</h2>
+  <pre><code>powershell -NoProfile -ExecutionPolicy Bypass -File scripts\prediction-model-delivery-check.ps1</code></pre>
+  <p>如需重跑训练和端到端 smoke：</p>
+  <pre><code>powershell -NoProfile -ExecutionPolicy Bypass -File scripts\prediction-model-delivery-check.ps1 -RunTraining -RunSmoke</code></pre>
+  <p>启动完整本地验收服务：</p>
+  <pre><code>powershell -NoProfile -ExecutionPolicy Bypass -File scripts\start-acceptance-services.ps1</code></pre>
+  <p>多基金 API 验收脚本会检查 <code>signal_status</code>、<code>is_actionable</code>、<code>return_decomposition</code> 与 <code>prediction_interval</code>，结果写入 <code>docs/report/prediction-api-acceptance-results.json</code>：</p>
+  <pre><code>powershell -NoProfile -ExecutionPolicy Bypass -File scripts\prediction-api-acceptance.ps1</code></pre>
+  <p>当前验收服务地址：</p>
+  <ul>
+    <li>前端：<code>http://127.0.0.1:5173/predict/510300</code></li>
+    <li>后端：<code>http://127.0.0.1:5070</code></li>
+    <li>日级模型服务：<code>http://127.0.0.1:8097</code></li>
+    <li>周频模型服务：<code>http://127.0.0.1:8098</code></li>
+    <li>日内模型服务：<code>http://127.0.0.1:8099</code></li>
+  </ul>
+  <p>停止本地验收服务：</p>
+  <pre><code>powershell -NoProfile -ExecutionPolicy Bypass -File scripts\stop-acceptance-services.ps1</code></pre>
+
+  <h2>剩余风险</h2>
+  <ul>
+    <li>当前 public MVP 数据跨度仍偏短，尤其日内模型需要更多交易日覆盖不同波动和恐慌状态。</li>
+    <li>深度模型栈，如 TFT、PatchTST、DeepLOB、Temporal GNN，尚未进入主训练流程；需要更大数据集后再接入。</li>
+    <li>ONNX sidecar 当前因本地缺少 sklearn-onnx 依赖而跳过，不影响 Python 模型服务推理。</li>
+    <li>前端生产构建通过，但 ECharts vendor chunk 仍超过 Vite 默认 500 kB 提醒阈值；这不阻塞 MVP 验收，可在交付后做按路由懒加载或 chunk 拆分。</li>
+  </ul>
+</main>
+</body>
+</html>

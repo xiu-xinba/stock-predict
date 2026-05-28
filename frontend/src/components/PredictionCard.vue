@@ -12,10 +12,13 @@
       </div>
       <div v-if="result" class="prediction-core">
         <div :class="['pct-value', direction]">
-          {{ direction === 'up' ? '+' : '' }}{{ result.predicted_change_pct }}%
+          {{ formatSignedPct(result.predicted_change_pct) }}
         </div>
         <div :class="['direction-text', direction]">
           {{ direction === 'up' ? '预测上涨' : direction === 'down' ? '预测下跌' : '预测平盘' }}
+        </div>
+        <div :class="['signal-status', signalStatus]">
+          {{ signalStatusLabel(signalStatus) }}
         </div>
       </div>
     </section>
@@ -24,13 +27,19 @@
       <div v-for="item in horizonResults" :key="item.key" class="horizon-card">
         <div class="horizon-head">
           <span class="horizon-label">{{ item.label }}</span>
+          <span :class="['source-pill', item.result.model_source]">
+            {{ modelSourceLabel(item.result.model_source) }}
+          </span>
           <span :class="['target-pill', item.result.meets_accuracy_target ? 'ok' : 'warn']">
             {{ item.result.meets_accuracy_target ? '已达98%' : '未达98%' }}
+          </span>
+          <span :class="['signal-pill', item.result.signal_status]">
+            {{ signalStatusLabel(item.result.signal_status) }}
           </span>
         </div>
         <div class="horizon-main">
           <strong :class="item.result.direction">
-            {{ item.result.direction === 'up' ? '+' : '' }}{{ item.result.predicted_change_pct }}%
+            {{ formatSignedPct(item.result.predicted_change_pct) }}
           </strong>
           <span :class="['horizon-dir', item.result.direction]">
             {{ item.result.direction === 'up' ? '上涨' : item.result.direction === 'down' ? '下跌' : '平盘' }}
@@ -39,6 +48,21 @@
         <div class="horizon-meta">
           <span>置信 {{ Math.round(item.result.direction_confidence * 100) }}%</span>
           <span>{{ item.result.change_range.low }}% ~ {{ item.result.change_range.high }}%</span>
+        </div>
+        <div v-if="modelMetaText(item.result)" class="horizon-model">
+          {{ modelMetaText(item.result) }}
+        </div>
+        <div v-if="item.result.model_asof_time" class="horizon-model muted">
+          样本 {{ formatModelTime(item.result.model_asof_time) }}
+        </div>
+        <div
+          v-if="item.result.model_coverage_note"
+          :class="['horizon-coverage', item.result.model_coverage_status]"
+        >
+          {{ item.result.model_coverage_note }}
+        </div>
+        <div v-if="horizonGateLabel(item.result)" class="horizon-gate">
+          {{ horizonGateLabel(item.result) }}
         </div>
       </div>
     </section>
@@ -54,7 +78,7 @@
       <div class="metric">
         <span class="metric-label">预测区间</span>
         <strong>{{ result.change_range.low }}% ~ {{ result.change_range.high }}%</strong>
-        <span class="metric-sub">Spread {{ spread }}%</span>
+        <span class="metric-sub">{{ intervalMeta }}</span>
       </div>
       <div v-if="snapshot" class="metric compact">
         <span class="metric-label">上证</span>
@@ -100,11 +124,25 @@
           <div ref="chartRef" role="img" aria-label="预测因子重要性柱状图"></div>
         </div>
       </div>
+
+      <div v-if="returnDecomposition?.enabled" class="panel decomposition-panel">
+        <div class="panel-header">
+          <span class="panel-mark"></span>
+          <span>收益拆解</span>
+        </div>
+        <div class="panel-body">
+          <div class="formula-line">基金收益 = 跟踪指数收益 + 跟踪误差</div>
+          <div v-for="item in decompositionItems" :key="item.key" class="decomposition-row">
+            <span>{{ item.label }}</span>
+            <strong :class="item.cls">{{ item.value }}</strong>
+          </div>
+        </div>
+      </div>
     </section>
 
     <div v-if="result && result.reliability !== 'model'" class="reliability-warning">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2 1 21h22L12 2zm1 15h-2v-2h2v2zm0-4h-2V8h2v5z"/></svg>
-      <span>{{ result.reliability_note || '预测结果可靠性较低，仅供参考' }}</span>
+      <span>{{ reliabilityText }}</span>
     </div>
 
     <div v-if="quality" class="reliability-warning quality">
@@ -127,18 +165,22 @@ const { isDark } = useTheme()
 
 const pred = computed(() => store.prediction)
 const result = computed(() => pred.value?.next_day_prediction ?? pred.value?.prediction ?? null)
+const weeklyResult = computed(() => pred.value?.weekly_prediction ?? null)
 const intradayResult = computed(() => pred.value?.intraday_prediction ?? null)
 const snapshot = computed(() => pred.value?.market_snapshot ?? null)
 const quality = computed(() => pred.value?.data_quality ?? null)
+const returnDecomposition = computed(() => result.value?.return_decomposition ?? null)
 
 const horizonResults = computed(() => {
   const items: Array<{ key: string; label: string; result: PredictionResult }> = []
   if (result.value) items.push({ key: 'next-day', label: '隔日', result: result.value })
+  if (weeklyResult.value) items.push({ key: 'weekly', label: '未来一周', result: weeklyResult.value })
   if (intradayResult.value) items.push({ key: 'intraday', label: '盘中5分钟', result: intradayResult.value })
   return items
 })
 
 const direction = computed(() => result.value?.direction ?? 'flat')
+const signalStatus = computed(() => result.value?.signal_status ?? 'low_confidence')
 
 const confidencePct = computed(() =>
   Math.round((result.value?.direction_confidence ?? 0) * 100)
@@ -150,10 +192,92 @@ const spread = computed(() => {
   return Math.round(Math.abs(range.high - range.low) * 100) / 100
 })
 
+const intervalMeta = computed(() => {
+  const interval = result.value?.prediction_interval
+  if (!interval) return `Spread ${spread.value}%`
+  const parts = []
+  if (interval.level != null) parts.push(`${Math.round(interval.level * 100)}%经验区间`)
+  if (interval.empirical_coverage != null) parts.push(`覆盖${Math.round(interval.empirical_coverage * 100)}%`)
+  return parts.length ? parts.join(' / ') : `Spread ${spread.value}%`
+})
+
+const reliabilityText = computed(() => {
+  const base = result.value?.reliability_note || '预测结果可靠性较低，仅供参考'
+  const gateText = actionabilityGateLabel(result.value)
+  return gateText ? `${base} ${gateText}` : base
+})
+
+const decompositionItems = computed(() => {
+  const d = returnDecomposition.value
+  return [
+    { key: 'index', label: '跟踪指数收益', ...formatComponentPct(d?.index_return_pct) },
+    { key: 'error', label: '跟踪误差', ...formatComponentPct(d?.tracking_error_pct) },
+    { key: 'direct', label: '直接回归输出', ...formatComponentPct(d?.direct_fund_return_pct) },
+  ]
+})
+
 function formatChangePct(val: number | undefined): { text: string; cls: string } {
   if (val == null) return { text: '--%', cls: 'flat' }
   const sign = val >= 0 ? '+' : ''
   return { text: `${sign}${val.toFixed(2)}%`, cls: val >= 0 ? 'up' : 'down' }
+}
+
+function formatSignedPct(val: number | null | undefined): string {
+  if (val == null) return '--%'
+  const sign = val >= 0 ? '+' : ''
+  return `${sign}${Number(val).toFixed(4)}%`
+}
+
+function formatComponentPct(val: number | null | undefined): { value: string; cls: string } {
+  if (val == null) return { value: '--%', cls: 'flat' }
+  const sign = val >= 0 ? '+' : ''
+  return { value: `${sign}${val.toFixed(4)}%`, cls: val > 0 ? 'up' : val < 0 ? 'down' : 'flat' }
+}
+
+function signalStatusLabel(status: PredictionResult['signal_status']): string {
+  if (status === 'actionable') return '可行动'
+  if (status === 'no_signal') return '无信号'
+  return '低置信'
+}
+
+function modelSourceLabel(source: PredictionResult['model_source']): string {
+  if (source === 'python_model_service') return 'Python模型'
+  return 'Go基线'
+}
+
+function modelMetaText(prediction: PredictionResult): string {
+  const parts = [prediction.model_candidate, prediction.feature_set].filter(Boolean)
+  return parts.join(' · ')
+}
+
+function formatModelTime(value: string): string {
+  const parsed = new Date(value)
+  if (Number.isNaN(parsed.getTime())) return value
+  return parsed.toLocaleString('zh-CN', {
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  })
+}
+
+function actionabilityGateLabel(prediction: PredictionResult | null): string {
+  const gate = prediction?.actionability_gate
+  if (!gate || gate.actionable) return ''
+  if (gate.reason === 'high_confidence_coverage_below_threshold') return '高置信覆盖率不足，暂不作为行动信号。'
+  if (gate.reason === 'high_confidence_accuracy_below_threshold') return '高置信准确率不足，暂不作为行动信号。'
+  if (gate.reason === 'calibration_ece_above_threshold') return '概率校准误差偏高，暂不作为行动信号。'
+  return '模型质量闸门未通过，暂不作为行动信号。'
+}
+
+function horizonGateLabel(prediction: PredictionResult): string {
+  const gate = prediction.actionability_gate
+  if (!gate || gate.actionable) return ''
+  if (gate.reason === 'high_confidence_coverage_below_threshold') return '高置信覆盖不足'
+  if (gate.reason === 'high_confidence_accuracy_below_threshold') return '高置信准确率不足'
+  if (gate.reason === 'calibration_ece_above_threshold') return '校准误差偏高'
+  return '质量闸门未通过'
 }
 
 const chartRef = ref<HTMLElement>()
@@ -287,6 +411,10 @@ useECharts(
   gap: var(--sp-3);
 }
 
+.horizon-head {
+  flex-wrap: wrap;
+}
+
 .horizon-label {
   color: var(--color-text-primary);
   font-size: var(--fs-sm);
@@ -311,6 +439,71 @@ useECharts(
   background: var(--color-warning-bg);
 }
 
+.source-pill {
+  flex-shrink: 0;
+  padding: 2px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-bold);
+  line-height: var(--lh-tight);
+  white-space: nowrap;
+}
+
+.source-pill.python_model_service {
+  color: var(--color-brand);
+  background: var(--color-brand-soft);
+  border-color: var(--color-brand-soft);
+}
+
+.source-pill.go_baseline {
+  color: var(--color-text-secondary);
+  background: var(--color-bg-hover);
+}
+
+.signal-status,
+.signal-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-bold);
+  line-height: var(--lh-tight);
+  white-space: nowrap;
+}
+
+.signal-status {
+  margin-top: var(--sp-2);
+  padding: 4px 8px;
+}
+
+.signal-pill {
+  flex-shrink: 0;
+  padding: 2px 8px;
+}
+
+.signal-status.actionable,
+.signal-pill.actionable {
+  color: var(--color-success);
+  background: var(--color-down-bg);
+  border-color: var(--color-up-border);
+}
+
+.signal-status.low_confidence,
+.signal-pill.low_confidence {
+  color: var(--color-warning);
+  background: var(--color-warning-bg);
+  border-color: var(--color-warning-border);
+}
+
+.signal-status.no_signal,
+.signal-pill.no_signal {
+  color: var(--color-flat);
+  background: var(--color-bg-hover);
+}
+
 .horizon-main {
   margin-top: var(--sp-3);
 }
@@ -329,6 +522,47 @@ useECharts(
   margin-top: var(--sp-2);
   color: var(--color-text-secondary);
   font-size: var(--fs-xs);
+}
+
+.horizon-gate {
+  margin-top: var(--sp-2);
+  color: var(--color-warning);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+}
+
+.horizon-model {
+  overflow: hidden;
+  margin-top: var(--sp-2);
+  color: var(--color-text-primary);
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-semibold);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.horizon-model.muted {
+  color: var(--color-text-secondary);
+  font-weight: var(--fw-medium);
+}
+
+.horizon-coverage {
+  margin-top: var(--sp-2);
+  padding-left: var(--sp-2);
+  border-left: 2px solid var(--color-border);
+  color: var(--color-text-secondary);
+  font-size: var(--fs-2xs);
+  line-height: var(--lh-snug);
+}
+
+.horizon-coverage.model_supported {
+  border-left-color: var(--color-brand);
+}
+
+.horizon-coverage.unsupported_fund,
+.horizon-coverage.model_unavailable {
+  border-left-color: var(--color-warning);
+  color: var(--color-warning);
 }
 
 .pct-value {
@@ -541,6 +775,37 @@ useECharts(
   color: var(--color-text-secondary);
   font-size: var(--fs-xs);
   text-align: right;
+}
+
+.decomposition-panel {
+  grid-column: 1 / -1;
+}
+
+.formula-line {
+  margin-bottom: var(--sp-2);
+  color: var(--color-text-secondary);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+}
+
+.decomposition-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--sp-3);
+  min-height: 36px;
+  border-bottom: 1px solid var(--color-border-light);
+  color: var(--color-text-secondary);
+  font-size: var(--fs-sm);
+}
+
+.decomposition-row:last-child {
+  border-bottom: 0;
+}
+
+.decomposition-row strong {
+  font-variant-numeric: tabular-nums;
+  font-size: var(--fs-sm);
 }
 
 .reliability-warning {

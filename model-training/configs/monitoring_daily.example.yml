@@ -1,0 +1,21 @@
+prediction_log_path: data/processed/prediction_log_daily.csv
+samples_path: data/processed/public_mvp_daily_weekly_index_fund_samples.csv
+feature_set: index_fund_daily_v1
+horizons:
+  - next_day
+  - next_week
+backfilled_log_output_path: data/processed/prediction_log_daily_backfilled.csv
+performance_report_output_path: reports/prediction_performance_daily_report.json
+drift_report_output_path: reports/daily_index_fund_drift_report.json
+summary_output_path: reports/monitoring_cycle_daily_summary.json
+flat_threshold_pct: 0.05
+high_confidence_threshold: 0.60
+round_trip_cost_pct: 0.05
+skip_missing_prediction_log: true
+drift:
+  reference_rows: 500
+  current_rows: 120
+  psi_bins: 10
+  psi_threshold: 0.20
+  ks_threshold: 0.20
+  missing_delta_threshold: 0.10

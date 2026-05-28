@@ -77,11 +77,11 @@
               <h3 class="fund-name">{{ item.fund_name }}</h3>
             </div>
             <span class="fund-type">{{ item.fund_type || '--' }}</span>
-            <span class="fund-nav">{{ item.estimated_nav != null ? item.estimated_nav.toFixed(4) : '--' }}</span>
+            <span class="fund-nav">{{ hasQuote(item) ? item.estimated_nav.toFixed(4) : '--' }}</span>
             <span :class="['fund-change', getChangeClass(item.change_pct)]">
-              <template v-if="item.change_pct > 0">▲</template>
-              <template v-else-if="item.change_pct < 0">▼</template>
-              {{ item.change_pct != null ? (item.change_pct > 0 ? '+' : '') + item.change_pct.toFixed(2) : '--' }}%
+              <template v-if="hasQuote(item) && item.change_pct > 0">▲</template>
+              <template v-else-if="hasQuote(item) && item.change_pct < 0">▼</template>
+              {{ hasQuote(item) ? (item.change_pct > 0 ? '+' : '') + item.change_pct.toFixed(2) + '%' : '--' }}
             </span>
             <button
               class="remove-btn"
@@ -108,6 +108,7 @@ import { ElMessage } from 'element-plus'
 import { useWatchlistStore } from '@/stores/watchlist'
 import WatchlistAdd from '@/components/watchlist/WatchlistAdd.vue'
 import WatchlistEmpty from '@/components/watchlist/WatchlistEmpty.vue'
+import type { WatchlistItem } from '@/types'
 
 const store = useWatchlistStore()
 const router = useRouter()
@@ -130,6 +131,10 @@ function getChangeClass(pct: number | null | undefined): string {
   if (pct > 0) return 'up'
   if (pct < 0) return 'down'
   return 'flat'
+}
+
+function hasQuote(item: WatchlistItem): boolean {
+  return Boolean(item.quote_source)
 }
 
 function goToPredict(fundCode: string) {

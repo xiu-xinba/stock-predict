@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>基金实时涨跌预测平台 — 前端设计文档</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --surface: #1e293b;
+    --surface2: #334155;
+    --border: #475569;
+    --text: #e2e8f0;
+    --text2: #94a3b8;
+    --accent: #38bdf8;
+    --accent2: #818cf8;
+    --green: #4ade80;
+    --yellow: #fbbf24;
+    --red: #f87171;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    padding: 2rem;
+  }
+  .container { max-width: 1200px; margin: 0 auto; }
+  h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 0.5rem;
+  }
+  .meta { color: var(--text2); font-size: 0.875rem; margin-bottom: 2rem; }
+  blockquote {
+    border-left: 3px solid var(--accent2);
+    background: rgba(129, 140, 248, 0.08);
+    padding: 0.75rem 1.25rem;
+    border-radius: 0 8px 8px 0;
+    margin: 0.75rem 0;
+    color: var(--text2);
+    font-size: 0.9375rem;
+  }
+  h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--accent);
+    margin: 2.5rem 0 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--surface2);
+  }
+  h3 { font-size: 1.15rem; font-weight: 600; color: var(--text); margin: 1.5rem 0 0.75rem; }
+  h4 { font-size: 1rem; font-weight: 600; color: var(--accent2); margin: 1.25rem 0 0.5rem; }
+  p, li { color: var(--text); font-size: 0.9375rem; }
+  ul, ol { padding-left: 1.5rem; margin: 0.5rem 0; }
+  li { margin: 0.25rem 0; }
+  hr {
+    border: none;
+    border-top: 1px solid var(--surface2);
+    margin: 2rem 0;
+  }
+
+  /* TOC */
+  .toc {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.25rem 1.5rem;
+    margin: 1rem 0 2rem;
+  }
+  .toc h3 { margin: 0 0 0.75rem; font-size: 1rem; }
+  .toc-list { list-style: none; padding: 0; }
+  .toc-list li { margin: 0.35rem 0; }
+  .toc-list a {
+    display: inline-block;
+    padding: 0.3rem 0.75rem;
+    background: var(--surface2);
+    border-radius: 6px;
+    color: var(--text);
+    text-decoration: none;
+    font-size: 0.8125rem;
+    transition: background 0.2s, color 0.2s;
+  }
+  .toc-list a:hover { background: var(--accent); color: var(--bg); }
+  .toc-group { margin-bottom: 0.75rem; }
+  .toc-group-title { font-size: 0.8rem; color: var(--accent); font-weight: 600; margin-bottom: 0.25rem; }
+  .toc-sub { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+
+  /* Tables */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0.75rem 0;
+    font-size: 0.875rem;
+    overflow-x: auto;
+    display: block;
+  }
+  th {
+    background: var(--surface2);
+    color: var(--accent);
+    font-weight: 600;
+    text-align: left;
+    padding: 0.625rem 0.75rem;
+    border-bottom: 2px solid var(--border);
+    white-space: nowrap;
+  }
+  td {
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid var(--surface2);
+    vertical-align: top;
+  }
+  tr:hover td { background: rgba(56, 189, 248, 0.05); }
+
+  /* Code */
+  code {
+    background: var(--surface2);
+    padding: 0.15rem 0.4rem;
+    border-radius: 4px;
+    font-size: 0.8125rem;
+    font-family: 'Cascadia Code', 'Fira Code', 'JetBrains Mono', monospace;
+    color: var(--accent);
+  }
+  pre {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    margin: 0.75rem 0;
+    overflow-x: auto;
+  }
+  pre code {
+    background: none;
+    padding: 0;
+    font-size: 0.8125rem;
+    color: var(--text);
+    line-height: 1.6;
+  }
+
+  /* Status badges */
+  .badge {
+    display: inline-block;
+    padding: 0.15rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+  .badge-green { background: rgba(74, 222, 128, 0.15); color: var(--green); }
+  .badge-yellow { background: rgba(251, 191, 36, 0.15); color: var(--yellow); }
+  .badge-red { background: rgba(248, 113, 113, 0.15); color: var(--red); }
+  .badge-blue { background: rgba(56, 189, 248, 0.15); color: var(--accent); }
+
+  /* Highlight box */
+  .highlight-box {
+    background: rgba(56, 189, 248, 0.08);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 8px 8px 0;
+    padding: 1rem 1.25rem;
+    margin: 0.75rem 0;
+    font-size: 0.9375rem;
+  }
+
+  /* Flow / architecture */
+  .flow-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.5rem;
+    margin: 0.75rem 0;
+  }
+  .flow-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin: 0.4rem 0;
+  }
+  .flow-node {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+  }
+  .flow-arrow { color: var(--accent); font-size: 1.25rem; }
+
+  /* Section anchor offset */
+  [id] { scroll-margin-top: 2rem; }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    body { padding: 1rem; }
+    h1 { font-size: 1.5rem; }
+    h2 { font-size: 1.25rem; }
+    .flow-row { flex-direction: column; align-items: flex-start; }
+    .flow-arrow { transform: rotate(90deg); }
+    table { font-size: 0.8rem; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>基金实时涨跌预测平台 — 前端设计文档</h1>
+<p class="meta">版本：2.0 | 更新日期：2026-05-19 | 状态：前端阶段1已完成</p>
+
+<nav class="toc">
+  <h3>📋 目录导航</h3>
+  <ul class="toc-list">
+    <li class="toc-group">
+      <div class="toc-group-title">概览</div>
+      <div class="toc-sub">
+        <a href="#changelog">变更历史</a>
+      </div>
+    </li>
+    <li class="toc-group">
+      <div class="toc-group-title">核心设计</div>
+      <div class="toc-sub">
+        <a href="#sec1">1. 前端架构</a>
+        <a href="#sec2">2. 设计系统</a>
+        <a href="#sec3">3. 导航系统</a>
+        <a href="#sec4">4. 页面模块</a>
+        <a href="#sec5">5. Composables 模式</a>
+        <a href="#sec6">6. API 层设计</a>
+        <a href="#sec7">7. Store 层设计</a>
+        <a href="#sec8">8. 性能优化</a>
+        <a href="#sec9">9. 审查追踪</a>
+        <a href="#sec10">10. 前端 API 端点清单</a>
+      </div>
+    </li>
+  </ul>
+</nav>
+
+<blockquote>
+  版本：2.0 | 更新日期：2026-05-19 | 状态：前端阶段1已完成
+</blockquote>
+
+<h2 id="changelog">变更历史</h2>
+<table>
+  <thead>
+    <tr><th>版本</th><th>日期</th><th>变更内容</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>v1.0</td><td>2026-05-16</td><td>初始前端设计规范</td></tr>
+    <tr><td>v1.1</td><td>2026-05-17</td><td>三模块架构、侧边栏导航、暗色模式</td></tr>
+    <tr><td>v1.2</td><td>2026-05-18</td><td>macOS Dock导航、品牌色升级、ECharts按需加载</td></tr>
+    <tr><td>v1.3</td><td>2026-05-19</td><td>CEO审查优化落地：API统一解包、CancelError、composables抽取</td></tr>
+    <tr><td>v2.0</td><td>2026-05-19</td><td>文档整合：合并设计规范、CEO审查报告为统一前端设计文档</td></tr>
+  </tbody>
+</table>
+
+<hr>
+
+<h2 id="sec1">1. 前端架构</h2>
+
+<h3>技术栈</h3>
+<table>
+  <thead>
+    <tr><th>层</th><th>技术</th><th>说明</th><th>状态</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>框架</td><td>Vue 3 + Vite 8 + TypeScript</td><td>Composition API + SFC</td><td><span class="badge badge-green">✅ 已实施</span></td></tr>
+    <tr><td>图表</td><td>ECharts 6（按需加载）</td><td>统一注册(utils/echarts.ts)，仅导入 BarChart/LineChart + 必要组件</td><td><span class="badge badge-green">✅ 已优化</span></td></tr>
+    <tr><td>状态管理</td><td>Pinia</td><td>Vue 3 官方推荐</td><td><span class="badge badge-green">✅ 已实施</span></td></tr>
+    <tr><td>UI 组件库</td><td>Element Plus</td><td>unplugin 按需导入，专业组件库，适合数据密集场景</td><td><span class="badge badge-green">✅ 已优化</span></td></tr>
+    <tr><td>导航系统</td><td>macOS 风格底部 Dock + Pill 指示器</td><td>悬浮自动隐藏 + 持久化指示器</td><td><span class="badge badge-green">✅ 已实施</span></td></tr>
+    <tr><td>HTTP 客户端</td><td>Axios + CancelError</td><td>AbortController 自动取消重复 GET + CancelError 统一处理</td><td><span class="badge badge-green">✅ 已优化</span></td></tr>
+    <tr><td>Composables</td><td>useECharts + useFundSearch + useTheme</td><td>可复用组合式函数，消除组件间重复逻辑</td><td><span class="badge badge-green">✅ 已实施</span></td></tr>
+    <tr><td>构建优化</td><td>Vite manualChunks 代码分割</td><td>vue-vendor / element-plus / echarts 独立 chunk</td><td><span class="badge badge-green">✅ 已优化</span></td></tr>
+  </tbody>
+</table>
+
+<h3>架构图</h3>
+<div class="flow-box">
+  <div class="flow-row">
+    <span class="flow-node">📱 用户界面</span>
+    <span class="flow-arrow">→</span>
+    <span class="flow-node">🧩 Vue 3 SFC 组件</span>
+    <span class="flow-arrow">→</span>
+    <span class="flow-node">🔄 Composables</span>
+    <span class="flow-arrow">→</span>
+    <span class="flow-node">🏪 Pinia Stores</span>
+    <span class="flow-arrow">→</span>
+    <span class="flow-node">🌐 Axios API 层</span>
+    <span class="flow-arrow">→</span>
+    <span class="flow-node">⚙️ 后端 API</span>
+  </div>
+  <div class="flow-row" style="margin-top: 0.75rem;">
+    <span class="flow-node">📊 ECharts 6</span>
+    <span class="flow-arrow">←</span>
+    <span class="flow-node">useECharts</span>
+    <span class="flow-arrow">←</span>
+    <span class="flow-node">🎨 Element Plus</span>
+    <span class="flow-arrow">←</span>
+    <span class="flow-node">🌙 useTheme</span>
+  </div>
+</div>
+
+<h3>文件结构</h3>
+<pre><code>src/
+├── api/                    # API 请求层
+│   ├── client.ts           # Axios 实例 + 拦截器 + CancelError
+│   ├── fund.ts             # 基金相关 API
+│   └── prediction.ts       # 预测相关 API
+├── components/             # 通用组件
+│   ├── DockNav.vue         # macOS 风格底部导航
+│   └── FundSearch.vue      # 基金搜索组件
+├── composables/            # 组合式函数
+│   ├── useECharts.ts       # ECharts 生命周期管理
+│   ├── useFundSearch.ts    # 基金搜索逻辑
+│   └── useTheme.ts         # 主题切换
+├── stores/                 # Pinia 状态管理
+│   ├── fund.ts             # 基金数据 Store
+│   └── prediction.ts       # 预测数据 Store
+├── views/                  # 页面视图
+│   ├── DashboardView.vue   # 仪表盘
+│   ├── PredictionView.vue  # 预测分析
+│   └── SettingsView.vue    # 设置
+├── utils/
+│   └── echarts.ts          # ECharts 按需注册
+├── App.vue
+└── main.ts</code></pre>
+
+<h2 id="sec2">2. 设计系统</h2>
+
+<h3>色彩体系</h3>
+<table>
+  <thead>
+    <tr><th>变量</th><th>色值</th><th>用途</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>--bg</code></td><td style="color:#0f172a">⬛ #0f172a</td><td>页面背景</td></tr>
+    <tr><td><code>--surface</code></td><td style="color:#1e293b">⬛ #1e293b</td><td>卡片/面板背景</td></tr>
+    <tr><td><code>--surface2</code></td><td style="color:#334155">⬛ #334155</td><td>次级表面/表头</td></tr>
+    <tr><td><code>--border</code></td><td style="color:#475569">⬛ #475569</td><td>边框/分隔线</td></tr>
+    <tr><td><code>--text</code></td><td style="color:#e2e8f0">⬜ #e2e8f0</td><td>主文本</td></tr>
+    <tr><td><code>--text2</code></td><td style="color:#94a3b8">⬜ #94a3b8</td><td>次级文本</td></tr>
+    <tr><td><code>--accent</code></td><td style="color:#38bdf8">🔵 #38bdf8</td><td>主强调色</td></tr>
+    <tr><td><code>--accent2</code></td><td style="color:#818cf8">🟣 #818cf8</td><td>次强调色</td></tr>
+    <tr><td><code>--green</code></td><td style="color:#4ade80">🟢 #4ade80</td><td>涨/成功</td></tr>
+    <tr><td><code>--yellow</code></td><td style="color:#fbbf24">🟡 #fbbf24</td><td>警告/中性</td></tr>
+    <tr><td><code>--red</code></td><td style="color:#f87171">🔴 #f87171</td><td>跌/错误</td></tr>
+  </tbody>
+</table>
+
+<h3>排版规范</h3>
+<table>
+  <thead>
+    <tr><th>元素</th><th>字号</th><th>字重</th><th>行高</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>页面标题 h1</td><td>2rem</td><td>700</td><td>1.3</td></tr>
+    <tr><td>章节标题 h2</td><td>1.5rem</td><td>600</td><td>1.4</td></tr>
+    <tr><td>子标题 h3</td><td>1.15rem</td><td>600</td><td>1.5</td></tr>
+    <tr><td>正文</td><td>0.9375rem</td><td>400</td><td>1.7</td></tr>
+    <tr><td>代码</td><td>0.8125rem</td><td>400</td><td>1.6</td></tr>
+    <tr><td>表格</td><td>0.875rem</td><td>400</td><td>1.5</td></tr>
+  </tbody>
+</table>
+
+<h3>间距系统</h3>
+<table>
+  <thead>
+    <tr><th>场景</th><th>间距</th><th>说明</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>页面边距</td><td>2rem</td><td>body padding</td></tr>
+    <tr><td>章节间距</td><td>2.5rem 0</td><td>h2 上边距</td></tr>
+    <tr><td>卡片内边距</td><td>1.5rem</td><td>flow-box / surface</td></tr>
+    <tr><td>元素间距</td><td>0.75rem</td><td>通用 margin</td></tr>
+    <tr><td>列表项间距</td><td>0.25rem</td><td>li margin</td></tr>
+  </tbody>
+</table>
+
+<h2 id="sec3">3. 导航系统</h2>
+
+<h3>macOS 风格 Dock 导航</h3>
+<div class="highlight-box">
+  采用 macOS 底部 Dock 风格导航，悬浮自动隐藏 + Pill 指示器标记当前页面，提供沉浸式数据浏览体验。
+</div>
+
+<h4>设计原则</h4>
+<ul>
+  <li><strong>沉浸式体验</strong>：导航栏悬浮于内容之上，不占用布局空间</li>
+  <li><strong>视觉反馈</strong>：Pill 指示器持久化显示当前位置，鼠标悬停放大效果</li>
+  <li><strong>自动隐藏</strong>：鼠标离开底部区域后自动隐藏，最大化数据展示区域</li>
+  <li><strong>平滑动画</strong>：所有状态切换均使用 CSS transition，过渡自然</li>
+</ul>
+
+<h4>导航项</h4>
+<table>
+  <thead>
+    <tr><th>图标</th><th>名称</th><th>路由</th><th>说明</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>📊</td><td>仪表盘</td><td><code>/</code></td><td>基金总览、市场概况</td></tr>
+    <tr><td>🔮</td><td>预测分析</td><td><code>/prediction</code></td><td>涨跌预测、模型结果</td></tr>
+    <tr><td>⚙️</td><td>设置</td><td><code>/settings</code></td><td>偏好设置、主题切换</td></tr>
+  </tbody>
+</table>
+
+<h4>核心实现</h4>
+<pre><code>&lt;template&gt;
+  &lt;div class="dock-nav" :class="{ hidden: !visible }"&gt;
+    &lt;div class="dock-container"&gt;
+      &lt;router-link
+        v-for="item in navItems"
+        :key="item.path"
+        :to="item.path"
+        class="dock-item"
+        :class="{ active: isActive(item.path) }"
+      &gt;
+        &lt;span class="dock-icon"&gt;{{ item.icon }}&lt;/span&gt;
+        &lt;span class="dock-label"&gt;{{ item.label }}&lt;/span&gt;
+        &lt;span class="dock-pill" v-if="isActive(item.path)" /&gt;
+      &lt;/router-link&gt;
+    &lt;/div&gt;
+  &lt;/div&gt;
+&lt;/template&gt;</code></pre>
+
+<h2 id="sec4">4. 页面模块</h2>
+
+<h3>4.1 仪表盘 (DashboardView)</h3>
+<table>
+  <thead>
+    <tr><th>区域</th><th>组件</th><th>数据源</th><th>说明</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>顶部搜索</td><td>FundSearch</td><td>useFundSearch</td><td>基金代码/名称实时搜索</td></tr>
+    <tr><td>市场概况</td><td>MarketOverview</td><td>fundStore</td><td>大盘指数、涨跌统计</td></tr>
+    <tr><td>基金列表</td><td>FundList</td><td>fundStore</td><td>关注基金列表、实时涨跌</td></tr>
+    <tr><td>走势图表</td><td>TrendChart</td><td>useECharts</td><td>基金净值走势折线图</td></tr>
+  </tbody>
+</table>
+
+<h3>4.2 预测分析 (PredictionView)</h3>
+<table>
+  <thead>
+    <tr><th>区域</th><th>组件</th><th>数据源</th><th>说明</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>基金选择</td><td>FundSelector</td><td>useFundSearch</td><td>选择预测目标基金</td></tr>
+    <tr><td>预测结果</td><td>PredictionResult</td><td>predictionStore</td><td>涨跌方向、置信度</td></tr>
+    <tr><td>特征重要性</td><td>FeatureImportance</td><td>useECharts</td><td>模型特征权重柱状图</td></tr>
+    <tr><td>历史回测</td><td>BacktestChart</td><td>useECharts</td><td>预测准确率趋势</td></tr>
+  </tbody>
+</table>
+
+<h3>4.3 设置 (SettingsView)</h3>
+<table>
+  <thead>
+    <tr><th>区域</th><th>组件</th><th>数据源</th><th>说明</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>主题切换</td><td>ThemeToggle</td><td>useTheme</td><td>亮色/暗色模式</td></tr>
+    <tr><td>数据刷新</td><td>RefreshSettings</td><td>fundStore</td><td>自动刷新间隔</td></tr>
+    <tr><td>通知设置</td><td>NotificationSettings</td><td>—</td><td>涨跌提醒阈值</td></tr>
+  </tbody>
+</table>
+
+<h2 id="sec5">5. Composables 模式</h2>
+
+<h3>5.1 useECharts</h3>
+<p>统一管理 ECharts 实例的生命周期，自动处理 resize 和销毁。</p>
+<pre><code>// composables/useECharts.ts
+export function useECharts(chartRef: Ref&lt;HTMLElement | null&gt;) {
+  let chartInstance: ECharts | null = null
+
+  const initChart = () =&gt; {
+    if (!chartRef.value) return
+    chartInstance = echarts.init(chartRef.value, 'dark')
+  }
+
+  const setOption = (option: EChartsOption) =&gt; {
+    chartInstance?.setOption(option, { notMerge: true })
+  }
+
+  const resize = () =&gt; chartInstance?.resize()
+
+  onMounted(() =&gt; {
+    initChart()
+    window.addEventListener('resize', resize)
+  })
+
+  onUnmounted(() =&gt; {
+    window.removeEventListener('resize', resize)
+    chartInstance?.dispose()
+    chartInstance = null
+  })
+
+  return { setOption, resize }
+}</code></pre>
+
+<h3>5.2 useFundSearch</h3>
+<p>封装基金搜索逻辑，支持防抖和结果缓存。</p>
+<pre><code>// composables/useFundSearch.ts
+export function useFundSearch() {
+  const query = ref('')
+  const results = ref&lt;Fund[]&gt;([])
+  const loading = ref(false)
+
+  const search = useDebounceFn(async () =&gt; {
+    if (!query.value.trim()) {
+      results.value = []
+      return
+    }
+    loading.value = true
+    try {
+      results.value = await fundApi.search(query.value)
+    } finally {
+      loading.value = false
+    }
+  }, 300)
+
+  return { query, results, loading, search }
+}</code></pre>
+
+<h3>5.3 useTheme</h3>
+<p>管理主题切换，持久化用户偏好。</p>
+<pre><code>// composables/useTheme.ts
+export function useTheme() {
+  const isDark = useLocalStorage('theme-dark', true)
+
+  const toggle = () =&gt; {
+    isDark.value = !isDark.value
+    document.documentElement.classList.toggle('dark', isDark.value)
+  }
+
+  onMounted(() =&gt; {
+    document.documentElement.classList.toggle('dark', isDark.value)
+  })
+
+  return { isDark, toggle }
+}</code></pre>
+
+<h2 id="sec6">6. API 层设计</h2>
+
+<h3>6.1 Axios 实例与拦截器</h3>
+<pre><code>// api/client.ts
+const client = axios.create({
+  baseURL: import.meta.env.VITE_API_BASE,
+  timeout: 10000,
+})
+
+// 请求拦截器：自动取消重复 GET
+const pendingRequests = new Map&lt;string, AbortController&gt;()
+
+client.interceptors.request.use((config) =&gt; {
+  if (config.method === 'get') {
+    const key = config.url + JSON.stringify(config.params)
+    const existing = pendingRequests.get(key)
+    if (existing) existing.abort()
+    const controller = new AbortController()
+    config.signal = controller.signal
+    pendingRequests.set(key, controller)
+  }
+  return config
+})
+
+// 响应拦截器：统一解包 + CancelError 处理
+client.interceptors.response.use(
+  (res) =&gt; {
+    const key = res.config.url! + JSON.stringify(res.config.params)
+    pendingRequests.delete(key)
+    return res.data  // 统一解包
+  },
+  (err) =&gt; {
+    if (axios.isCancel(err)) {
+      return Promise.reject(new CancelError('请求已取消'))
+    }
+    return Promise.reject(err)
+  }
+)</code></pre>
+
+<h3>6.2 CancelError 定义</h3>
+<pre><code>// api/client.ts
+export class CancelError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'CancelError'
+  }
+}</code></pre>
+
+<h3>6.3 API 模块</h3>
+<table>
+  <thead>
+    <tr><th>模块</th><th>文件</th><th>方法</th><th>说明</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>基金</td><td><code>api/fund.ts</code></td><td><code>search()</code></td><td>搜索基金</td></tr>
+    <tr><td>基金</td><td><code>api/fund.ts</code></td><td><code>getDetail()</code></td><td>获取基金详情</td></tr>
+    <tr><td>基金</td><td><code>api/fund.ts</code></td><td><code>getTrend()</code></td><td>获取净值走势</td></tr>
+    <tr><td>预测</td><td><code>api/prediction.ts</code></td><td><code>predict()</code></td><td>获取预测结果</td></tr>
+    <tr><td>预测</td><td><code>api/prediction.ts</code></td><td><code>getFeatures()</code></td><td>获取特征重要性</td></tr>
+    <tr><td>预测</td><td><code>api/prediction.ts</code></td><td><code>getBacktest()</code></td><td>获取历史回测</td></tr>
+  </tbody>
+</table>
+
+<h2 id="sec7">7. Store 层设计</h2>
+
+<h3>7.1 FundStore</h3>
+<pre><code>// stores/fund.ts
+export const useFundStore = defineStore('fund', () =&gt; {
+  const watchlist = ref&lt;Fund[]&gt;([])
+  const currentFund = ref&lt;FundDetail | null&gt;(null)
+  const trendData = ref&lt;TrendPoint[]&gt;([])
+
+  const fetchDetail = async (code: string) =&gt; {
+    currentFund.value = await fundApi.getDetail(code)
+  }
+
+  const fetchTrend = async (code: string) =&gt; {
+    trendData.value = await fundApi.getTrend(code)
+  }
+
+  return { watchlist, currentFund, trendData, fetchDetail, fetchTrend }
+})</code></pre>
+
+<h3>7.2 PredictionStore</h3>
+<pre><code>// stores/prediction.ts
+export const usePredictionStore = defineStore('prediction', () =&gt; {
+  const prediction = ref&lt;PredictionResult | null&gt;(null)
+  const features = ref&lt;FeatureImportance[]&gt;([])
+  const backtestData = ref&lt;BacktestPoint[]&gt;([])
+
+  const fetchPrediction = async (code: string) =&gt; {
+    prediction.value = await predictionApi.predict(code)
+  }
+
+  const fetchFeatures = async (code: string) =&gt; {
+    features.value = await predictionApi.getFeatures(code)
+  }
+
+  const fetchBacktest = async (code: string) =&gt; {
+    backtestData.value = await predictionApi.getBacktest(code)
+  }
+
+  return { prediction, features, backtestData, fetchPrediction, fetchFeatures, fetchBacktest }
+})</code></pre>
+
+<h2 id="sec8">8. 性能优化</h2>
+
+<h3>8.1 构建优化</h3>
+<table>
+  <thead>
+    <tr><th>策略</th><th>配置</th><th>效果</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>代码分割</td><td>Vite <code>manualChunks</code></td><td>vue-vendor / element-plus / echarts 独立 chunk</td></tr>
+    <tr><td>按需导入</td><td>unplugin-vue-components</td><td>Element Plus 组件自动按需导入</td></tr>
+    <tr><td>ECharts 按需</td><td>utils/echarts.ts</td><td>仅注册 BarChart/LineChart + 必要组件</td></tr>
+    <tr><td>路由懒加载</td><td><code>() =&gt; import()</code></td><td>页面级组件按需加载</td></tr>
+  </tbody>
+</table>
+
+<h3>8.2 运行时优化</h3>
+<table>
+  <thead>
+    <tr><th>策略</th><th>实现</th><th>效果</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>请求去重</td><td>AbortController 自动取消重复 GET</td><td>避免重复请求浪费带宽</td></tr>
+    <tr><td>搜索防抖</td><td>useDebounceFn(300ms)</td><td>减少无效搜索请求</td></tr>
+    <tr><td>图表 resize</td><td>useECharts 自动管理</td><td>防止内存泄漏</td></tr>
+    <tr><td>组件销毁</td><td>onUnmounted 清理</td><td>移除事件监听、释放资源</td></tr>
+  </tbody>
+</table>
+
+<h3>8.3 Vite 代码分割配置</h3>
+<pre><code>// vite.config.ts
+export default defineConfig({
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vue-vendor': ['vue', 'vue-router', 'pinia'],
+          'element-plus': ['element-plus'],
+          'echarts': ['echarts'],
+        },
+      },
+    },
+  },
+})</code></pre>
+
+<h2 id="sec9">9. 审查追踪</h2>
+
+<h3>CEO 审查优化落地</h3>
+<table>
+  <thead>
+    <tr><th>审查项</th><th>问题</th><th>优化方案</th><th>状态</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>API 统一解包</td><td>组件中重复 <code>res.data.data</code></td><td>响应拦截器统一 <code>return res.data</code></td><td><span class="badge badge-green">✅ 已落地</span></td></tr>
+    <tr><td>CancelError</td><td>取消请求无专门错误类型</td><td>自定义 <code>CancelError</code> 类，统一处理</td><td><span class="badge badge-green">✅ 已落地</span></td></tr>
+    <tr><td>Composables 抽取</td><td>组件间重复逻辑</td><td>抽取 useECharts / useFundSearch / useTheme</td><td><span class="badge badge-green">✅ 已落地</span></td></tr>
+    <tr><td>ECharts 按需加载</td><td>全量导入体积过大</td><td>utils/echarts.ts 统一按需注册</td><td><span class="badge badge-green">✅ 已落地</span></td></tr>
+    <tr><td>Element Plus 优化</td><td>全量导入</td><td>unplugin 按需导入</td><td><span class="badge badge-green">✅ 已落地</span></td></tr>
+  </tbody>
+</table>
+
+<h3>设计审查</h3>
+<table>
+  <thead>
+    <tr><th>审查项</th><th>评分</th><th>说明</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>视觉层次</td><td>8/10</td><td>深色主题层次分明，渐变标题醒目</td></tr>
+    <tr><td>交互反馈</td><td>7/10</td><td>Dock 导航交互流畅，可增加微动画</td></tr>
+    <tr><td>信息密度</td><td>9/10</td><td>数据密集场景布局合理</td></tr>
+    <tr><td>响应式</td><td>7/10</td><td>基础响应式已实现，移动端可优化</td></tr>
+    <tr><td>一致性</td><td>8/10</td><td>设计系统统一，CSS 变量管理规范</td></tr>
+  </tbody>
+</table>
+
+<h2 id="sec10">10. 前端 API 端点清单</h2>
+
+<h3>基金相关</h3>
+<table>
+  <thead>
+    <tr><th>方法</th><th>端点</th><th>参数</th><th>返回</th><th>说明</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>GET</td><td><code>/api/fund/search</code></td><td><code>query: string</code></td><td><code>Fund[]</code></td><td>搜索基金</td></tr>
+    <tr><td>GET</td><td><code>/api/fund/:code</code></td><td><code>code: string</code></td><td><code>FundDetail</code></td><td>基金详情</td></tr>
+    <tr><td>GET</td><td><code>/api/fund/:code/trend</code></td><td><code>code, period?</code></td><td><code>TrendPoint[]</code></td><td>净值走势</td></tr>
+    <tr><td>GET</td><td><code>/api/fund/market</code></td><td>—</td><td><code>MarketOverview</code></td><td>市场概况</td></tr>
+  </tbody>
+</table>
+
+<h3>预测相关</h3>
+<table>
+  <thead>
+    <tr><th>方法</th><th>端点</th><th>参数</th><th>返回</th><th>说明</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>POST</td><td><code>/api/prediction/predict</code></td><td><code>{ code: string }</code></td><td><code>PredictionResult</code></td><td>执行预测</td></tr>
+    <tr><td>GET</td><td><code>/api/prediction/:code/features</code></td><td><code>code: string</code></td><td><code>FeatureImportance[]</code></td><td>特征重要性</td></tr>
+    <tr><td>GET</td><td><code>/api/prediction/:code/backtest</code></td><td><code>code: string</code></td><td><code>BacktestPoint[]</code></td><td>历史回测</td></tr>
+  </tbody>
+</table>
+
+<h3>类型定义</h3>
+<pre><code>// 基金类型
+interface Fund {
+  code: string
+  name: string
+  type: string
+  nav: number
+  changeRate: number
+}
+
+interface FundDetail extends Fund {
+  manager: string
+  size: number
+  established: string
+  holdings: Holding[]
+}
+
+// 预测类型
+interface PredictionResult {
+  code: string
+  direction: 'up' | 'down' | 'flat'
+  confidence: number
+  predictedChange: number
+  timestamp: string
+}
+
+interface FeatureImportance {
+  feature: string
+  importance: number
+}
+
+interface BacktestPoint {
+  date: string
+  predicted: number
+  actual: number
+}</code></pre>
+
+</div>
+</body>
+</html>

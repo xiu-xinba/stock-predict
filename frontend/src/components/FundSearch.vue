@@ -54,6 +54,25 @@
                 <span class="dropdown-type">{{ item.fund_type }}</span>
               </div>
             </div>
+            <div v-if="totalPages > 1" class="dropdown-pagination">
+              <button
+                type="button"
+                class="page-btn"
+                :disabled="store.searchPage <= 1 || store.loading"
+                @mousedown.prevent="changeSearchPage(store.searchPage - 1)"
+              >
+                上一页
+              </button>
+              <span class="page-info">{{ store.searchPage }} / {{ totalPages }}</span>
+              <button
+                type="button"
+                class="page-btn"
+                :disabled="store.searchPage >= totalPages || store.loading"
+                @mousedown.prevent="changeSearchPage(store.searchPage + 1)"
+              >
+                下一页
+              </button>
+            </div>
           </div>
         </transition>
       </div>
@@ -108,7 +127,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import { usePredictionStore } from '@/stores/prediction'
 import { useFundSearch } from '@/composables/useFundSearch'
@@ -116,13 +135,7 @@ import type { FundItem } from '@/types'
 
 const store = usePredictionStore()
 const { keyword, suggestions, showDropdown, onInput, onBlur, onFocus, selectItem, clearSuggestions } = useFundSearch(
-  () => ({
-    type: activeFilters.type || undefined,
-    company: activeFilters.company || undefined,
-    risk_level: activeFilters.risk_level || undefined,
-    sort_by: activeFilters.sort_by,
-    sort_order: activeFilters.sort_order,
-  })
+  () => currentFilters()
 )
 
 const showFilterPanel = ref(false)
@@ -143,6 +156,7 @@ interface HistoryItem {
 }
 
 const searchHistory = ref<HistoryItem[]>([])
+const totalPages = computed(() => Math.max(1, Math.ceil(store.searchTotal / store.searchSize)))
 
 function isHistoryItem(value: unknown): value is HistoryItem {
   if (!value || typeof value !== 'object') return false
@@ -191,28 +205,47 @@ function toggleFilterPanel() {
   showFilterPanel.value = !showFilterPanel.value
 }
 
-function onFilterChange() {
-  const codeMatch = keyword.value.match(/\((\d{6})\)/)
-  const searchKey = codeMatch ? codeMatch[1] : keyword.value.trim()
-  if (searchKey) {
-    store.search(searchKey, 1, {
-      type: activeFilters.type || undefined,
-      company: activeFilters.company || undefined,
-      risk_level: activeFilters.risk_level || undefined,
-      sort_by: activeFilters.sort_by,
-      sort_order: activeFilters.sort_order,
-    })
+function currentFilters() {
+  return {
+    type: activeFilters.type || undefined,
+    company: activeFilters.company || undefined,
+    risk_level: activeFilters.risk_level || undefined,
+    sort_by: activeFilters.sort_by,
+    sort_order: activeFilters.sort_order,
   }
 }
 
-function resetFilters() {
+async function onFilterChange() {
+  const codeMatch = keyword.value.match(/\((\d{6})\)/)
+  const searchKey = codeMatch ? codeMatch[1] : keyword.value.trim()
+  if (searchKey) {
+    await store.search(searchKey, 1, currentFilters())
+    suggestions.value = store.searchResults
+    showDropdown.value = true
+  }
+}
+
+async function changeSearchPage(page: number) {
+  const nextPage = Math.min(Math.max(1, page), totalPages.value)
+  if (nextPage === store.searchPage || store.loading) return
+  const codeMatch = keyword.value.match(/\((\d{6})\)/)
+  const searchKey = codeMatch ? codeMatch[1] : keyword.value.trim()
+  if (!searchKey) return
+  await store.search(searchKey, nextPage, currentFilters())
+  suggestions.value = store.searchResults
+  showDropdown.value = true
+}
+
+async function resetFilters() {
   activeFilters.type = ''
   activeFilters.company = ''
   activeFilters.risk_level = ''
   activeFilters.sort_by = 'relevance'
   activeFilters.sort_order = 'desc'
   if (keyword.value.trim()) {
-    store.search(keyword.value.trim())
+    await store.search(keyword.value.trim())
+    suggestions.value = store.searchResults
+    showDropdown.value = true
   }
 }
 
@@ -492,6 +525,45 @@ function doPredict() {
   flex-shrink: 0;
   color: var(--color-text-secondary);
   font-size: var(--fs-xs);
+}
+
+.dropdown-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  border-top: 1px solid var(--color-border-light);
+  background: var(--color-bg-page);
+}
+
+.page-btn {
+  min-width: 64px;
+  height: 28px;
+  padding: 0 var(--sp-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-card);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  font-size: var(--fs-xs);
+  transition: border-color var(--transition-fast), color var(--transition-fast), opacity var(--transition-fast);
+}
+
+.page-btn:hover:not(:disabled) {
+  border-color: var(--color-brand);
+  color: var(--color-brand);
+}
+
+.page-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.page-info {
+  color: var(--color-text-secondary);
+  font-size: var(--fs-xs);
+  white-space: nowrap;
 }
 
 .dropdown-enter-active,

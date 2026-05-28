@@ -26,8 +26,58 @@ export interface ChangeRange {
   high: number
 }
 
+/** 经验残差预测区间元数据 */
+export interface PredictionInterval {
+  low: number
+  high: number
+  method?: string
+  level?: number | null
+  empirical_coverage?: number | null
+}
+
+export interface ReturnDecomposition {
+  enabled: boolean
+  method: string
+  formula: string
+  index_return_pct: number | null
+  tracking_error_pct: number | null
+  direct_fund_return_pct: number | null
+  index_return_target?: string
+  tracking_error_target?: string
+}
+
+export interface ActionabilityGate {
+  actionable: boolean
+  reason?: string
+  min_high_confidence_accuracy?: number | null
+  min_high_confidence_coverage?: number | null
+  high_confidence_accuracy?: number | null
+  high_confidence_coverage?: number | null
+  max_calibration_ece?: number | null
+  calibration_ece?: number | null
+}
+
 /** 预测可靠性级别 */
-export type PredictionReliability = 'model' | 'model_no_features' | 'baseline' | 'baseline_no_realtime' | 'mock'
+export type PredictionReliability =
+  | 'model'
+  | 'model_service'
+  | 'model_mvp'
+  | 'weekly_model_mvp'
+  | 'intraday_model_mvp'
+  | 'model_no_features'
+  | 'baseline'
+  | 'baseline_no_realtime'
+  | 'mock'
+
+export type PredictionSignalStatus = 'actionable' | 'low_confidence' | 'no_signal'
+
+export type PredictionModelSource = 'python_model_service' | 'go_baseline'
+
+export type PredictionModelCoverageStatus =
+  | 'model_supported'
+  | 'baseline_only'
+  | 'unsupported_fund'
+  | 'model_unavailable'
 
 /** 预测结果 — 核心业务数据 */
 export interface PredictionResult {
@@ -35,6 +85,18 @@ export interface PredictionResult {
   horizon: string
   /** 预测窗口文案 */
   target_window: string
+  /** 预测来源：Python 模型服务或 Go 基线 */
+  model_source: PredictionModelSource
+  /** 模型候选器名称，如 extra_trees */
+  model_candidate?: string
+  /** 特征集标识 */
+  feature_set?: string
+  /** 模型输入样本时间 */
+  model_asof_time?: string
+  /** 模型覆盖状态 */
+  model_coverage_status: PredictionModelCoverageStatus
+  /** 模型覆盖状态说明 */
+  model_coverage_note?: string
   /** 预测方向：'up' 上涨 / 'down' 下跌 / 'flat' 平盘 */
   direction: 'up' | 'down' | 'flat'
   /** 方向置信度 0-1，越接近 1 表示模型越确信 */
@@ -43,6 +105,12 @@ export interface PredictionResult {
   predicted_change_pct: number
   /** 涨跌幅预测区间 */
   change_range: ChangeRange
+  /** 预测区间校准信息 */
+  prediction_interval?: PredictionInterval | null
+  /** 指数基金收益拆解 */
+  return_decomposition?: ReturnDecomposition | null
+  /** 可行动信号质量闸门 */
+  actionability_gate?: ActionabilityGate | null
   /** 关键预测因子列表（按重要性降序，最多 5 个） */
   top_factors: FactorItem[]
   /** 预测可靠性级别 */
@@ -53,6 +121,8 @@ export interface PredictionResult {
   accuracy_target: number
   /** 是否已通过目标准确率验证 */
   meets_accuracy_target: boolean
+  /** 设计信号状态：可行动、低置信或无信号 */
+  signal_status: PredictionSignalStatus
   /** 是否可作为高置信动作信号 */
   is_actionable: boolean
   /** 校准与回测说明 */
@@ -99,6 +169,8 @@ export interface PredictionData {
   prediction: PredictionResult
   /** 隔日预测 */
   next_day_prediction: PredictionResult
+  /** 未来一周预测 */
+  weekly_prediction: PredictionResult
   /** 盘中未来五分钟预测 */
   intraday_prediction: PredictionResult
   /** 数据覆盖情况 */
@@ -147,6 +219,10 @@ export interface FundItem {
   risk_level?: string
   /** 成立日期 */
   inception_date?: string
+  /** 行情日期或估值时间 */
+  quote_date?: string
+  /** 行情来源 */
+  quote_source?: string
 }
 
 /** 基金搜索接口响应的 data 字段 */

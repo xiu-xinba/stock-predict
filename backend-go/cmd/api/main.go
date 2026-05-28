@@ -22,7 +22,19 @@ func main() {
 		Level: cfg.LogLevel(),
 	}))
 
-	mem := store.NewMemoryStore()
+	mem, err := store.NewPersistentStore(cfg.FundStorePath)
+	if err != nil {
+		logger.Error("failed to initialize fund store", "path", cfg.FundStorePath, "error", err)
+		os.Exit(1)
+	}
+	if cfg.FundAutoSyncOnStart && (mem.CountFunds() < cfg.FundAutoSyncMinCount || (cfg.FundMetricsURL != "" && mem.CountQuotedFunds() == 0)) {
+		result, err := service.NewFundService(mem).SyncFromSources(cfg.FundUniverseURL, cfg.FundMetricsURL, cfg.FundSyncCSVPath)
+		if err != nil {
+			logger.Warn("fund auto sync skipped", "error", err)
+		} else {
+			logger.Info("fund auto sync completed", "imported", result.Imported, "total", result.Total, "source", result.Source)
+		}
+	}
 	services := service.NewRegistry(mem, cfg, logger)
 	handler := api.NewRouter(cfg, services, logger)
 

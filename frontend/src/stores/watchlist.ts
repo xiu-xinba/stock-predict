@@ -85,6 +85,8 @@ export const useWatchlistStore = defineStore('watchlist', () => {
       change_pct: 0,
       direction: 'flat',
       added_at: Date.now(),
+      quote_date: '',
+      quote_source: '',
     }
     items.value.push(item)
     // Immediately fetch real-time data for the newly added fund
@@ -131,6 +133,8 @@ export const useWatchlistStore = defineStore('watchlist', () => {
             item.estimated_nav = quote.estimated_nav
             item.change_pct = quote.change_pct
             item.direction = quote.direction
+            item.quote_date = quote.quote_date
+            item.quote_source = quote.quote_source
           }
         }
         lastRefresh.value = new Date().toLocaleTimeString('zh-CN')

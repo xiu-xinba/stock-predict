@@ -48,10 +48,34 @@ INDEX_FUND_DAILY_V1_FEATURES: Final[list[str]] = [
     "panic_limit_component",
 ]
 
+INDEX_FUND_INTRADAY_V1_FEATURES: Final[list[str]] = [
+    "fund_return_1m",
+    "fund_return_3m",
+    "fund_return_5m",
+    "fund_volatility_15m",
+    "fund_volume_ratio_20m",
+    "premium_pct",
+    "bid_ask_spread_pct",
+    "index_return_1m",
+    "index_return_3m",
+    "index_return_5m",
+    "index_volatility_15m",
+    "fund_index_spread_1m",
+    "fund_index_spread_5m",
+    "intraday_liquidity",
+    "etf_flow_proxy",
+    "fear_score",
+    "panic_iv_component",
+    "panic_flow_component",
+    "panic_news_component",
+    "panic_limit_component",
+]
+
 FEATURE_SETS: Final[dict[str, list[str]]] = {
     "backend_v1": BACKEND_V1_FEATURES,
     "extended_v1": EXTENDED_V1_FEATURES,
     "index_fund_daily_v1": INDEX_FUND_DAILY_V1_FEATURES,
+    "index_fund_intraday_v1": INDEX_FUND_INTRADAY_V1_FEATURES,
 }
 
 REQUIRED_COLUMNS: Final[list[str]] = ["fund_code", "asof_time"]

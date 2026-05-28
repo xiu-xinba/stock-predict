@@ -85,7 +85,21 @@ func (r *Router) syncFunds(c *gin.Context) {
 			return
 		}
 	}
-	writeSuccess(c, r.services.Funds.Count())
+	result, err := r.services.Funds.SyncFromSources(r.cfg.FundUniverseURL, r.cfg.FundMetricsURL, r.cfg.FundSyncCSVPath)
+	if errors.Is(err, service.ErrSyncSourceRequired) {
+		writeError(c, http.StatusBadRequest, -1, "未配置基金同步来源，无法同步基金数据")
+		return
+	}
+	if errors.Is(err, service.ErrSyncUnsupported) {
+		writeError(c, http.StatusInternalServerError, -1, "当前数据仓库不支持同步")
+		return
+	}
+	if err != nil {
+		r.logger.Warn("fund sync failed", "source", r.cfg.FundSyncCSVPath, "error", err)
+		writeError(c, http.StatusInternalServerError, -1, "基金同步失败")
+		return
+	}
+	writeSuccess(c, result)
 }
 
 func (r *Router) marketIndices(c *gin.Context) {

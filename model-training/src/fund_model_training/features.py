@@ -46,6 +46,19 @@ def prepare_features(df: pd.DataFrame, feature_set: str) -> tuple[pd.DataFrame, 
     _ensure_feature(out, "panic_flow_component", lambda: _coalesce(out, ["panic_flow_component", "flow_component"]))
     _ensure_feature(out, "panic_news_component", lambda: _coalesce(out, ["panic_news_component", "news_component"]))
     _ensure_feature(out, "panic_limit_component", lambda: _coalesce(out, ["panic_limit_component", "limit_component"]))
+    _ensure_feature(out, "fund_return_1m", lambda: _group_pct_change(out, value_col, 1))
+    _ensure_feature(out, "fund_return_3m", lambda: _group_pct_change(out, value_col, 3))
+    _ensure_feature(out, "fund_return_5m", lambda: _group_pct_change(out, value_col, 5))
+    _ensure_feature(out, "fund_volatility_15m", lambda: _rolling_std(out["fund_return_1m"], out["fund_code"], 15))
+    _ensure_feature(out, "fund_volume_ratio_20m", lambda: _volume_ratio_window(out, 20))
+    _ensure_feature(out, "premium_pct", lambda: _coalesce(out, ["premium_pct", "nav_premium_pct"]))
+    _ensure_feature(out, "bid_ask_spread_pct", lambda: _bid_ask_spread_pct(out, value_col))
+    _ensure_feature(out, "index_return_1m", lambda: _coalesce(out, ["index_return_1m", "index_change_pct"]))
+    _ensure_feature(out, "index_return_3m", lambda: _coalesce(out, ["index_return_3m"]))
+    _ensure_feature(out, "index_return_5m", lambda: _coalesce(out, ["index_return_5m", "market_return_5m"]))
+    _ensure_feature(out, "index_volatility_15m", lambda: _coalesce(out, ["index_volatility_15m"]))
+    _ensure_feature(out, "fund_index_spread_1m", lambda: out["fund_return_1m"] - out["index_return_1m"])
+    _ensure_feature(out, "fund_index_spread_5m", lambda: out["fund_return_5m"] - out["index_return_5m"])
 
     for name in feature_names:
         out[name] = pd.to_numeric(out[name], errors="coerce")
@@ -102,6 +115,24 @@ def _volume_ratio(df: pd.DataFrame) -> pd.Series:
     else:
         base = volume.groupby(df["fund_code"]).transform(lambda s: s.rolling(20, min_periods=3).mean())
     return (volume / base.replace(0, np.nan)).replace([np.inf, -np.inf], np.nan).fillna(1.0)
+
+
+def _volume_ratio_window(df: pd.DataFrame, window: int) -> pd.Series:
+    if "volume" not in df.columns:
+        return pd.Series(1.0, index=df.index)
+    volume = pd.to_numeric(df["volume"], errors="coerce")
+    base = volume.groupby(df["fund_code"]).transform(lambda s: s.rolling(window, min_periods=3).mean())
+    return (volume / base.replace(0, np.nan)).replace([np.inf, -np.inf], np.nan).fillna(1.0)
+
+
+def _bid_ask_spread_pct(df: pd.DataFrame, value_col: str | None) -> pd.Series:
+    if "bid_ask_spread_pct" in df.columns:
+        return pd.to_numeric(df["bid_ask_spread_pct"], errors="coerce")
+    if "bid_ask_spread" not in df.columns or value_col is None:
+        return pd.Series(0.0, index=df.index)
+    spread = pd.to_numeric(df["bid_ask_spread"], errors="coerce")
+    price = pd.to_numeric(df[value_col], errors="coerce")
+    return (spread / price.replace(0, np.nan) * 100.0).replace([np.inf, -np.inf], np.nan).fillna(0.0)
 
 
 def _market_beta(fund_returns: pd.Series, df: pd.DataFrame) -> pd.Series:

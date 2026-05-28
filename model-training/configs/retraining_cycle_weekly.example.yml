@@ -1,0 +1,18 @@
+task: weekly_index_fund
+tournament_config_path: configs/index_fund_weekly_tournament.example.yml
+summary_output_path: reports/retraining_cycle_weekly_summary.json
+promotion:
+  registry_dir: model_registry
+  min_balanced_accuracy: 0.34
+  max_regression_mae: 3.0
+  min_high_confidence_accuracy: 0.50
+  min_high_confidence_coverage: 0.10
+  min_score_delta: 0.002
+  min_rolling_backtest_folds: 3
+  min_rolling_balanced_accuracy: 0.34
+  max_high_confidence_accuracy_drop: 0.0
+  max_high_confidence_coverage_drop: 0.0
+  min_market_regime_slice_rows: 10
+  min_market_regime_accuracy: 0.34
+  mae_weight: 0.03
+  allow_lower_score: false

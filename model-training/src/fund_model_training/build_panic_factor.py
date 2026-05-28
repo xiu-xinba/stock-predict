@@ -49,6 +49,25 @@ def build_panic_factor(
 ):
     pd = require_pandas()
     raw = pd.read_csv(input_path)
+    return build_panic_factor_from_frame(
+        raw=raw,
+        market=market,
+        timestamp_col=timestamp_col,
+        available_time_col=available_time_col,
+        weights=weights,
+        skip_validation=skip_validation,
+    )
+
+
+def build_panic_factor_from_frame(
+    raw,
+    market: str | None,
+    timestamp_col: str,
+    available_time_col: str,
+    weights: dict[str, float],
+    skip_validation: bool = False,
+):
+    pd = require_pandas()
     if timestamp_col not in raw.columns:
         raise ValueError(f"Input CSV missing timestamp column: {timestamp_col}")
 

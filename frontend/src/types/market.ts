@@ -21,4 +21,6 @@ export interface FundRankingItem {
   fund_type: string
   change_pct: number
   estimated_nav: number
+  quote_date?: string
+  quote_source?: string
 }

@@ -5,7 +5,7 @@
         <span :class="['rank-indicator', type]"></span>
         <span :class="['rank-title', type]">{{ title }}</span>
       </div>
-      <span class="rank-sub">{{ type === 'gainers' ? '今日领涨' : '今日领跌' }}</span>
+      <span class="rank-sub">{{ type === 'gainers' ? '最新涨幅' : '最新跌幅' }}</span>
     </div>
     <div class="rank-body">
       <div
@@ -22,7 +22,10 @@
           <span class="rank-name">{{ item.fund_name }}</span>
           <span class="rank-type">{{ item.fund_type }}</span>
         </div>
-        <span :class="['rank-pct', item.change_pct > 0 ? 'up' : item.change_pct < 0 ? 'down' : 'flat']">
+        <span
+          :class="['rank-pct', item.change_pct > 0 ? 'up' : item.change_pct < 0 ? 'down' : 'flat']"
+          :title="item.quote_date || undefined"
+        >
           {{ item.change_pct > 0 ? '+' : '' }}{{ item.change_pct.toFixed(2) }}%
         </span>
       </div>

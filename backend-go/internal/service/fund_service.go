@@ -4,16 +4,36 @@ import (
 	"errors"
 	"sort"
 	"strings"
+	"time"
+	"unicode/utf8"
 
 	"stock-predict-go/internal/dto"
 )
 
-var ErrInvalidRankingType = errors.New("invalid ranking type")
+var (
+	ErrInvalidRankingType = errors.New("invalid ranking type")
+	ErrSyncSourceRequired = errors.New("fund sync source is required")
+	ErrSyncUnsupported    = errors.New("fund repository does not support sync")
+)
 
 type FundRepository interface {
 	ListFunds() []dto.FundItem
 	FindFund(code string) (dto.FundItem, bool)
 	CountFunds() int
+}
+
+type fundSyncRepository interface {
+	SyncFundsFromCSV(path string) (int, error)
+	CountFunds() int
+}
+
+type fundUniverseRepository interface {
+	SyncFundsFromEastmoneySources(universeURL, metricsURL string) (int, error)
+	CountFunds() int
+}
+
+type fundDataPathRepository interface {
+	DataPath() string
 }
 
 type FundService struct {
@@ -29,7 +49,7 @@ func (s *FundService) Search(q dto.FundSearchRequest) dto.FundSearchData {
 		q.Page = 1
 	}
 	if q.Size < 1 {
-		q.Size = 1
+		q.Size = 20
 	}
 	if q.Size > 50 {
 		q.Size = 50
@@ -38,7 +58,7 @@ func (s *FundService) Search(q dto.FundSearchRequest) dto.FundSearchData {
 	keyword := strings.TrimSpace(strings.ToLower(q.Keyword))
 	items := make([]dto.FundItem, 0)
 	for _, fund := range s.store.ListFunds() {
-		if keyword != "" && !strings.Contains(strings.ToLower(fund.FundCode), keyword) && !strings.Contains(strings.ToLower(fund.FundName), keyword) {
+		if keyword != "" && !fundMatchesKeyword(fund, keyword) {
 			continue
 		}
 		if q.Type != "" && fund.FundType != q.Type {
@@ -94,12 +114,17 @@ func (s *FundService) Ranking(rankingType string, size int) ([]dto.FundRankingIt
 	funds := s.store.ListFunds()
 	items := make([]dto.FundRankingItem, 0, len(funds))
 	for _, fund := range funds {
+		if !hasTrustedQuote(fund) {
+			continue
+		}
 		items = append(items, dto.FundRankingItem{
 			FundCode:     fund.FundCode,
 			FundName:     fund.FundName,
 			FundType:     fund.FundType,
 			ChangePct:    fund.ChangePct,
 			EstimatedNAV: fund.EstimatedNAV,
+			QuoteDate:    fund.QuoteDate,
+			QuoteSource:  fund.QuoteSource,
 		})
 	}
 	SortRanking(items, rankingType)
@@ -135,6 +160,84 @@ func (s *FundService) Count() int {
 	return s.store.CountFunds()
 }
 
+func (s *FundService) SyncFromCSV(path string) (dto.FundSyncResult, error) {
+	return s.SyncFromSources("", "", path)
+}
+
+func (s *FundService) SyncFromSources(universeURL, metricsURL, csvPath string) (dto.FundSyncResult, error) {
+	universeURL = strings.TrimSpace(universeURL)
+	metricsURL = strings.TrimSpace(metricsURL)
+	csvPath = strings.TrimSpace(csvPath)
+	if universeURL == "" && metricsURL == "" && csvPath == "" {
+		return dto.FundSyncResult{}, ErrSyncSourceRequired
+	}
+	imported := 0
+	sources := make([]string, 0, 3)
+	if universeURL != "" || metricsURL != "" {
+		syncer, ok := s.store.(fundUniverseRepository)
+		if !ok {
+			return dto.FundSyncResult{}, ErrSyncUnsupported
+		}
+		count, err := syncer.SyncFundsFromEastmoneySources(universeURL, metricsURL)
+		if err != nil {
+			return dto.FundSyncResult{}, err
+		}
+		imported += count
+		if universeURL != "" {
+			sources = append(sources, universeURL)
+		}
+		if metricsURL != "" {
+			sources = append(sources, metricsURL)
+		}
+	}
+	if csvPath != "" {
+		result, err := s.syncCSVOnly(csvPath)
+		if err != nil {
+			return dto.FundSyncResult{}, err
+		}
+		imported += result.Imported
+		sources = append(sources, csvPath)
+	}
+	result := dto.FundSyncResult{
+		Source:    strings.Join(sources, ","),
+		Imported:  imported,
+		Total:     s.store.CountFunds(),
+		UpdatedAt: time.Now().Format(time.RFC3339Nano),
+	}
+	if dataPath, ok := s.store.(fundDataPathRepository); ok {
+		result.StoredPath = dataPath.DataPath()
+	}
+	return result, nil
+}
+
+func hasTrustedQuote(fund dto.FundItem) bool {
+	return fund.QuoteSource != "" && (fund.LatestNAV != 0 || fund.EstimatedNAV != 0)
+}
+
+func (s *FundService) syncCSVOnly(path string) (dto.FundSyncResult, error) {
+	if strings.TrimSpace(path) == "" {
+		return dto.FundSyncResult{}, ErrSyncSourceRequired
+	}
+	syncer, ok := s.store.(fundSyncRepository)
+	if !ok {
+		return dto.FundSyncResult{}, ErrSyncUnsupported
+	}
+	imported, err := syncer.SyncFundsFromCSV(path)
+	if err != nil {
+		return dto.FundSyncResult{}, err
+	}
+	result := dto.FundSyncResult{
+		Source:    path,
+		Imported:  imported,
+		Total:     syncer.CountFunds(),
+		UpdatedAt: time.Now().Format(time.RFC3339Nano),
+	}
+	if dataPath, ok := s.store.(fundDataPathRepository); ok {
+		result.StoredPath = dataPath.DataPath()
+	}
+	return result, nil
+}
+
 func (s *FundService) Find(code string) (dto.FundItem, bool) {
 	return s.store.FindFund(code)
 }
@@ -168,14 +271,12 @@ func sortFunds(items []dto.FundItem, sortBy, sortOrder, keyword string) {
 			cmp = compareFloat(a.ChangePct, b.ChangePct)
 		default:
 			if keyword != "" {
-				ai := strings.HasPrefix(strings.ToLower(a.FundCode), keyword) || strings.Contains(strings.ToLower(a.FundName), keyword)
-				bi := strings.HasPrefix(strings.ToLower(b.FundCode), keyword) || strings.Contains(strings.ToLower(b.FundName), keyword)
-				if ai != bi {
-					if ai {
-						cmp = -1
-					} else {
-						cmp = 1
-					}
+				as := searchRelevance(a, keyword)
+				bs := searchRelevance(b, keyword)
+				if as != bs {
+					cmp = compareInt(as, bs)
+				} else if nameCmp := compareInt(utf8.RuneCountInString(a.FundName), utf8.RuneCountInString(b.FundName)); nameCmp != 0 {
+					cmp = nameCmp
 				} else {
 					cmp = strings.Compare(a.FundCode, b.FundCode)
 				}
@@ -202,6 +303,62 @@ func compareFloat(a, b float64) int {
 	default:
 		return 0
 	}
+}
+
+func compareInt(a, b int) int {
+	switch {
+	case a < b:
+		return -1
+	case a > b:
+		return 1
+	default:
+		return 0
+	}
+}
+
+func searchRelevance(fund dto.FundItem, keyword string) int {
+	code := strings.ToLower(fund.FundCode)
+	name := strings.ToLower(fund.FundName)
+	pinyinAbbr := strings.ToLower(fund.PinyinAbbr)
+	pinyinFull := strings.ToLower(fund.PinyinFull)
+	switch {
+	case code == keyword || name == keyword:
+		return 0
+	case strings.HasPrefix(code, keyword):
+		return 1
+	case strings.HasPrefix(name, keyword):
+		return 2
+	case strings.HasPrefix(pinyinAbbr, keyword):
+		return 3
+	case strings.HasPrefix(pinyinFull, keyword):
+		return 4
+	case strings.Contains(code, keyword):
+		return 5
+	case strings.Contains(name, keyword):
+		return 6
+	case strings.Contains(pinyinAbbr, keyword):
+		return 7
+	case strings.Contains(pinyinFull, keyword):
+		return 8
+	default:
+		return 9
+	}
+}
+
+func fundMatchesKeyword(fund dto.FundItem, keyword string) bool {
+	for _, value := range []string{
+		fund.FundCode,
+		fund.FundName,
+		fund.PinyinAbbr,
+		fund.PinyinFull,
+		fund.Company,
+		fund.Manager,
+	} {
+		if strings.Contains(strings.ToLower(value), keyword) {
+			return true
+		}
+	}
+	return false
 }
 
 func keys(set map[string]bool) []string {

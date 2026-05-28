@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>项目全面分析报告 - 基金净值预测系统</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --surface: #1e293b;
+    --surface2: #334155;
+    --border: #475569;
+    --text: #e2e8f0;
+    --text2: #94a3b8;
+    --accent: #38bdf8;
+    --accent2: #818cf8;
+    --green: #4ade80;
+    --yellow: #fbbf24;
+    --red: #f87171;
+    --orange: #fb923c;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    padding: 2rem;
+  }
+  .container { max-width: 1200px; margin: 0 auto; }
+  h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 0.5rem;
+  }
+  .meta { color: var(--text2); font-size: 0.875rem; margin-bottom: 2rem; }
+  h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--accent);
+    margin: 2.5rem 0 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--surface2);
+  }
+  h3 { font-size: 1.15rem; font-weight: 600; color: var(--text); margin: 1.5rem 0 0.75rem; }
+  p, li { color: var(--text); font-size: 0.9375rem; }
+  ul { padding-left: 1.5rem; margin: 0.5rem 0; }
+  li { margin: 0.25rem 0; }
+
+  /* Architecture diagram */
+  .arch-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 2rem;
+    margin: 1rem 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  .arch-node {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.25rem 1.5rem;
+    text-align: center;
+    min-width: 200px;
+  }
+  .arch-node .label { font-weight: 700; font-size: 1rem; margin-bottom: 0.25rem; }
+  .arch-node .detail { font-size: 0.8rem; color: var(--text2); }
+  .arch-node.frontend .label { color: var(--green); }
+  .arch-node.backend .label { color: var(--accent); }
+  .arch-node.model .label { color: var(--accent2); }
+  .arch-arrow {
+    font-size: 1.5rem;
+    color: var(--text2);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.15rem;
+  }
+  .arch-arrow .proto { font-size: 0.7rem; color: var(--text2); }
+
+  /* Progress bars */
+  .progress-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin: 0.5rem 0;
+    padding: 0.75rem 1rem;
+    background: var(--surface);
+    border-radius: 8px;
+  }
+  .progress-label { min-width: 100px; font-weight: 600; font-size: 0.9375rem; }
+  .progress-bar-bg {
+    flex: 1;
+    height: 24px;
+    background: var(--surface2);
+    border-radius: 12px;
+    overflow: hidden;
+    position: relative;
+  }
+  .progress-bar-fill {
+    height: 100%;
+    border-radius: 12px;
+    transition: width 0.6s ease;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding-right: 8px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--bg);
+  }
+  .progress-bar-fill.high { background: linear-gradient(90deg, #22c55e, #4ade80); }
+  .progress-bar-fill.mid { background: linear-gradient(90deg, #eab308, #fbbf24); }
+  .progress-bar-fill.low { background: linear-gradient(90deg, #ef4444, #f87171); }
+  .progress-gap { min-width: 260px; font-size: 0.8125rem; color: var(--text2); }
+
+  /* Tables */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0.75rem 0;
+    font-size: 0.875rem;
+  }
+  th {
+    background: var(--surface2);
+    color: var(--accent);
+    font-weight: 600;
+    text-align: left;
+    padding: 0.625rem 0.75rem;
+    border-bottom: 2px solid var(--border);
+    white-space: nowrap;
+  }
+  td {
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid var(--surface2);
+    vertical-align: top;
+  }
+  tr:hover td { background: rgba(56, 189, 248, 0.05); }
+  code {
+    background: var(--surface2);
+    padding: 0.15rem 0.4rem;
+    border-radius: 4px;
+    font-size: 0.8125rem;
+    font-family: 'Cascadia Code', 'Fira Code', 'JetBrains Mono', monospace;
+    color: var(--accent);
+  }
+
+  /* Badges */
+  .badge {
+    display: inline-block;
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .badge.done { background: rgba(74, 222, 128, 0.15); color: var(--green); }
+  .badge.partial { background: rgba(251, 191, 36, 0.15); color: var(--yellow); }
+  .badge.fake { background: rgba(248, 113, 113, 0.15); color: var(--red); }
+  .badge.none { background: rgba(148, 163, 184, 0.15); color: var(--text2); }
+  .badge.high { background: rgba(248, 113, 113, 0.15); color: var(--red); }
+  .badge.mid { background: rgba(251, 191, 36, 0.15); color: var(--yellow); }
+  .badge.low { background: rgba(74, 222, 128, 0.15); color: var(--green); }
+  .badge.p0 { background: rgba(248, 113, 113, 0.2); color: var(--red); }
+  .badge.p1 { background: rgba(251, 191, 36, 0.2); color: var(--yellow); }
+  .badge.p2 { background: rgba(56, 189, 248, 0.2); color: var(--accent); }
+
+  /* Cards */
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 1rem;
+    margin: 1rem 0;
+  }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.25rem;
+  }
+  .card h4 { font-size: 0.9375rem; margin-bottom: 0.5rem; }
+  .card ul { font-size: 0.8125rem; }
+
+  /* Pipeline flow */
+  .pipeline {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin: 0.75rem 0;
+    padding: 1rem;
+    background: var(--surface);
+    border-radius: 10px;
+  }
+  .pipeline-step {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+  }
+  .pipeline-arrow { color: var(--accent); font-size: 1.25rem; }
+
+  /* Priority list */
+  .priority-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    background: var(--surface);
+    border-radius: 8px;
+    margin: 0.4rem 0;
+  }
+  .priority-item .num {
+    min-width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.8125rem;
+  }
+  .priority-item .num.p0 { background: rgba(248,113,113,0.2); color: var(--red); }
+  .priority-item .num.p1 { background: rgba(251,191,36,0.2); color: var(--yellow); }
+  .priority-item .num.p2 { background: rgba(56,189,248,0.2); color: var(--accent); }
+  .priority-item .desc { font-size: 0.875rem; }
+  .priority-item .desc strong { color: var(--text); }
+  .priority-item .desc span { color: var(--text2); }
+
+  /* Section nav */
+  .toc {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.25rem 1.5rem;
+    margin: 1rem 0 2rem;
+  }
+  .toc h3 { margin: 0 0 0.75rem; font-size: 1rem; }
+  .toc-list { display: flex; flex-wrap: wrap; gap: 0.5rem; list-style: none; padding: 0; }
+  .toc-list a {
+    display: inline-block;
+    padding: 0.3rem 0.75rem;
+    background: var(--surface2);
+    border-radius: 6px;
+    color: var(--text);
+    text-decoration: none;
+    font-size: 0.8125rem;
+    transition: background 0.2s;
+  }
+  .toc-list a:hover { background: var(--accent); color: var(--bg); }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    body { padding: 1rem; }
+    .arch-box { flex-direction: column; }
+    .arch-arrow { transform: rotate(90deg); }
+    .progress-row { flex-wrap: wrap; }
+    .progress-gap { min-width: 100%; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>项目全面分析报告</h1>
+<p class="meta">基金净值预测系统 &nbsp;|&nbsp; 生成日期：2026-05-23</p>
+
+<nav class="toc">
+  <h3>目录</h3>
+  <ul class="toc-list">
+    <li><a href="#sec1">一、架构与功能模块</a></li>
+    <li><a href="#sec2">二、已完成工作</a></li>
+    <li><a href="#sec3">三、尚未开始的工作</a></li>
+    <li><a href="#sec4">四、进行中未完成</a></li>
+    <li><a href="#sec5">五、文档与代码差异</a></li>
+    <li><a href="#sec6">六、缺少的关键文档</a></li>
+    <li><a href="#sec7">七、总体评估</a></li>
+  </ul>
+</nav>
+
+<!-- ===== Section 1 ===== -->
+<h2 id="sec1">一、项目整体架构与功能模块</h2>
+
+<h3>1.1 架构设计</h3>
+<p>本项目是一个<strong>基于机器学习的基金净值预测系统</strong>，采用前后端分离 + 独立模型训练服务的三层架构：</p>
+
+<div class="arch-box">
+  <div class="arch-node frontend">
+    <div class="label">前端 (Vue3)</div>
+    <div class="detail">Vite + Pinia<br>ECharts + Element Plus</div>
+  </div>
+  <div class="arch-arrow">
+    <span class="proto">REST API</span>
+    <span>→</span>
+  </div>
+  <div class="arch-node backend">
+    <div class="label">后端 (Go/Gin)</div>
+    <div class="detail">内存存储 + 代理<br>基线预测降级</div>
+  </div>
+  <div class="arch-arrow">
+    <span class="proto">HTTP</span>
+    <span>→</span>
+  </div>
+  <div class="arch-node model">
+    <div class="label">模型服务 (Python)</div>
+    <div class="detail">joblib 推理服务<br>锦标赛 Champion</div>
+  </div>
+</div>
+
+<h3>核心设计思路</h3>
+<ul>
+  <li><strong>模型与后端解耦</strong>：Python 模型服务独立部署，Go 后端通过3个环境变量代理调用，不可用时自动回退 Go 基线预测</li>
+  <li><strong>长短周期分离</strong>：日级/周级预测与日内3/5分钟预测使用不同模型族、不同特征窗口</li>
+  <li><strong>Champion/Challenger 机制</strong>：6候选模型锦标赛择优，新模型必须通过门槛才能晋升 Champion</li>
+</ul>
+
+<h3>1.2 技术栈</h3>
+<table>
+  <thead><tr><th>层级</th><th>技术</th><th>版本</th></tr></thead>
+  <tbody>
+    <tr><td><strong>前端</strong></td><td>Vue 3 + TypeScript + Vite + Pinia + Element Plus + ECharts + Axios</td><td>Vite 8, ECharts 6</td></tr>
+    <tr><td><strong>后端</strong></td><td>Go + Gin + slog + sonic</td><td>Go 1.23, Gin 1.11</td></tr>
+    <tr><td><strong>模型训练</strong></td><td>Python + scikit-learn + LightGBM + pandas + akshare + mootdx</td><td>Python 3.11-3.12</td></tr>
+  </tbody>
+</table>
+
+<h3>1.3 项目目录结构</h3>
+<table>
+  <thead><tr><th>目录</th><th>说明</th></tr></thead>
+  <tbody>
+    <tr><td><code>frontend/src/api/</code></td><td>API 请求层（Axios 封装 + 去重/取消）</td></tr>
+    <tr><td><code>frontend/src/components/</code></td><td>业务组件（搜索/预测/市场/自选）</td></tr>
+    <tr><td><code>frontend/src/composables/</code></td><td>组合式函数（主题/搜索/ECharts）</td></tr>
+    <tr><td><code>frontend/src/stores/</code></td><td>Pinia 状态管理</td></tr>
+    <tr><td><code>frontend/src/types/</code></td><td>TypeScript 类型定义</td></tr>
+    <tr><td><code>frontend/src/views/</code></td><td>页面组件</td></tr>
+    <tr><td><code>backend-go/cmd/api/</code></td><td>应用入口</td></tr>
+    <tr><td><code>backend-go/internal/api/</code></td><td>路由/中间件/响应</td></tr>
+    <tr><td><code>backend-go/internal/service/</code></td><td>业务逻辑层</td></tr>
+    <tr><td><code>backend-go/internal/store/</code></td><td>内存存储</td></tr>
+    <tr><td><code>model-training/src/fund_model_training/</code></td><td>训练流水线核心代码</td></tr>
+    <tr><td><code>model-training/configs/</code></td><td>训练配置 YAML</td></tr>
+    <tr><td><code>model-training/tests/</code></td><td>22个测试文件</td></tr>
+  </tbody>
+</table>
+
+<!-- ===== Section 2 ===== -->
+<h2 id="sec2">二、已完成工作清单</h2>
+
+<h3>模块完成度总览</h3>
+<div class="progress-row">
+  <span class="progress-label">前端</span>
+  <div class="progress-bar-bg"><div class="progress-bar-fill high" style="width:90%">90%</div></div>
+  <span class="progress-gap">缺少单元测试、搜索分页UI</span>
+</div>
+<div class="progress-row">
+  <span class="progress-label">后端</span>
+  <div class="progress-bar-bg"><div class="progress-bar-fill mid" style="width:55%">55%</div></div>
+  <span class="progress-gap">数据虚构、无持久化、无真实数据源</span>
+</div>
+<div class="progress-row">
+  <span class="progress-label">模型训练</span>
+  <div class="progress-bar-bg"><div class="progress-bar-fill high" style="width:85%">85%</div></div>
+  <span class="progress-gap">高级MLOps功能未实现</span>
+</div>
+<div class="progress-row">
+  <span class="progress-label">部署运维</span>
+  <div class="progress-bar-bg"><div class="progress-bar-fill low" style="width:5%">5%</div></div>
+  <span class="progress-gap">无容器化、无CI/CD、无HTTPS</span>
+</div>
+
+<h3>2.1 前端模块</h3>
+<table>
+  <thead><tr><th>功能模块</th><th>文件路径</th><th>状态</th><th>质量</th></tr></thead>
+  <tbody>
+    <tr><td>应用外壳（导航/主题/动画）</td><td><code>App.vue</code></td><td><span class="badge done">完成</span></td><td>高</td></tr>
+    <tr><td>路由系统（3页+懒加载+守卫）</td><td><code>router/index.ts</code></td><td><span class="badge done">完成</span></td><td>高</td></tr>
+    <tr><td>API层（去重/取消/CSRF/错误处理）</td><td><code>api/index.ts</code></td><td><span class="badge done">完成</span></td><td>高</td></tr>
+    <tr><td>路由常量集中管理</td><td><code>api/routes.ts</code></td><td><span class="badge done">完成</span></td><td>高</td></tr>
+    <tr><td>市场行情API</td><td><code>api/market.ts</code></td><td><span class="badge done">完成</span></td><td>高</td></tr>
+    <tr><td>预测API</td><td><code>api/predict.ts</code></td><td><span class="badge done">完成</span></td><td>高</td></tr>
+    <tr><td>自选API</td><td><code>api/watchlist.ts</code></td><td><span class="badge done">完成</span></td><td>高</td></tr>
+    <tr><td>市场Store（自动刷新/竞态防护）</td><td><code>stores/market.ts</code></td><td><span class="badge done">完成</span></td><td>高</td></tr>
+    <tr><td>预测Store（搜索/筛选/预测）</td><td><code>stores/prediction.ts</code></td><td><span class="badge done">完成</span></td><td>高</td></tr>
+    <tr><td>自选Store（localStorage/排序）</td><td><code>stores/watchlist.ts</code></td><td><span class="badge done">完成</span></td><td>高</td></tr>
+    <tr><td>完整类型系统（4个类型文件）</td><td><code>types/</code></td><td><span class="badge done">完成</span></td><td>高</td></tr>
+    <tr><td>自选监控页（骨架屏/空状态）</td><td><code>WatchlistView.vue</code></td><td><span class="badge done">完成</span></td><td>高</td></tr>
+    <tr><td>市场行情页（指数/排行）</td><td><code>MarketView.vue</code></td><td><span class="badge done">完成</span></td><td>高</td></tr>
+    <tr><td>预测页（搜索/结果/因子图）</td><td><code>PredictView.vue</code></td><td><span class="badge done">完成</span></td><td>高</td></tr>
+    <tr><td>基金搜索（防抖/历史/筛选）</td><td><code>FundSearch.vue</code></td><td><span class="badge done">完成</span></td><td>高</td></tr>
+    <tr><td>预测卡片（多周期/因子/可靠性）</td><td><code>PredictionCard.vue</code></td><td><span class="badge done">完成</span></td><td>高</td></tr>
+    <tr><td>市场侧栏（迷你图/展开动画）</td><td><code>MarketSidebar.vue</code></td><td><span class="badge done">完成</span></td><td>高</td></tr>
+    <tr><td>基金排行</td><td><code>FundRanking.vue</code></td><td><span class="badge done">完成</span></td><td>高</td></tr>
+    <tr><td>主题管理（明暗切换）</td><td><code>useTheme.ts</code></td><td><span class="badge done">完成</span></td><td>高</td></tr>
+    <tr><td>基金搜索逻辑</td><td><code>useFundSearch.ts</code></td><td><span class="badge done">完成</span></td><td>高</td></tr>
+    <tr><td>ECharts生命周期</td><td><code>useECharts.ts</code></td><td><span class="badge done">完成</span></td><td>高</td></tr>
+    <tr><td>设计令牌+双主题CSS</td><td><code>style.css</code></td><td><span class="badge done">完成</span></td><td>高</td></tr>
+  </tbody>
+</table>
+
+<div class="card-grid">
+  <div class="card">
+    <h4 style="color:var(--green)">前端代码亮点</h4>
+    <ul>
+      <li>序列号防竞态（三个 Store 均使用 requestSeq）</li>
+      <li>请求去重自动取消（Axios 拦截器）</li>
+      <li>AbortController 联动</li>
+      <li>ECharts 按需引入 + Vite 手动分包</li>
+      <li>暗色模式全覆盖（CSS + EP + ECharts）</li>
+      <li>无障碍支持（aria/focus-visible/reduced-motion）</li>
+      <li>响应式设计（5个断点适配）</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h4 style="color:var(--red)">前端待改进</h4>
+    <ul>
+      <li>无单元测试（零覆盖）</li>
+      <li>搜索结果无分页 UI</li>
+      <li>3个冗余组件未清理</li>
+      <li>PredictionCard.vue 约630行，过大</li>
+      <li>FundSearch.vue 约600行，过大</li>
+      <li>MarketSidebar 手动管理 ECharts，与 useECharts 不一致</li>
+      <li>WatchlistView 自行管理 setInterval，与 Store 刷新机制不一致</li>
+    </ul>
+  </div>
+</div>
+
+<h3>2.2 后端模块</h3>
+<table>
+  <thead><tr><th>功能模块</th><th>文件路径</th><th>状态</th><th>质量</th></tr></thead>
+  <tbody>
+    <tr><td>API骨架（8个端点）</td><td><code>api/router.go</code></td><td><span class="badge done">完成</span></td><td>高</td></tr>
+    <tr><td>中间件（CORS/安全头/日志/恢复/限体）</td><td><code>api/middleware.go</code></td><td><span class="badge done">完成</span></td><td>高</td></tr>
+    <tr><td>统一响应封装</td><td><code>api/response.go</code></td><td><span class="badge done">完成</span></td><td>高</td></tr>
+    <tr><td>基金搜索（关键词/筛选/排序/分页）</td><td><code>service/fund_service.go</code></td><td><span class="badge fake">数据虚构</span></td><td>中</td></tr>
+    <tr><td>市场行情（8指数/排行）</td><td><code>service/market_service.go</code></td><td><span class="badge fake">伪随机</span></td><td>低</td></tr>
+    <tr><td>预测服务（基线+3通道模型降级）</td><td><code>service/prediction_service.go</code></td><td><span class="badge partial">基线公式</span></td><td>中</td></tr>
+    <tr><td>模型HTTP客户端</td><td><code>service/model_client.go</code></td><td><span class="badge done">完成</span></td><td>高</td></tr>
+    <tr><td>内存存储+种子数据</td><td><code>store/memory.go</code></td><td><span class="badge fake">仅占位</span></td><td>低</td></tr>
+    <tr><td>配置管理</td><td><code>config/config.go</code></td><td><span class="badge done">完成</span></td><td>高</td></tr>
+    <tr><td>DTO类型定义</td><td><code>dto/types.go</code></td><td><span class="badge done">完成</span></td><td>高</td></tr>
+  </tbody>
+</table>
+
+<h3>后端 API 端点清单</h3>
+<table>
+  <thead><tr><th>方法</th><th>路径</th><th>Handler</th><th>实现状态</th></tr></thead>
+  <tbody>
+    <tr><td>GET</td><td><code>/api/v1/health</code></td><td>health</td><td><span class="badge done">已完成</span></td></tr>
+    <tr><td>GET</td><td><code>/api/v1/funds/search</code></td><td>searchFunds</td><td><span class="badge fake">数据虚构</span></td></tr>
+    <tr><td>GET</td><td><code>/api/v1/funds/filters</code></td><td>fundFilters</td><td><span class="badge fake">数据虚构</span></td></tr>
+    <tr><td>POST</td><td><code>/api/v1/funds/sync</code></td><td>syncFunds</td><td><span class="badge none">伪实现</span></td></tr>
+    <tr><td>GET</td><td><code>/api/v1/market/indices</code></td><td>marketIndices</td><td><span class="badge fake">伪随机</span></td></tr>
+    <tr><td>GET</td><td><code>/api/v1/market/ranking/:type</code></td><td>marketRanking</td><td><span class="badge fake">伪随机</span></td></tr>
+    <tr><td>GET</td><td><code>/api/v1/predict/:fundCode</code></td><td>predict</td><td><span class="badge partial">基线+降级</span></td></tr>
+    <tr><td>POST</td><td><code>/api/v1/watchlist/quotes</code></td><td>watchlistQuotes</td><td><span class="badge fake">数据虚构</span></td></tr>
+  </tbody>
+</table>
+
+<h3>2.3 模型训练模块</h3>
+<table>
+  <thead><tr><th>功能模块</th><th>文件路径</th><th>状态</th><th>质量</th></tr></thead>
+  <tbody>
+    <tr><td>配置系统（YAML加载）</td><td><code>config.py</code></td><td><span class="badge done">完成</span></td><td>高</td></tr>
+    <tr><td>数据模式（4套特征集）</td><td><code>schema.py</code></td><td><span class="badge done">完成</span></td><td>高</td></tr>
+    <tr><td>数据采集（4层降级策略）</td><td><code>collectors/akshare_adapter.py</code></td><td><span class="badge done">完成</span></td><td>高</td></tr>
+    <tr><td>标签生成（三分类）</td><td><code>labels.py</code></td><td><span class="badge done">完成</span></td><td>高</td></tr>
+    <tr><td>特征工程（62个特征）</td><td><code>features.py</code></td><td><span class="badge done">完成</span></td><td>高</td></tr>
+    <tr><td>恐慌因子构建</td><td><code>build_panic_factor.py</code></td><td><span class="badge done">完成</span></td><td>高</td></tr>
+    <tr><td>日频/日内样本构建</td><td><code>build_samples.py</code> / <code>build_intraday_samples.py</code></td><td><span class="badge done">完成</span></td><td>高</td></tr>
+    <tr><td>数据分割（净化时序分割）</td><td><code>split.py</code></td><td><span class="badge done">完成</span></td><td>高</td></tr>
+    <tr><td>LightGBM训练+ONNX导出</td><td><code>train.py</code></td><td><span class="badge done">完成</span></td><td>高</td></tr>
+    <tr><td>基线训练（HistGBDT）</td><td><code>train_baseline.py</code></td><td><span class="badge done">完成</span></td><td>高</td></tr>
+    <tr><td>锦标赛训练（6候选+消融）</td><td><code>train_tournament.py</code></td><td><span class="badge done">完成</span></td><td>高</td></tr>
+    <tr><td>评估指标</td><td><code>metrics.py</code></td><td><span class="badge done">完成</span></td><td>高</td></tr>
+    <tr><td>合约定义（15张表）</td><td><code>index_fund_contract.py</code></td><td><span class="badge done">完成</span></td><td>高</td></tr>
+    <tr><td>模型晋升/回滚</td><td><code>promote_model.py</code> / <code>rollback_model.py</code></td><td><span class="badge done">完成</span></td><td>高</td></tr>
+    <tr><td>HTTP推理服务</td><td><code>serve_model.py</code></td><td><span class="badge done">完成</span></td><td>高</td></tr>
+    <tr><td>预测日志+回填+评估</td><td><code>prediction_logging.py</code></td><td><span class="badge done">完成</span></td><td>高</td></tr>
+    <tr><td>漂移检测（PSI+KS）</td><td><code>drift_report.py</code></td><td><span class="badge done">完成</span></td><td>高</td></tr>
+    <tr><td>影子评估</td><td><code>shadow_evaluation.py</code></td><td><span class="badge done">完成</span></td><td>高</td></tr>
+    <tr><td>日频/日内端到端流水线</td><td><code>run_*_pipeline.py</code></td><td><span class="badge done">完成</span></td><td>高</td></tr>
+    <tr><td>监控/重训练周期</td><td><code>run_monitoring_cycle.py</code> / <code>run_retraining_cycle.py</code></td><td><span class="badge done">完成</span></td><td>高</td></tr>
+    <tr><td>22个测试文件</td><td><code>tests/</code></td><td><span class="badge done">完成</span></td><td>中</td></tr>
+  </tbody>
+</table>
+
+<h3>模型训练 Pipeline 流程</h3>
+<div class="pipeline">
+  <span class="pipeline-step">数据采集<br><small>ETF/指数/期货</small></span>
+  <span class="pipeline-arrow">→</span>
+  <span class="pipeline-step">恐慌因子<br><small>加权合成</small></span>
+  <span class="pipeline-arrow">→</span>
+  <span class="pipeline-step">样本构建<br><small>特征+标签</small></span>
+  <span class="pipeline-arrow">→</span>
+  <span class="pipeline-step">锦标赛训练<br><small>6候选+消融</small></span>
+  <span class="pipeline-arrow">→</span>
+  <span class="pipeline-step">模型晋升<br><small>门控+注册</small></span>
+  <span class="pipeline-arrow">→</span>
+  <span class="pipeline-step">推理服务<br><small>HTTP /predict</small></span>
+</div>
+
+<h3>数据采集4层降级策略</h3>
+<table>
+  <thead><tr><th>数据类型</th><th>主数据源</th><th>备选1</th><th>备选2</th><th>备选3</th></tr></thead>
+  <tbody>
+    <tr><td>ETF日线</td><td>AkShare fund_etf_hist_em</td><td>AkShare fund_etf_hist_sina</td><td>-</td><td>-</td></tr>
+    <tr><td>ETF分钟线</td><td>mootdx Quotes.bars</td><td>AkShare fund_etf_hist_min_em</td><td>东方财富分时</td><td>腾讯分钟线</td></tr>
+    <tr><td>指数日线</td><td>AkShare stock_zh_index_daily_em</td><td>AkShare stock_zh_index_daily</td><td>AkShare csindex</td><td>-</td></tr>
+    <tr><td>指数分钟线</td><td>mootdx Quotes.bars(ext)</td><td>AkShare index_zh_a_hist_min_em</td><td>东方财富分时</td><td>腾讯分钟线</td></tr>
+    <tr><td>期货主力</td><td>AkShare futures_main_sina</td><td>-</td><td>-</td><td>-</td></tr>
+  </tbody>
+</table>
+
+<!-- ===== Section 3 ===== -->
+<h2 id="sec3">三、尚未开始实施的工作项</h2>
+
+<table>
+  <thead><tr><th>工作项</th><th>所属模块</th><th>说明</th></tr></thead>
+  <tbody>
+    <tr><td><strong>数据库持久化</strong></td><td>后端</td><td>当前纯内存存储，重启即丢失。需引入 SQLite/PostgreSQL</td></tr>
+    <tr><td><strong>真实行情数据源接入</strong></td><td>后端</td><td>市场指数/基金净值全部为伪随机硬编码，需接入 Tushare/东方财富等 API</td></tr>
+    <tr><td><strong>基金数据同步</strong></td><td>后端</td><td><code>syncFunds</code> 端点为空壳，无实际同步逻辑</td></tr>
+    <tr><td><strong>用户认证体系</strong></td><td>后端</td><td>仅 <code>X-Admin-Token</code> 简单校验，无用户注册/登录/权限</td></tr>
+    <tr><td><strong>WebSocket实时推送</strong></td><td>后端</td><td>盘中数据无法实时更新，前端仅轮询</td></tr>
+    <tr><td><strong>API限流</strong></td><td>后端</td><td>无 rate limiting 中间件</td></tr>
+    <tr><td><strong>Docker容器化</strong></td><td>全局</td><td>无 Dockerfile/docker-compose.yml</td></tr>
+    <tr><td><strong>CI/CD流水线</strong></td><td>全局</td><td>无 GitHub Actions 等配置</td></tr>
+    <tr><td><strong>HTTPS配置</strong></td><td>全局</td><td>所有服务均为 HTTP</td></tr>
+    <tr><td>流式漂移检测（ADWIN/Page-Hinkley）</td><td>模型训练</td><td>配置中已规划，代码未实现</td></tr>
+    <tr><td>IC衰减/Rank IC衰减监控</td><td>模型训练</td><td>配置中已规划，代码未实现</td></tr>
+    <tr><td>模型校准（ECE）</td><td>模型训练</td><td>配置中已规划，代码未实现</td></tr>
+    <tr><td>MLflow模型注册集成</td><td>模型训练</td><td>pyproject.toml 声明为可选依赖，未集成</td></tr>
+    <tr><td>特征存储（Feast）集成</td><td>模型训练</td><td>配置中已规划，代码未实现</td></tr>
+    <tr><td>编排器（Airflow/Prefect）集成</td><td>模型训练</td><td>配置中已规划，代码未实现</td></tr>
+    <tr><td>sklearn模型ONNX导出</td><td>模型训练</td><td>仅 LightGBM 路径支持 ONNX</td></tr>
+    <tr><td>实时特征计算</td><td>模型训练</td><td>serve_model 从预计算 CSV 读取</td></tr>
+    <tr><td>前端单元测试</td><td>前端</td><td>无 vitest/jest 依赖，零测试覆盖</td></tr>
+    <tr><td>OpenAPI/Swagger文档</td><td>全局</td><td>无 API 契约规范文档</td></tr>
+    <tr><td>前端项目文档</td><td>前端</td><td>README 仅为 Vite 模板默认文字</td></tr>
+  </tbody>
+</table>
+
+<!-- ===== Section 4 ===== -->
+<h2 id="sec4">四、进行中但未完成的工作</h2>
+
+<table>
+  <thead><tr><th>工作项</th><th>进度</th><th>已完成部分</th><th>剩余未完成部分</th><th>阻碍因素</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><strong>模型服务与后端集成</strong></td>
+      <td>50%</td>
+      <td>Go 端 ModelClient 已实现，三通道架构+优雅降级代码就绪</td>
+      <td>三个模型服务 URL 均为空，Python 服务未实际部署；无重试/熔断/健康检查</td>
+      <td>需部署 Python 推理服务并配置环境变量</td>
+    </tr>
+    <tr>
+      <td><strong>真实数据替换</strong></td>
+      <td>10%</td>
+      <td>模型训练模块已有完整数据采集管道</td>
+      <td>后端仍使用30条硬编码种子基金+伪随机行情数据</td>
+      <td>需设计数据同步机制</td>
+    </tr>
+    <tr>
+      <td><strong>搜索分页UI</strong></td>
+      <td>70%</td>
+      <td>后端支持 page/size，前端 Store 支持 page</td>
+      <td>前端搜索结果无分页 UI，只能看第一页</td>
+      <td>纯前端 UI 开发</td>
+    </tr>
+    <tr>
+      <td><strong>sklearn→ONNX导出</strong></td>
+      <td>30%</td>
+      <td>LightGBM ONNX 导出已完成</td>
+      <td>sklearn 模型（HistGBDT/RandomForest等）无法导出 ONNX</td>
+      <td>需引入 skl2onnx 库</td>
+    </tr>
+    <tr>
+      <td><strong>模型格式过渡</strong></td>
+      <td>40%</td>
+      <td>ONNX 合约文档+导出代码已实现</td>
+      <td>当前 champion 均为 joblib，ONNX 未在生产链路启用</td>
+      <td>需统一模型格式策略</td>
+    </tr>
+    <tr>
+      <td><strong>前端冗余组件清理</strong></td>
+      <td>0%</td>
+      <td>—</td>
+      <td>PredictionChart.vue、IndexCard.vue、MarketSection.vue 未被引用</td>
+      <td>纯清理工作</td>
+    </tr>
+    <tr>
+      <td><strong>ECharts管理方式统一</strong></td>
+      <td>20%</td>
+      <td>useECharts 组合式函数已实现</td>
+      <td>MarketSidebar.vue 手动管理 ECharts 实例</td>
+      <td>需重构 MarketSidebar</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- ===== Section 5 ===== -->
+<h2 id="sec5">五、文档与代码差异</h2>
+
+<table>
+  <thead><tr><th>差异项</th><th>文档描述</th><th>实际代码</th><th>严重程度</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>Go HTTP 框架</td>
+      <td>根 README 写"Go 标准库 net/http"</td>
+      <td>实际使用 Gin 框架（go.mod 依赖 gin v1.11.0）</td>
+      <td><span class="badge high">高</span></td>
+    </tr>
+    <tr>
+      <td>模型格式</td>
+      <td>model-training README 重点描述 ONNX 合约</td>
+      <td>当前实际使用 joblib 格式，ONNX 未在主链路使用</td>
+      <td><span class="badge mid">中</span></td>
+    </tr>
+    <tr>
+      <td>特征集命名</td>
+      <td>README 提及 backend_v1（8特征）和 extended_v1（11特征）</td>
+      <td>实际使用 index_fund_daily_v1 和 index_fund_intraday_v1，特征数量远超</td>
+      <td><span class="badge mid">中</span></td>
+    </tr>
+    <tr>
+      <td>Go 版本</td>
+      <td>README 写 "Go >= 1.22"</td>
+      <td>go.mod 指定 go 1.23.0</td>
+      <td><span class="badge low">低</span></td>
+    </tr>
+    <tr>
+      <td>数据库</td>
+      <td>后端 README 提到"Add a persistent store"</td>
+      <td>实际使用内存种子数据</td>
+      <td><span class="badge low">低</span></td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- ===== Section 6 ===== -->
+<h2 id="sec6">六、缺少的关键文档</h2>
+
+<table>
+  <thead><tr><th>缺失文档</th><th>重要性</th><th>说明</th></tr></thead>
+  <tbody>
+    <tr><td>前端项目文档</td><td><span class="badge high">高</span></td><td>README 仅为 Vite 模板默认文字，缺少组件架构/API对接/主题体系</td></tr>
+    <tr><td>API契约文档（OpenAPI/Swagger）</td><td><span class="badge high">高</span></td><td>请求/响应格式仅散落在代码和 README 表格中</td></tr>
+    <tr><td>部署运维文档</td><td><span class="badge high">高</span></td><td>无生产部署指南、无 Docker 配置、无监控方案</td></tr>
+    <tr><td>数据字典文档</td><td><span class="badge mid">中</span></td><td>模型设计文档有表结构描述，但缺少与实际 CSV 列的映射验证</td></tr>
+    <tr><td>前端设计体系文档</td><td><span class="badge mid">中</span></td><td>无独立的设计规范文档</td></tr>
+    <tr><td>变更日志</td><td><span class="badge low">低</span></td><td>无 CHANGELOG.md</td></tr>
+    <tr><td>贡献指南</td><td><span class="badge low">低</span></td><td>无 CONTRIBUTING.md</td></tr>
+  </tbody>
+</table>
+
+<!-- ===== Section 7 ===== -->
+<h2 id="sec7">七、总体评估与优先级建议</h2>
+
+<h3>模块完成度</h3>
+<div class="progress-row">
+  <span class="progress-label">前端</span>
+  <div class="progress-bar-bg"><div class="progress-bar-fill high" style="width:90%">90%</div></div>
+  <span class="progress-gap">缺少单元测试、搜索分页UI、冗余组件待清理</span>
+</div>
+<div class="progress-row">
+  <span class="progress-label">后端</span>
+  <div class="progress-bar-bg"><div class="progress-bar-fill mid" style="width:55%">55%</div></div>
+  <span class="progress-gap">数据层完全虚构、无持久化、无真实数据源</span>
+</div>
+<div class="progress-row">
+  <span class="progress-label">模型训练</span>
+  <div class="progress-bar-bg"><div class="progress-bar-fill high" style="width:85%">85%</div></div>
+  <span class="progress-gap">高级MLOps功能未实现、sklearn无ONNX导出</span>
+</div>
+<div class="progress-row">
+  <span class="progress-label">部署运维</span>
+  <div class="progress-bar-bg"><div class="progress-bar-fill low" style="width:5%">5%</div></div>
+  <span class="progress-gap">无容器化、无CI/CD、无HTTPS、无监控</span>
+</div>
+
+<h3>项目当前状态</h3>
+<p>前端 UI 和模型训练 pipeline 已高度完成，后端 API 骨架完整但数据层为占位实现。最关键的瓶颈是<strong>后端缺乏真实数据源接入和持久化存储</strong>，以及<strong>模型服务未实际部署与后端对接</strong>。</p>
+
+<h3>优先级建议</h3>
+<div class="priority-item">
+  <span class="num p0">1</span>
+  <div class="desc"><strong>P0 — 后端接入真实数据源</strong><br><span>利用模型训练模块已有的 akshare 采集管道，为后端提供真实基金/行情数据</span></div>
+</div>
+<div class="priority-item">
+  <span class="num p0">2</span>
+  <div class="desc"><strong>P0 — 部署模型推理服务</strong><br><span>启动 Python serve_model，配置 Go 后端环境变量，打通端到端预测链路</span></div>
+</div>
+<div class="priority-item">
+  <span class="num p1">3</span>
+  <div class="desc"><strong>P1 — 数据库持久化</strong><br><span>引入 SQLite/PostgreSQL 替代内存存储</span></div>
+</div>
+<div class="priority-item">
+  <span class="num p1">4</span>
+  <div class="desc"><strong>P1 — 修正文档与代码差异</strong><br><span>根 README 框架描述错误、特征集命名过时</span></div>
+</div>
+<div class="priority-item">
+  <span class="num p2">5</span>
+  <div class="desc"><strong>P2 — 前端补全</strong><br><span>搜索分页UI、冗余组件清理、单元测试</span></div>
+</div>
+<div class="priority-item">
+  <span class="num p2">6</span>
+  <div class="desc"><strong>P2 — 容器化部署</strong><br><span>Dockerfile + docker-compose.yml</span></div>
+</div>
+
+</div>
+</body>
+</html>

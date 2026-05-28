@@ -72,10 +72,13 @@ class BuildSamplesTests(unittest.TestCase):
                 index_daily_path=root / "index_daily.csv",
                 futures_path=root / "futures.csv",
                 panic_factor_path=root / "panic.csv",
+                futures_underlying="IF",
             )
 
         self.assertGreater(len(samples), 0)
         self.assertIn("future_return_pct_next_day", samples.columns)
+        self.assertIn("future_index_return_pct_next_day", samples.columns)
+        self.assertIn("future_tracking_error_pct_next_day", samples.columns)
         self.assertIn("fund_tracking_error_1d", samples.columns)
         self.assertIn("futures_return_1d", samples.columns)
         self.assertIn("fear_score", samples.columns)
@@ -83,6 +86,37 @@ class BuildSamplesTests(unittest.TestCase):
         prepared, features = prepare_features(samples, "index_fund_daily_v1")
         self.assertIn("index_return_1d", features)
         self.assertFalse(prepared[features].isna().any().any())
+
+    def test_futures_underlying_filter_avoids_cross_index_contamination(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            dates = pd.date_range("2026-01-01", periods=8, freq="D")
+            pd.DataFrame({
+                "fund_code": ["510300"] * len(dates),
+                "trade_date": dates,
+                "available_time": [d.strftime("%Y-%m-%d 16:00:00") for d in dates],
+                "nav": [1.00, 1.01, 1.03, 1.02, 1.04, 1.05, 1.06, 1.08],
+                "adjusted_nav": [1.00, 1.01, 1.03, 1.02, 1.04, 1.05, 1.06, 1.08],
+            }).to_csv(root / "fund_daily.csv", index=False)
+            pd.DataFrame({
+                "contract": ["IF0"] * len(dates) + ["IC0"] * len(dates),
+                "underlying": ["IF"] * len(dates) + ["IC"] * len(dates),
+                "timestamp": list(dates) + list(dates),
+                "available_time": [d.strftime("%Y-%m-%d 16:00:00") for d in dates] * 2,
+                "price": [100, 101, 102, 103, 104, 105, 106, 107] + [100, 90, 80, 70, 60, 50, 40, 30],
+                "open_interest": [10] * len(dates) * 2,
+            }).to_csv(root / "futures.csv", index=False)
+
+            samples = build_daily_weekly_samples(
+                fund_daily_path=root / "fund_daily.csv",
+                futures_path=root / "futures.csv",
+                fund_code="510300",
+                tracking_index="sh000300",
+                futures_underlying="IF",
+            )
+
+        first_nonzero = samples["futures_return_1d"].replace(0, pd.NA).dropna().iloc[0]
+        self.assertGreater(first_nonzero, 0)
 
 
 if __name__ == "__main__":

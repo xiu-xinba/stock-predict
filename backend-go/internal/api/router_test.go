@@ -6,6 +6,8 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"stock-predict-go/internal/api"
@@ -26,6 +28,12 @@ func newTestHandler() http.Handler {
 	}
 	logger := slog.New(slog.NewTextHandler(bytes.NewBuffer(nil), nil))
 	services := service.NewRegistry(store.NewMemoryStore(), cfg, logger)
+	return api.NewRouter(cfg, services, logger)
+}
+
+func newTestHandlerWithConfig(cfg config.Config, fundStore *store.MemoryStore) http.Handler {
+	logger := slog.New(slog.NewTextHandler(bytes.NewBuffer(nil), nil))
+	services := service.NewRegistry(fundStore, cfg, logger)
 	return api.NewRouter(cfg, services, logger)
 }
 
@@ -94,6 +102,12 @@ func TestPredictFund(t *testing.T) {
 	if data.IntradayPrediction.Horizon != "intraday_5m" {
 		t.Fatalf("unexpected intraday horizon: %q", data.IntradayPrediction.Horizon)
 	}
+	if data.WeeklyPrediction.Horizon != "next_week" {
+		t.Fatalf("unexpected weekly horizon: %q", data.WeeklyPrediction.Horizon)
+	}
+	if data.NextDayPrediction.SignalStatus == "" {
+		t.Fatal("expected next-day signal status")
+	}
 }
 
 func TestWatchlistQuotes(t *testing.T) {
@@ -112,6 +126,55 @@ func TestWatchlistQuotes(t *testing.T) {
 	}
 	if len(items) != 2 {
 		t.Fatalf("expected two watchlist quotes, got %d", len(items))
+	}
+}
+
+func TestSyncFundsImportsConfiguredCSV(t *testing.T) {
+	dir := t.TempDir()
+	csvPath := filepath.Join(dir, "funds.csv")
+	if err := os.WriteFile(csvPath, []byte("fund_code,fund_name,fund_type,latest_nav\n999999,测试同步基金,指数型,1.5\n"), 0o644); err != nil {
+		t.Fatalf("write csv: %v", err)
+	}
+	remote := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`var r = [["999998","CSYCJJ","测试远程基金","债券型","CESHIYUANCHENGJIJIN"]];`))
+	}))
+	defer remote.Close()
+	cfg := config.Config{
+		Port:            "0",
+		Env:             "development",
+		CORSOrigins:     []string{"http://localhost:5173"},
+		FundUniverseURL: remote.URL,
+		FundSyncCSVPath: csvPath,
+		ReadTimeout:     1,
+		WriteTimeout:    1,
+		ShutdownTimeout: 1,
+	}
+	fundStore := store.NewMemoryStore()
+	handler := newTestHandlerWithConfig(cfg, fundStore)
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/funds/sync", nil)
+	handler.ServeHTTP(rec, req)
+
+	response := decodeAPIResponse(t, rec, http.StatusOK)
+	if response.Code != 0 {
+		t.Fatalf("expected API code 0, got %d: %s", response.Code, response.Message)
+	}
+	result, err := remarshal[dto.FundSyncResult](response.Data)
+	if err != nil {
+		t.Fatalf("decode sync result: %v", err)
+	}
+	if result.Imported != 2 || result.Total <= 2 {
+		t.Fatalf("unexpected sync result: %+v", result)
+	}
+	if _, ok := fundStore.FindFund("999999"); !ok {
+		t.Fatalf("expected csv synced fund in store")
+	}
+	if _, ok := fundStore.FindFund("999998"); !ok {
+		t.Fatalf("expected remote synced fund in store")
+	}
+	if _, ok := fundStore.FindFund("000001"); !ok {
+		t.Fatalf("expected sync to preserve seed fund 000001")
 	}
 }
 

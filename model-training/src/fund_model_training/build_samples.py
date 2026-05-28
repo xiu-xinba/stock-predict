@@ -17,6 +17,7 @@ def main() -> None:
     parser.add_argument("--dim-fund", type=Path, help="dim_fund contract CSV.")
     parser.add_argument("--index-daily", type=Path, help="index_daily contract CSV.")
     parser.add_argument("--futures", type=Path, help="futures_bar contract CSV.")
+    parser.add_argument("--futures-underlying", help="Filter futures rows to this underlying before joining.")
     parser.add_argument("--panic-factor", type=Path, help="panic_factor contract CSV.")
     parser.add_argument("--fund-code", help="Filter to one fund code.")
     parser.add_argument("--tracking-index", help="Override or fill tracking_index for the samples.")
@@ -30,6 +31,7 @@ def main() -> None:
         dim_fund_path=args.dim_fund,
         index_daily_path=args.index_daily,
         futures_path=args.futures,
+        futures_underlying=args.futures_underlying,
         panic_factor_path=args.panic_factor,
         fund_code=args.fund_code,
         tracking_index=args.tracking_index,
@@ -47,6 +49,7 @@ def build_daily_weekly_samples(
     dim_fund_path: str | Path | None = None,
     index_daily_path: str | Path | None = None,
     futures_path: str | Path | None = None,
+    futures_underlying: str | None = None,
     panic_factor_path: str | Path | None = None,
     fund_code: str | None = None,
     tracking_index: str | None = None,
@@ -83,12 +86,12 @@ def build_daily_weekly_samples(
     out["nav"] = out["latest_nav"]
 
     if index_daily_path:
-        out = _join_index_features(out, index_daily_path)
+        out = _join_index_features(out, index_daily_path, weekly_periods=weekly_periods)
     else:
         _ensure_empty_index_features(out)
 
     if futures_path:
-        out = _join_futures_features(out, futures_path)
+        out = _join_futures_features(out, futures_path, futures_underlying=futures_underlying)
     else:
         _ensure_empty_futures_features(out)
 
@@ -99,6 +102,10 @@ def build_daily_weekly_samples(
 
     out["fund_tracking_error_1d"] = out["fund_return_1d"] - out["index_return_1d"]
     out["fund_tracking_error_5d"] = out["fund_return_5d"] - out["index_return_5d"]
+    if "future_index_return_pct_next_day" in out.columns:
+        out["future_tracking_error_pct_next_day"] = out["future_return_pct_next_day"] - out["future_index_return_pct_next_day"]
+    if "future_index_return_pct_1w" in out.columns:
+        out["future_tracking_error_pct_1w"] = out["future_return_pct_1w"] - out["future_index_return_pct_1w"]
     out["market_change_pct"] = out["index_return_1d"]
     out["index_change_pct"] = out["index_return_1d"]
     out["change_pct"] = out["fund_return_1d"]
@@ -136,7 +143,7 @@ def _attach_fund_metadata(fund, dim_fund_path, tracking_index: str | None, marke
     return out
 
 
-def _join_index_features(samples, index_daily_path):
+def _join_index_features(samples, index_daily_path, weekly_periods: int):
     pd = require_pandas()
     index = pd.read_csv(index_daily_path, dtype={"index_code": str})
     index["trade_date"] = pd.to_datetime(index["trade_date"], errors="coerce")
@@ -148,6 +155,8 @@ def _join_index_features(samples, index_daily_path):
     index["index_volatility_20d"] = group["index_return_1d"].transform(lambda s: s.rolling(20, min_periods=3).std())
     index["index_high_20d"] = group["index_close"].transform(lambda s: s.rolling(20, min_periods=3).max())
     index["index_drawdown_20d"] = index["index_close"] / index["index_high_20d"] * 100.0 - 100.0
+    index["future_index_return_pct_next_day"] = group["index_close"].shift(-1) / index["index_close"] * 100.0 - 100.0
+    index["future_index_return_pct_1w"] = group["index_close"].shift(-weekly_periods) / index["index_close"] * 100.0 - 100.0
     keep = [
         "index_code",
         "trade_date",
@@ -156,6 +165,8 @@ def _join_index_features(samples, index_daily_path):
         "index_return_5d",
         "index_volatility_20d",
         "index_drawdown_20d",
+        "future_index_return_pct_next_day",
+        "future_index_return_pct_1w",
     ]
     out = samples.merge(
         index[keep],
@@ -168,7 +179,7 @@ def _join_index_features(samples, index_daily_path):
     return out
 
 
-def _join_futures_features(samples, futures_path):
+def _join_futures_features(samples, futures_path, futures_underlying: str | None = None):
     pd = require_pandas()
     futures = pd.read_csv(futures_path)
     futures["timestamp"] = pd.to_datetime(futures["timestamp"], errors="coerce")
@@ -176,7 +187,12 @@ def _join_futures_features(samples, futures_path):
     futures["price"] = pd.to_numeric(futures["price"], errors="coerce")
     futures["open_interest"] = pd.to_numeric(futures.get("open_interest"), errors="coerce")
     futures["basis"] = pd.to_numeric(futures.get("basis"), errors="coerce")
+    if futures_underlying and "underlying" in futures.columns:
+        futures = futures.loc[futures["underlying"].astype(str).str.upper() == futures_underlying.upper()].copy()
     futures = futures.dropna(subset=["trade_date", "price"]).sort_values(["contract", "trade_date"])
+    if futures.empty:
+        _ensure_empty_futures_features(samples)
+        return samples
     group = futures.groupby("contract", group_keys=False)
     futures["futures_return_1d"] = group["price"].pct_change() * 100.0
     futures["futures_open_interest_change_5d"] = group["open_interest"].pct_change(5) * 100.0
@@ -271,6 +287,10 @@ def _order_sample_columns(df):
         "index_return_5d",
         "index_volatility_20d",
         "index_drawdown_20d",
+        "future_index_return_pct_next_day",
+        "future_index_return_pct_1w",
+        "future_tracking_error_pct_next_day",
+        "future_tracking_error_pct_1w",
         "fund_tracking_error_1d",
         "fund_tracking_error_5d",
         "futures_return_1d",

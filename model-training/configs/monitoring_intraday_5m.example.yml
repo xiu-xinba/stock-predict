@@ -1,0 +1,20 @@
+prediction_log_path: data/processed/prediction_log.csv
+samples_path: data/processed/public_mvp_intraday_index_fund_samples.csv
+feature_set: index_fund_intraday_v1
+horizons:
+  - intraday_5m
+backfilled_log_output_path: data/processed/prediction_log_backfilled.csv
+performance_report_output_path: reports/prediction_performance_report.json
+drift_report_output_path: reports/intraday_5m_drift_report.json
+summary_output_path: reports/monitoring_cycle_intraday_5m_summary.json
+flat_threshold_pct: 0.02
+high_confidence_threshold: 0.60
+round_trip_cost_pct: 0.02
+skip_missing_prediction_log: true
+drift:
+  reference_rows: 500
+  current_rows: 200
+  psi_bins: 10
+  psi_threshold: 0.20
+  ks_threshold: 0.20
+  missing_delta_threshold: 0.10
