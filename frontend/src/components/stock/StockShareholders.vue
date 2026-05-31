@@ -5,7 +5,7 @@ import type { StockShareholders } from '@/types'
 
 defineOptions({ name: 'StockShareholders' })
 
-const props = defineProps<{
+defineProps<{
   shareholders: StockShareholders
 }>()
 </script>
@@ -23,7 +23,7 @@ const props = defineProps<{
       </div>
     </div>
 
-    <table class="shareholders-table" v-if="shareholders.top10 && shareholders.top10.length">
+    <table v-if="shareholders.top10 && shareholders.top10.length" class="shareholders-table">
       <thead>
         <tr>
           <th class="col-name">股东名称</th>

@@ -13,15 +13,15 @@ defineProps<{ manager: FundManagerInfo }>()
     <template v-else>
       <div class="manager-name">{{ manager.name }}</div>
       <div class="manager-stats">
-        <div class="kv-item" v-if="manager.tenure_days > 0">
+        <div v-if="manager.tenure_days > 0" class="kv-item">
           <span class="kv-label">任职天数</span>
           <span class="kv-value">{{ manager.tenure_days }} 天</span>
         </div>
-        <div class="kv-item" v-if="manager.managed_size">
+        <div v-if="manager.managed_size" class="kv-item">
           <span class="kv-label">管理规模</span>
           <span class="kv-value">{{ manager.managed_size }}</span>
         </div>
-        <div class="kv-item" v-if="manager.fund_count > 0">
+        <div v-if="manager.fund_count > 0" class="kv-item">
           <span class="kv-label">在管基金</span>
           <span class="kv-value">{{ manager.fund_count }} 只</span>
         </div>
@@ -50,8 +50,6 @@ defineProps<{ manager: FundManagerInfo }>()
   font-size: var(--fs-sm); color: var(--color-text-secondary); line-height: var(--lh-relaxed);
   margin: 0;
 }
-
-.empty-hint { font-size: var(--fs-sm); color: var(--color-text-tertiary); text-align: center; padding: var(--sp-4) 0; }
 
 @media (max-width: 768px) {
   .manager-stats { grid-template-columns: repeat(2, 1fr); }

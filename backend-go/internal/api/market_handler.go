@@ -27,7 +27,7 @@ func (r *Router) marketRanking(c *gin.Context) {
 	}
 	items, err := r.services.Funds.Ranking(path.Type, query.Size)
 	if errors.Is(err, service.ErrInvalidRankingType) {
-		writeJSON(c, http.StatusOK, dto.APIResponse{Code: -1, Message: "type 必须为 gainers 或 losers", Data: nil})
+		writeError(c, http.StatusBadRequest, -1, "无效的排名类型")
 		return
 	}
 	if err != nil {

@@ -47,12 +47,6 @@ func TestParseTencentFundQuotes(t *testing.T) {
 	}
 }
 
-type fakeStockFinder struct{}
-
-func (f fakeStockFinder) FindStock(code string) (dto.StockItem, error) {
-	return dto.StockItem{}, nil
-}
-
 type fakeQuoteProvider struct {
 	quotes map[string]dto.FundItem
 }
@@ -62,7 +56,7 @@ func (p fakeQuoteProvider) RefreshQuotes(context.Context, []dto.FundItem) map[st
 }
 
 func TestWatchlistQuotesUsesRealtimeProvider(t *testing.T) {
-	service := NewPredictionService(
+	service := NewWatchlistService(
 		fakeFundRepository{funds: []dto.FundItem{{
 			FundCode:     "510300",
 			FundName:     "沪深300ETF",
@@ -72,8 +66,6 @@ func TestWatchlistQuotesUsesRealtimeProvider(t *testing.T) {
 			ChangePct:    0.22,
 			QuoteSource:  "eastmoney_rank",
 		}}},
-		NewMarketService(nil),
-		fakeStockFinder{},
 		config.Config{ReadTimeout: 1},
 		nil,
 	)
@@ -89,7 +81,7 @@ func TestWatchlistQuotesUsesRealtimeProvider(t *testing.T) {
 		},
 	}}
 
-	items := service.WatchlistQuotes([]string{"510300"})
+	items := service.Quotes([]string{"510300"})
 
 	if len(items) != 1 {
 		t.Fatalf("expected one watchlist item, got %+v", items)

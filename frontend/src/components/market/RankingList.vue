@@ -8,20 +8,20 @@
       <span class="rank-sub">{{ type === 'gainers' ? '最新涨幅' : '最新跌幅' }}</span>
     </div>
     <div class="rank-body">
-      <template v-if="items.length > 0">
+      <template v-if="rows.length > 0">
         <div
-          v-for="item in items"
-          :key="item[codeField]"
+          v-for="item in rows"
+          :key="item.code"
           class="rank-row"
           role="button"
           tabindex="0"
-          @click="goTo(item[codeField])"
-          @keydown.enter="goTo(item[codeField])"
+          @click="goTo(item.code)"
+          @keydown.enter="goTo(item.code)"
         >
           <span :class="['rank-num', { top: item.rank <= 3 }]">{{ item.rank }}</span>
           <div class="rank-info">
-            <span class="rank-name">{{ item[nameField] }}</span>
-            <span class="rank-type">{{ item[subField] }}</span>
+            <span class="rank-name">{{ item.name }}</span>
+            <span class="rank-type">{{ item.sub }}</span>
           </div>
           <span
             :class="['rank-pct', item.change_pct > 0 ? 'up' : item.change_pct < 0 ? 'down' : 'flat']"
@@ -46,13 +46,30 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 
 defineOptions({ name: 'RankingList' })
 
+interface RankingRecord {
+  rank: number
+  change_pct: number
+  quote_date?: string
+  [key: string]: unknown
+}
+
+interface RankRow {
+  rank: number
+  code: string
+  name: string
+  sub: string
+  change_pct: number
+  quote_date?: string
+}
+
 const props = withDefaults(defineProps<{
   title: string
-  items: any[]
+  items: unknown[]
   type: 'gainers' | 'losers'
   routePrefix: string
   codeField: string
@@ -63,7 +80,24 @@ const props = withDefaults(defineProps<{
 })
 
 const router = useRouter()
+
+const rows = computed<RankRow[]>(() => props.items.map((item) => {
+  const record = item as RankingRecord
+  const code = record[props.codeField]
+  const name = record[props.nameField]
+  const sub = props.subField ? record[props.subField] : ''
+  return {
+    rank: Number(record.rank ?? 0),
+    code: code == null ? '' : String(code),
+    name: name == null ? '' : String(name),
+    sub: sub == null ? '' : String(sub),
+    change_pct: Number(record.change_pct ?? 0),
+    quote_date: typeof record.quote_date === 'string' ? record.quote_date : undefined,
+  }
+}))
+
 function goTo(code: string) {
+  if (!code) return
   router.push(`${props.routePrefix}/${code}`)
 }
 </script>

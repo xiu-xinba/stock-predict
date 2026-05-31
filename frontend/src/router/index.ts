@@ -22,13 +22,13 @@ const routes: RouteRecordRaw[] = [
     path: '/predict',
     name: 'Predict',
     component: () => import('@/views/PredictView.vue'),
-    meta: { title: '预测', icon: 'MagicStick' },
+    meta: { title: '预测入口', icon: 'MagicStick' },
   },
   {
     path: '/predict/:fundCode',
     name: 'PredictDetail',
     component: () => import('@/views/PredictView.vue'),
-    meta: { title: '预测', icon: 'MagicStick' },
+    meta: { title: '预测入口', icon: 'MagicStick' },
   },
   {
     path: '/fund/:fundCode',
@@ -59,8 +59,8 @@ const router = createRouter({
 })
 
 router.beforeEach((to, _from, next) => {
-  const title = (to.meta.title as string) || '基金预测'
-  document.title = `${title} · 基金预测`
+  const title = (to.meta.title as string) || 'Stock Predict'
+  document.title = `${title} · Stock Predict`
 
   // Auth check point - currently no auth required
   // if (to.meta.requiresAuth && !isAuthenticated()) {

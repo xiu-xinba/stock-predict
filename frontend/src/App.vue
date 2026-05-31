@@ -21,9 +21,9 @@
     </header>
 
     <main class="main-content">
-      <router-view v-slot="{ Component, route: currentRoute }">
+      <router-view v-slot="{ Component: RouteComponent, route: currentRoute }">
         <transition name="page" mode="out-in">
-          <component :is="Component" :key="currentRoute.path" />
+          <component :is="RouteComponent" :key="currentRoute.path" />
         </transition>
       </router-view>
     </main>
@@ -114,7 +114,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { path: '/watchlist', label: '自选', icon: Star, title: '自选监控' },
   { path: '/market', label: '行情', icon: TrendCharts, title: '市场行情' },
-  { path: '/predict', label: '预测', icon: MagicStick, title: '模型预测' },
+  { path: '/predict', label: '预测', icon: MagicStick, title: '预测入口' },
 ]
 
 const route = useRoute()
@@ -138,7 +138,7 @@ const activeMenu = computed(() => {
 
 const currentTitle = computed(() => {
   const item = navItems.find((n) => n.path === activeMenu.value)
-  return item?.title ?? '基金预测'
+  return item?.title ?? 'Stock Predict'
 })
 
 const dockVisible = ref(false)
@@ -200,7 +200,7 @@ onUnmounted(() => {
 
 .app-shell {
   position: relative;
-  z-index: 1;
+  z-index: var(--z-base);
   min-height: 100dvh;
   background: var(--color-bg-page);
   transition: background-color var(--transition-normal), color var(--transition-normal);
@@ -364,7 +364,7 @@ onUnmounted(() => {
   right: 0;
   bottom: 0;
   left: 0;
-  z-index: 50;
+  z-index: var(--z-dock);
   height: 28px;
 }
 
@@ -372,7 +372,7 @@ onUnmounted(() => {
   position: fixed;
   bottom: var(--sp-2);
   left: 50%;
-  z-index: 70;
+  z-index: var(--z-dock-pill);
   display: flex;
   align-items: center;
   justify-content: center;

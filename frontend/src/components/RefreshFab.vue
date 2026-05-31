@@ -4,7 +4,6 @@ import { useRoute } from 'vue-router'
 import { useWatchlistStore } from '@/stores/watchlist'
 import { useMarketStore } from '@/stores/market'
 import { useFundDetailStore } from '@/stores/fundDetail'
-import { usePredictionStore } from '@/stores/prediction'
 import { useStockDetailStore } from '@/stores/stockDetail'
 
 defineOptions({ name: 'RefreshFab' })
@@ -27,7 +26,6 @@ const route = useRoute()
 const watchlistStore = useWatchlistStore()
 const marketStore = useMarketStore()
 const fundDetailStore = useFundDetailStore()
-const predictionStore = usePredictionStore()
 const stockDetailStore = useStockDetailStore()
 
 const spinning = ref(false)
@@ -39,7 +37,7 @@ let tooltipTimer: ReturnType<typeof setTimeout> | null = null
 let idleTimer: ReturnType<typeof setTimeout> | null = null
 
 const isLoading = computed(() => {
-  return watchlistStore.loading || marketStore.loading || fundDetailStore.loading || predictionStore.loading || stockDetailStore.loading
+  return watchlistStore.loading || marketStore.loading || fundDetailStore.loading || stockDetailStore.loading
 })
 
 watch(isLoading, (loading, _, onCleanup) => {
@@ -107,13 +105,6 @@ function refresh() {
     const code = Array.isArray(route.params.fundCode) ? route.params.fundCode[0] : route.params.fundCode
     if (code) {
       fundDetailStore.fetchDetail(code)
-      predictionStore.predict(code)
-      lastRefresh.value = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-    }
-  } else if (path.startsWith('/predict')) {
-    const code = Array.isArray(route.params.fundCode) ? route.params.fundCode[0] : route.params.fundCode
-    if (code) {
-      predictionStore.predict(code)
       lastRefresh.value = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
     }
   } else if (path.startsWith('/stock/')) {
@@ -134,7 +125,7 @@ function refresh() {
 }
 
 function handleKeydown(e: KeyboardEvent) {
-  if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
+  if (e.altKey && e.key === 'r') {
     e.preventDefault()
     refresh()
   }
@@ -183,7 +174,7 @@ onUnmounted(() => {
 <style scoped>
 .refresh-fab-wrap {
   position: fixed;
-  z-index: 60;
+  z-index: var(--z-fab);
   display: flex;
   align-items: center;
   gap: var(--sp-2);

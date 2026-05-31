@@ -4,7 +4,7 @@
 
 ### 项目定位
 
-基金/股票预测系统是一个面向中国 A 股市场的金融数据平台，提供基金与股票的实时行情、搜索、自选管理和多周期预测功能。系统采用前后端分离架构，后端使用 Go 语言构建高性能 API 服务，前端使用 Vue 3 构建响应式单页应用。
+基金/股票行情系统是一个面向中国 A 股市场的金融数据平台，提供基金与股票的实时行情、搜索、自选管理和预测入口占位。系统采用前后端分离架构，后端使用 Go 语言构建高性能 API 服务，前端使用 Vue 3 构建响应式单页应用。
 
 ### 核心功能
 
@@ -13,7 +13,7 @@
 | 统一搜索 | 支持基金代码、名称、拼音缩写/全拼、股票代码等多维度混合搜索 |
 | 自选管理 | 基金/股票自选列表，支持实时行情刷新、排序、涨跌统计 |
 | 行情展示 | 大盘指数、基金/股票排行榜（涨幅/跌幅/成交量） |
-| 预测引擎 | 多周期预测（日级/周级/盘中5分钟），Go 基线 + Python 模型服务双轨 |
+| 预测入口 | 当前主项目保留页面和 API 占位，模型训练与推理由独立项目后续接入 |
 | 详情页面 | 基金详情（净值/经理/持仓/风险）、股票详情（K线/资金流/财务/股东） |
 | 数据同步 | 从东方财富等数据源自动同步基金/股票基础数据 |
 
@@ -28,7 +28,6 @@
 | 后端框架 | Go + Gin |
 | 数据存储 | 内存 + JSON 文件持久化 + SQLite FTS5 |
 | 外部数据源 | 东方财富 API、腾讯行情 API |
-| 模型服务 | Python 模型服务（HTTP REST） |
 
 ---
 
@@ -68,7 +67,7 @@
 │                             │                                       │
 │  ┌──────────────────────────┴───────────────────────────────────┐   │
 │  │                 Service 层 (Registry)                          │   │
-│  │  FundService · MarketService · PredictionService ·            │   │
+│  │  FundService · MarketService · WatchlistService ·             │   │
 │  │  FundDetailService · StockService · StockDetailService ·      │   │
 │  │  SearchService · FundQuoteClient · StockQuoteClient           │   │
 │  └──────────────────────────┬───────────────────────────────────┘   │
@@ -82,7 +81,7 @@
 │  ┌──────────────────────────────────────────────────────────────┐   │
 │  │                 外部数据源                                      │   │
 │  │  东方财富基金JS · 东方财富排行API · 东方财富股票列表API ·       │   │
-│  │  腾讯行情API · Python 模型服务                                  │   │
+│  │  腾讯行情API                                                    │   │
 │  └──────────────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────────────┘
 ```
@@ -103,7 +102,7 @@ internal/api/            → HTTP 层（路由 + Handler + 中间件）
     │                       职责：参数绑定、输入校验、响应序列化
     ▼
 internal/service/        → 业务逻辑层（Registry 模式组装）
-    │                       职责：搜索、预测、行情、同步等核心业务
+    │                       职责：搜索、行情、自选、同步等核心业务
     ▼
 internal/store/          → 数据存储层
                             职责：内存存储、JSON 持久化、SQLite FTS5 索引
@@ -123,11 +122,10 @@ internal/store/          → 数据存储层
 | api | response.go | 统一 JSON 响应格式 |
 | service | registry.go | 服务注册中心，组装所有 Service |
 | service | fund_service.go | 基金搜索/排行/过滤/同步 |
-| service | prediction_service.go | 多周期预测（基线 + 模型服务） |
+| service | watchlist_service.go | 自选基金报价聚合 |
 | service | search_service.go | 统一搜索（线性扫描 + FTS5 混合） |
 | service | stock_service.go | 股票搜索/排行/同步 |
 | service | stock_sync.go | 东方财富 API 同步 + 拼音生成 |
-| service | model_client.go | Python 模型服务客户端（含熔断器） |
 | service | fund_detail_service.go | 基金详情（净值/经理/持仓/风险） |
 | service | stock_detail_service.go | 股票详情（K线/资金流/财务/股东） |
 | service | fund_quote.go | 基金实时行情（东方财富/腾讯） |
@@ -147,7 +145,7 @@ internal/store/          → 数据存储层
 type Registry struct {
     Funds       *FundService
     Market      *MarketService
-    Prediction  *PredictionService
+    Watchlist   *WatchlistService
     Detail      *FundDetailService
     Stocks      *StockService
     StockDetail *StockDetailService
@@ -165,7 +163,7 @@ Registry
  ├── FundQuoteClient      ← (HTTP 客户端)
  ├── StockQuoteClient     ← (HTTP 客户端)
  ├── StockService         ← Logger
- ├── PredictionService    ← FundRepository, MarketService, StockService, Config, Logger
+ ├── WatchlistService     ← FundRepository, Config, Logger
  ├── FundDetailService    ← FundRepository, FundQuoteClient, Logger
  ├── StockDetailService   ← StockService, StockQuoteClient, Logger
  └── SearchService        ← FundRepository, StockService, SearchIndex
@@ -223,7 +221,7 @@ Service（业务逻辑处理）
     │
     ├──→ Store（内存读取/写入）
     ├──→ SearchIndex（FTS5 查询）
-    ├──→ 外部 API（行情/模型服务）
+    ├──→ 外部 API（行情数据源）
     │
     ▼
 Handler（响应序列化）
@@ -244,13 +242,13 @@ HTTP 响应（JSON + Gzip）
 | POST | /api/v1/funds/sync | syncFunds | 基金数据同步（需管理员令牌） |
 | GET | /api/v1/market/indices | marketIndices | 大盘指数 |
 | GET | /api/v1/market/ranking/:type | marketRanking | 基金排行榜 |
-| GET | /api/v1/predict/:fundCode | predict | 基金预测 |
+| GET | /api/v1/predict/:fundCode | predict | 基金预测入口占位 |
 | POST | /api/v1/watchlist/quotes | watchlistQuotes | 自选基金行情 |
 | GET | /api/v1/fund/:fundCode/detail | fundDetail | 基金详情 |
 | GET | /api/v1/stocks/search | searchStocks | 股票搜索 |
 | GET | /api/v1/stocks/filters | stockFilters | 股票筛选项 |
 | GET | /api/v1/stock/:stockCode/detail | stockDetail | 股票详情 |
-| GET | /api/v1/stock/:stockCode/predict | predictStock | 股票预测 |
+| GET | /api/v1/stock/:stockCode/predict | predictStock | 股票预测入口占位 |
 | POST | /api/v1/stocks/quotes | stockQuotes | 股票批量行情 |
 | GET | /api/v1/market/stock-ranking/:type | stockRanking | 股票排行榜 |
 | POST | /api/v1/stocks/sync | syncStocks | 股票数据同步（需管理员令牌） |
@@ -274,13 +272,7 @@ App.vue
  │    │    ├── FundRanking       ← 基金排行
  │    │    └── StockRanking      ← 股票排行
  │    │
- │    ├── PredictView            ← 预测页
- │    │    ├── PredictionCard    ← 预测卡片
- │    │    ├── PredictionDisplay ← 预测结果展示
- │    │    ├── FactorPanel       ← 因子面板
- │    │    ├── ReturnDecomposition ← 收益分解
- │    │    ├── ReliabilityWarning ← 可靠性警告
- │    │    └── HorizonGrid       ← 预测周期网格
+ │    ├── PredictView            ← 预测入口占位页
  │    │
  │    ├── FundDetailView         ← 基金详情页
  │    │    ├── DetailPageLayout  ← 通用详情布局
@@ -290,7 +282,7 @@ App.vue
  │    │    ├── FundManager       ← 基金经理
  │    │    ├── FundPortfolio     ← 持仓明细
  │    │    ├── FundRisk          ← 风险指标
- │    │    └── FundPrediction    ← 基金预测
+ │    │    └── FundPrediction    ← 基金预测入口占位
  │    │
  │    ├── StockDetailView        ← 股票详情页
  │    │    ├── DetailPageLayout
@@ -301,7 +293,7 @@ App.vue
  │    │    ├── StockCapitalFlow  ← 资金流向
  │    │    ├── StockFinancials   ← 财务数据
  │    │    ├── StockShareholders ← 股东结构
- │    │    └── StockPrediction   ← 股票预测
+ │    │    └── StockPrediction   ← 股票预测入口占位
  │    │
  │    └── NotFoundView           ← 404 页面
  │
@@ -334,12 +326,6 @@ Pinia
  │    ├── fundFilters/stockFilters 筛选项
  │    ├── history                 搜索历史（localStorage）
  │    └── search()               执行搜索
- │
- ├── prediction.ts               ← 预测 Store
- │    ├── prediction              基金预测数据
- │    ├── stockPrediction         股票预测数据
- │    ├── predict()               基金预测
- │    └── predictStockAction()    股票预测
  │
  ├── market.ts                   ← 行情 Store
  │
@@ -401,10 +387,9 @@ Pinia
 | api/routes.ts | API 路径常量 |
 | api/search.ts | 统一搜索、筛选 |
 | api/watchlist.ts | 自选行情 |
-| api/predict.ts | 基金预测 |
 | api/market.ts | 大盘指数、排行 |
 | api/fundDetail.ts | 基金详情 |
-| api/stock.ts | 股票搜索、详情、行情、预测 |
+| api/stock.ts | 股票搜索、详情、行情 |
 
 ### 4.4 路由设计
 
@@ -414,14 +399,14 @@ Pinia
 | `/watchlist` | Watchlist | WatchlistView | 自选列表 |
 | `/market` | Market | MarketView | 行情中心 |
 | `/predict` | Predict | PredictView | 预测入口 |
-| `/predict/:fundCode` | PredictDetail | PredictView | 指定基金预测 |
+| `/predict/:fundCode` | PredictDetail | PredictView | 指定基金预测入口占位 |
 | `/fund/:fundCode` | FundDetail | FundDetailView | 基金详情 |
 | `/stock/:stockCode` | StockDetail | StockDetailView | 股票详情 |
 | `/:pathMatch(.*)*` | NotFound | NotFoundView | 404 |
 
 **路由守卫：**
 
-- `beforeEach`：设置页面标题 `{title} · 基金预测`
+- `beforeEach`：设置页面标题
 - 预留认证检查点（当前未启用）
 - `scrollBehavior`：路由切换时滚动到顶部
 
@@ -798,10 +783,7 @@ POST/PUT/DELETE/PATCH 请求：
 │  ├── 自动同步: FUND_AUTO_SYNC_ON_START=true               │
 │  └── 自动同步: STOCK_AUTO_SYNC_ON_START=true              │
 │                                                         │
-│  可选：Python 模型服务                                     │
-│  ├── MODEL_SERVICE_URL (日级)                             │
-│  ├── WEEKLY_MODEL_SERVICE_URL (周级)                      │
-│  └── INTRADAY_MODEL_SERVICE_URL (盘中)                    │
+│  预测：当前仅保留入口占位，模型训练与推理将由独立项目接入    │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -825,7 +807,6 @@ POST/PUT/DELETE/PATCH 请求：
 │                     ┌──────────────┴───────────────────┐    │
 │                     │         外部数据源                  │    │
 │                     │  东方财富 API · 腾讯行情 API        │    │
-│                     │  Python 模型服务                    │    │
 │                     └──────────────────────────────────┘    │
 │                                                         │
 │  关键配置：                                               │
@@ -861,9 +842,6 @@ POST/PUT/DELETE/PATCH 请求：
 | FUND_AUTO_SYNC_MIN_COUNT | 1000 | 触发自动同步的最小基金数 |
 | FUND_REALTIME_QUOTES_ENABLED | true | 启用基金实时行情 |
 | STOCK_AUTO_SYNC_ON_START | true | 启动时自动同步股票 |
-| MODEL_SERVICE_URL | — | 日级模型服务地址 |
-| WEEKLY_MODEL_SERVICE_URL | — | 周级模型服务地址 |
-| INTRADAY_MODEL_SERVICE_URL | — | 盘中模型服务地址 |
 | CACHE_TTL_MINUTES | 5 | 缓存过期时间 |
 | EASTMONEY_BASE_URL | push2his.eastmoney.com | 东方财富历史数据基址 |
 | TENCENT_QUOTE_BASE_URL | qt.gtimg.cn | 腾讯行情基址 |

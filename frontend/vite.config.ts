@@ -33,10 +33,16 @@ export default defineConfig({
   },
   build: {
     target: 'es2020',
+    chunkSizeWarningLimit: 700,
     rollupOptions: {
       output: {
         manualChunks(id) {
-          if (id.includes('node_modules/echarts') || id.includes('node_modules\\echarts')) return 'echarts'
+          const normalizedId = id.replace(/\\/g, '/')
+          if (normalizedId.includes('node_modules/zrender/')) return 'zrender'
+          if (normalizedId.includes('node_modules/echarts/charts')) return 'echarts-charts'
+          if (normalizedId.includes('node_modules/echarts/components')) return 'echarts-components'
+          if (normalizedId.includes('node_modules/echarts/renderers')) return 'echarts-renderers'
+          if (normalizedId.includes('node_modules/echarts/core') || normalizedId.includes('node_modules/echarts/lib') || normalizedId.includes('node_modules/echarts/')) return 'echarts-core'
           if (id.includes('node_modules/element-plus') || id.includes('node_modules\\element-plus') || id.includes('node_modules/@element-plus') || id.includes('node_modules\\@element-plus')) return 'element-plus'
           if (id.includes('node_modules/vue') || id.includes('node_modules\\vue') || id.includes('node_modules/vue-router') || id.includes('node_modules\\vue-router') || id.includes('node_modules/pinia') || id.includes('node_modules\\pinia')) return 'vue-vendor'
         },

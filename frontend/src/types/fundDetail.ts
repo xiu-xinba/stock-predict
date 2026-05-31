@@ -1,4 +1,4 @@
-import type { FundItem } from './predict'
+import type { FundItem } from './fund'
 
 export interface NAVPoint {
   date: string

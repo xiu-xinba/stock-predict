@@ -33,7 +33,7 @@
               <span v-if="idx.high > 0" class="popup-idx-hl">高 {{ formatValue(idx.high) }}</span>
               <span v-if="idx.low > 0" class="popup-idx-hl">低 {{ formatValue(idx.low) }}</span>
             </div>
-            <div class="popup-idx-chart" :ref="(el: any) => sparkline.setChartRef(idx.code, el)"></div>
+            <div :ref="(el) => setSparklineRef(idx.code, el)" class="popup-idx-chart"></div>
           </div>
         </div>
       </div>
@@ -58,6 +58,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, nextTick } from 'vue'
+import type { ComponentPublicInstance } from 'vue'
 import { useTheme } from '@/composables/useTheme'
 import { useSparkline } from '@/composables/useSparkline'
 import { formatValue } from '@/utils/format'
@@ -83,6 +84,10 @@ const markets = computed(() => [
 
 function toggleExpand(key: string) {
   expandedMarket.value = expandedMarket.value === key ? null : key
+}
+
+function setSparklineRef(code: string, el: Element | ComponentPublicInstance | null) {
+  sparkline.setChartRef(code, el instanceof Element ? el : null)
 }
 
 watch(expandedMarket, (newKey, oldKey) => {
@@ -116,7 +121,7 @@ watch(isDark, () => {
   position: fixed;
   bottom: 96px;
   left: 50%;
-  z-index: 60;
+  z-index: var(--z-dock);
   display: flex;
   gap: var(--sp-0_5);
   padding: var(--sp-1);

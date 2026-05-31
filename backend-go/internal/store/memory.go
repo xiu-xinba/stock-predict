@@ -3,7 +3,6 @@ package store
 import (
 	"sort"
 	"sync"
-	"time"
 
 	"stock-predict-go/internal/dto"
 )
@@ -111,7 +110,6 @@ func (s *MemoryStore) CoverageReport() *dto.CoverageReport {
 		TotalFunds:          len(s.funds),
 		CountsByFundType:    make(map[string]int),
 		CountsByQuoteSource: make(map[string]int),
-		SampleCutoffTime:    time.Now().Format(time.RFC3339),
 	}
 	for _, fund := range s.funds {
 		if fund.QuoteSource != "" {

@@ -7,6 +7,11 @@ import (
 	"stock-predict-go/internal/store"
 )
 
+const (
+	maxSearchMatches = 5000
+	ftsSearchLimit   = 200
+)
+
 type SearchService struct {
 	fundRepo  store.FundRepository
 	stockSvc  *StockService
@@ -52,19 +57,18 @@ func (s *SearchService) searchFunds(req dto.UnifiedSearchRequest) dto.FundSearch
 	allFunds := s.fundRepo.ListFunds()
 
 	matched := make(map[string]int)
-	maxMatches := 5000
 
 	for _, f := range allFunds {
 		if searchFundMatchesKeyword(f, keyword) {
 			matched[f.FundCode] = searchFundRelevance(f, keyword)
-			if len(matched) >= maxMatches {
+			if len(matched) >= maxSearchMatches {
 				break
 			}
 		}
 	}
 
 	if s.searchIdx != nil {
-		ftsCodes, err := s.searchIdx.SearchFundsByCodeOrPinyin(req.Query, 200)
+		ftsCodes, err := s.searchIdx.SearchFundsByCodeOrPinyin(req.Query, ftsSearchLimit)
 		if err == nil {
 			for _, code := range ftsCodes {
 				if _, exists := matched[code]; !exists {
@@ -113,19 +117,18 @@ func (s *SearchService) searchStocks(req dto.UnifiedSearchRequest) dto.StockSear
 	allStocks := s.stockSvc.ListStocks()
 
 	matched := make(map[string]int)
-	maxMatches := 5000
 
 	for _, st := range allStocks {
-		if searchStockMatchesKeyword(st, keyword) {
-			matched[st.StockCode] = searchStockRelevance(st, keyword)
-			if len(matched) >= maxMatches {
+		if stockMatchesKeyword(st, keyword) {
+			matched[st.StockCode] = stockSearchRelevance(st, keyword)
+			if len(matched) >= maxSearchMatches {
 				break
 			}
 		}
 	}
 
 	if s.searchIdx != nil {
-		ftsCodes, err := s.searchIdx.SearchStocksByCodeOrPinyin(req.Query, 200)
+		ftsCodes, err := s.searchIdx.SearchStocksByCodeOrPinyin(req.Query, ftsSearchLimit)
 		if err == nil {
 			for _, code := range ftsCodes {
 				if _, exists := matched[code]; !exists {
@@ -200,47 +203,6 @@ func searchFundRelevance(fund dto.FundItem, keyword string) int {
 		return 7
 	case strings.Contains(pinyinFull, keyword):
 		return 8
-	default:
-		return 9
-	}
-}
-
-func searchStockMatchesKeyword(stock dto.StockItem, keyword string) bool {
-	for _, value := range []string{
-		stock.StockCode,
-		stock.StockName,
-		stock.Pinyin,
-		stock.PinyinAlt,
-		stock.Industry,
-		stock.Market,
-	} {
-		if strings.Contains(strings.ToLower(value), keyword) {
-			return true
-		}
-	}
-	return false
-}
-
-func searchStockRelevance(stock dto.StockItem, keyword string) int {
-	code := strings.ToLower(stock.StockCode)
-	name := strings.ToLower(stock.StockName)
-	pinyin := strings.ToLower(stock.Pinyin)
-	pinyinAlt := strings.ToLower(stock.PinyinAlt)
-	switch {
-	case code == keyword || name == keyword:
-		return 0
-	case strings.HasPrefix(code, keyword):
-		return 1
-	case strings.HasPrefix(name, keyword):
-		return 2
-	case strings.HasPrefix(pinyin, keyword) || strings.HasPrefix(pinyinAlt, keyword):
-		return 3
-	case strings.Contains(code, keyword):
-		return 5
-	case strings.Contains(name, keyword):
-		return 6
-	case strings.Contains(pinyin, keyword) || strings.Contains(pinyinAlt, keyword):
-		return 7
 	default:
 		return 9
 	}

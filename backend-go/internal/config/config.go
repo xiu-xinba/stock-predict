@@ -22,9 +22,6 @@ type Config struct {
 	FundAutoSyncMinCount      int
 	FundRealtimeQuotesEnabled bool
 	StockAutoSyncOnStart      bool
-	ModelServiceURL           string
-	WeeklyModelServiceURL     string
-	IntradayModelServiceURL   string
 	CacheTTLMinutes           int
 	EastMoneyBaseURL          string
 	TencentQuoteBaseURL       string
@@ -47,9 +44,6 @@ func Load() Config {
 		FundAutoSyncMinCount:      intEnv("FUND_AUTO_SYNC_MIN_COUNT", 1000),
 		FundRealtimeQuotesEnabled: boolEnv("FUND_REALTIME_QUOTES_ENABLED", true),
 		StockAutoSyncOnStart:      boolEnv("STOCK_AUTO_SYNC_ON_START", true),
-		ModelServiceURL:           env("MODEL_SERVICE_URL", ""),
-		WeeklyModelServiceURL:     env("WEEKLY_MODEL_SERVICE_URL", ""),
-		IntradayModelServiceURL:   env("INTRADAY_MODEL_SERVICE_URL", ""),
 		CacheTTLMinutes:           intEnv("CACHE_TTL_MINUTES", 5),
 		EastMoneyBaseURL:          env("EASTMONEY_BASE_URL", "https://push2his.eastmoney.com"),
 		TencentQuoteBaseURL:       env("TENCENT_QUOTE_BASE_URL", "https://qt.gtimg.cn"),

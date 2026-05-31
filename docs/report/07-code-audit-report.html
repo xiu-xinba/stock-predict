@@ -2950,12 +2950,12 @@
     <div class="issue-header">
       <span class="severity-badge badge-medium">MEDIUM</span>
       <span class="fix-badge badge-fixed">✅ 已修复</span>
-      <span class="issue-title">model-training 模块缺少与主项目的集成文档</span>
+      <span class="issue-title">预测模型工程已从主项目拆分</span>
       <span class="issue-id">CFG-M04</span>
     </div>
     <div class="issue-body">
       <div class="issue-meta">
-        <span class="file">model-training/</span>
+        <span class="file">独立预测项目</span>
       </div>
       <div class="issue-desc">
         模型训练模块有独立的 README，但缺少与后端 API 的集成说明（模型文件格式、部署路径、API 对接方式）。
@@ -2965,7 +2965,7 @@
       </div>
       <div class="issue-fix-detail">
         <strong>✅ 修复完成 (2026-05-30)</strong><br>
-        修改文件：<code>model-training/README.md</code><br>
+        修改文件：独立预测项目文档<br>
         变更内容：追加5个章节（模块功能概述、与backend-go集成方式、API接口说明、环境变量配置、启动和部署指南）<br>
         验证：文档更新完成
       </div>
@@ -3010,14 +3010,14 @@
         <span class="file">docs/report/</span>
       </div>
       <div class="issue-desc">
-        部分报告文件使用中划线编号（<code>01-xxx</code>），部分使用无编号名称（<code>prediction-api-acceptance-results.json</code>），命名风格不统一。已修复为 <code>08-prediction-api-acceptance-results.json</code>。
+        部分报告文件使用中划线编号，部分使用无编号名称，命名风格不统一。已统一编号前缀。
       </div>
       <div class="issue-suggestion">
         <strong>修复：</strong>统一命名规范，如 <code>07-code-audit-report.html</code>。
       </div>
       <div class="issue-fix-detail">
         <strong>✅ 修复完成 (2026-05-30)</strong><br>
-        修改文件：<code>prediction-api-acceptance-results.json</code> → <code>08-prediction-api-acceptance-results.json</code><br>
+        修改文件：历史验收结果文件统一编号<br>
         变更内容：添加编号前缀，同步更新3处引用<br>
         验证：引用更新完成
       </div>

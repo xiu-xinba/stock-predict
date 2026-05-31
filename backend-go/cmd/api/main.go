@@ -71,11 +71,12 @@ func main() {
 		logger.Info("stocks synced to search index", "count", stockCount)
 	}
 
-	handler := api.NewRouter(cfg, services, mem, logger, searchIdx)
+	router := api.NewRouter(cfg, services, mem, logger, searchIdx)
+	defer router.Close()
 
 	server := &http.Server{
 		Addr:              ":" + cfg.Port,
-		Handler:           handler,
+		Handler:           router,
 		ReadHeaderTimeout: cfg.ReadTimeout,
 		ReadTimeout:       cfg.ReadTimeout,
 		WriteTimeout:      cfg.WriteTimeout,

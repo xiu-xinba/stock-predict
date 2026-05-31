@@ -1,57 +1,39 @@
 <template>
   <div class="predict-view">
-    <transition name="fade" mode="out-in">
-      <div v-if="store.loading" key="loading" class="state-loading">
-        <div class="skeleton-top card skeleton-pulse"></div>
-        <div class="skeleton-grid">
-          <div class="skeleton-block card skeleton-pulse"></div>
-          <div class="skeleton-block card skeleton-pulse"></div>
-        </div>
+    <section class="placeholder-panel">
+      <div class="placeholder-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24">
+          <path fill="currentColor" d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v13a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 18.5zm2.5-.5a.5.5 0 0 0-.5.5v13a.5.5 0 0 0 .5.5h11a.5.5 0 0 0 .5-.5v-13a.5.5 0 0 0-.5-.5zm2 3h7v2h-7zm0 4h7v2h-7zm0 4h4v2h-4z"/>
+        </svg>
       </div>
-
-      <PredictionCard v-else-if="store.prediction" key="result" />
-
-      <div v-else-if="store.error" key="error" class="state-panel error card">
-        <div class="state-icon">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2 1 21h22L12 2zm1 15h-2v-2h2v2zm0-4h-2V8h2v5z"/></svg>
-        </div>
-        <div>
-          <h2>预测请求失败</h2>
-          <p>{{ store.error }}</p>
-          <button class="retry-btn" type="button" @click="loadPrediction">重试</button>
-        </div>
+      <div>
+        <p class="eyebrow">Prediction Workspace</p>
+        <h1>预测模型已拆分为独立项目</h1>
+        <p class="copy">当前主项目保留入口和展示位置，后续将通过独立预测服务接入。</p>
+        <p v-if="targetCode" class="code-chip">{{ targetLabel }} {{ targetCode }}</p>
       </div>
-
-      <div v-else key="empty" class="state-panel empty card">
-        <div class="state-icon">
-          <svg viewBox="0 0 1024 1024" aria-hidden="true"><path fill="currentColor" d="m795.904 750.72 124.992 124.928a32 32 0 0 1-45.248 45.248L750.656 795.904a416 416 0 1 1 45.248-45.248zM480 832a352 352 0 1 0 0-704 352 352 0 0 0 0 704"/></svg>
-        </div>
-        <div>
-          <h2>搜索基金开始预测</h2>
-          <p>点击右上角搜索图标，输入基金名称或代码</p>
-        </div>
-      </div>
-    </transition>
+    </section>
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted, watch } from 'vue'
-import { usePredictionStore } from '@/stores/prediction'
 import { useFundCodeRoute } from '@/composables/useFundCodeRoute'
-import PredictionCard from '@/components/PredictionCard.vue'
+import { computed } from 'vue'
+import { useRoute } from 'vue-router'
 
 defineOptions({ name: 'PredictView' })
 
-const store = usePredictionStore()
+const route = useRoute()
 const { fundCode } = useFundCodeRoute()
 
-function loadPrediction() {
-  if (fundCode.value) store.predict(fundCode.value)
-}
+const stockCode = computed(() => {
+  const raw = route.query.stockCode
+  const code = Array.isArray(raw) ? raw[0] : raw
+  return code && /^\d{6}$/.test(code) ? code : ''
+})
 
-onMounted(loadPrediction)
-watch(fundCode, loadPrediction)
+const targetCode = computed(() => fundCode.value || stockCode.value)
+const targetLabel = computed(() => (fundCode.value ? '当前基金' : '当前股票'))
 </script>
 
 <style scoped>
@@ -61,108 +43,77 @@ watch(fundCode, loadPrediction)
   gap: var(--sp-4);
 }
 
-.state-loading {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-4);
-}
-
-.skeleton-top,
-.skeleton-block {
-  position: relative;
-  overflow: hidden;
-}
-
-.skeleton-top {
-  height: 116px;
-}
-
-.skeleton-grid {
+.placeholder-panel {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: auto minmax(0, 1fr);
   gap: var(--sp-4);
-}
-
-.skeleton-block {
-  height: 240px;
-}
-
-.state-panel {
-  display: flex;
   align-items: center;
-  gap: var(--sp-4);
-  min-height: 160px;
+  min-height: 220px;
   padding: var(--sp-6);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-card);
+  box-shadow: var(--shadow-sm);
 }
 
-.state-icon {
-  display: flex;
+.placeholder-icon {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 48px;
-  height: 48px;
+  width: 56px;
+  height: 56px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  background: var(--color-bg-hover);
-  color: var(--color-text-secondary);
+  background: var(--color-brand-soft);
+  color: var(--color-brand);
 }
 
-.state-icon svg {
-  width: 24px;
-  height: 24px;
+.placeholder-icon svg {
+  width: 28px;
+  height: 28px;
 }
 
-.state-panel.error .state-icon {
-  color: var(--color-warning);
-  background: var(--color-warning-bg);
-}
-
-.state-panel h2 {
+.eyebrow {
   margin: 0 0 var(--sp-1);
-  color: var(--color-text-primary);
-  font-size: var(--fs-base);
+  color: var(--color-text-secondary);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  text-transform: uppercase;
 }
 
-.state-panel p {
+h1 {
   margin: 0;
+  color: var(--color-text-primary);
+  font-size: var(--fs-2xl);
+  line-height: var(--lh-tight);
+}
+
+.copy {
+  margin: var(--sp-2) 0 0;
   color: var(--color-text-secondary);
   font-size: var(--fs-sm);
+  line-height: var(--lh-relaxed);
 }
 
-.retry-btn {
-  margin-top: var(--sp-2);
-  padding: var(--sp-2) var(--sp-4);
-  border-radius: var(--radius-md);
-  background: var(--color-brand);
-  color: var(--color-brand-contrast);
-  font-size: var(--fs-sm);
-  cursor: pointer;
-  border: none;
-  transition: background var(--transition-fast);
-}
-
-.retry-btn:hover {
-  background: var(--color-brand-hover);
+.code-chip {
+  display: inline-flex;
+  margin: var(--sp-4) 0 0;
+  padding: var(--sp-1) var(--sp-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  color: var(--color-text-secondary);
+  font-size: var(--fs-xs);
+  background: var(--color-bg-page);
 }
 
 @media (max-width: 768px) {
-  .skeleton-grid {
+  .placeholder-panel {
     grid-template-columns: 1fr;
-  }
-
-  .state-panel {
-    align-items: flex-start;
     padding: var(--sp-4);
   }
-}
 
-@media (prefers-reduced-motion: reduce) {
-  .fade-enter-active,
-  .fade-leave-active,
-  .skeleton-top::after,
-  .skeleton-block::after {
-    transition-duration: 0.01ms !important;
-    animation-duration: 0.01ms !important;
+  h1 {
+    font-size: var(--fs-xl);
   }
 }
 </style>

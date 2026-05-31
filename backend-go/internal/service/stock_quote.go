@@ -127,7 +127,7 @@ func parseTencentStockQuotes(payload []byte) map[string]dto.StockQuote {
 		if priceStr == "" {
 			continue
 		}
-		price := parseQuoteFloat(priceStr)
+		price := util.ParseQuoteFloat(priceStr)
 		if price == 0 {
 			continue
 		}
@@ -137,17 +137,17 @@ func parseTencentStockQuotes(payload []byte) map[string]dto.StockQuote {
 		}
 		quotes[code] = dto.StockQuote{
 			Price:        price,
-			Open:         parseQuoteFloat(fields[5]),
-			High:         parseQuoteFloat(fields[33]),
-			Low:          parseQuoteFloat(fields[34]),
-			PrevClose:    parseQuoteFloat(fields[4]),
-			Volume:       parseQuoteFloat(fields[6]),
-			Amount:       parseQuoteFloat(fields[37]),
-			TurnoverRate: parseQuoteFloat(fields[38]),
-			ChangePct:    parseQuoteFloat(changePctStr),
-			ChangeAmt:    parseQuoteFloat(fields[31]),
-			BidPrice:     parseQuoteFloat(fields[9]),
-			AskPrice:     parseQuoteFloat(fields[18]),
+			Open:         util.ParseQuoteFloat(fields[5]),
+			High:         util.ParseQuoteFloat(fields[33]),
+			Low:          util.ParseQuoteFloat(fields[34]),
+			PrevClose:    util.ParseQuoteFloat(fields[4]),
+			Volume:       util.ParseQuoteFloat(fields[6]),
+			Amount:       util.ParseQuoteFloat(fields[37]),
+			TurnoverRate: util.ParseQuoteFloat(fields[38]),
+			ChangePct:    util.ParseQuoteFloat(changePctStr),
+			ChangeAmt:    util.ParseQuoteFloat(fields[31]),
+			BidPrice:     util.ParseQuoteFloat(fields[9]),
+			AskPrice:     util.ParseQuoteFloat(fields[18]),
 			QuoteTime:    strings.TrimSpace(fields[30]),
 		}
 	}

@@ -86,16 +86,10 @@ type WatchlistQuoteRequest struct {
 }
 
 type CoverageReport struct {
-	TotalFunds                int            `json:"total_funds"`
-	FundsWithQuote            int            `json:"funds_with_quote"`
-	FundsWithHistory          int            `json:"funds_with_history"`
-	FundsWithTrainableSamples int            `json:"funds_with_trainable_samples"`
-	ModelSupportedFunds       int            `json:"model_supported_funds"`
-	BaselineOnlyFunds         int            `json:"baseline_only_funds"`
-	UnsupportedFunds          int            `json:"unsupported_funds"`
-	CountsByFundType          map[string]int `json:"counts_by_fund_type"`
-	CountsByQuoteSource       map[string]int `json:"counts_by_quote_source"`
-	SampleCutoffTime          string         `json:"sample_cutoff_time"`
+	TotalFunds          int            `json:"total_funds"`
+	FundsWithQuote      int            `json:"funds_with_quote"`
+	CountsByFundType    map[string]int `json:"counts_by_fund_type"`
+	CountsByQuoteSource map[string]int `json:"counts_by_quote_source"`
 }
 
 type FundDetailPath struct {

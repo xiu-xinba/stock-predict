@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, useId } from 'vue'
 
 defineOptions({ name: 'CollapsibleCard' })
 
@@ -13,6 +13,7 @@ const props = withDefaults(defineProps<{
 })
 
 const collapsed = ref(props.defaultCollapsed)
+const contentId = useId()
 
 watch(() => props.defaultCollapsed, (v) => {
   collapsed.value = v
@@ -25,13 +26,21 @@ function toggle() {
 
 <template>
   <section class="collapsible-card card">
-    <div class="card-header" @click="toggle">
+    <div
+      class="card-header"
+      role="button"
+      :aria-expanded="!collapsed"
+      :aria-controls="contentId"
+      tabindex="0"
+      @click="toggle"
+      @keydown.enter="toggle"
+    >
       <h2 class="card-title">{{ title }}</h2>
       <slot name="header-extra" />
       <span class="collapse-icon" :class="{ rotated: collapsed }">▾</span>
     </div>
 
-    <div class="card-body" :class="{ collapsed }" :style="{ '--body-max-height': bodyMaxHeight }">
+    <div :id="contentId" class="card-body" :class="{ collapsed }" :style="{ '--body-max-height': bodyMaxHeight }">
       <slot />
     </div>
   </section>

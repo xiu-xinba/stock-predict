@@ -21,6 +21,9 @@ function getChartOption() {
   const base = getBaseChartOption()
   const lineColor = cssVar('--color-brand')
   const prevClose = props.quote.prev_close || 0
+  const intraday = props.quote.intradayData || []
+  const times = intraday.map(d => d.time)
+  const prices = intraday.map(d => d.price)
 
   return {
     ...base,
@@ -28,7 +31,7 @@ function getChartOption() {
     xAxis: {
       ...base.xAxis,
       type: 'category' as const,
-      data: ['09:30', '10:00', '10:30', '11:00', '11:30', '13:00', '13:30', '14:00', '14:30', '15:00'],
+      data: times,
       boundaryGap: false,
     },
     yAxis: {
@@ -42,7 +45,7 @@ function getChartOption() {
     },
     series: [{
       type: 'line',
-      data: [],
+      data: prices,
       smooth: 0.3,
       showSymbol: false,
       lineStyle: { width: 2, color: lineColor },
@@ -69,7 +72,7 @@ useECharts(chartRef, getChartOption, () => [props.quote, isDark.value])
 
 <template>
   <CollapsibleCard title="分时走势" body-max-height="600px">
-    <div v-if="hasIntradayData" class="chart-wrap" ref="chartRef" />
+    <div v-if="hasIntradayData" ref="chartRef" class="chart-wrap" />
     <div v-else class="empty-hint">分时数据暂不可用</div>
 
     <div class="bid-ask-section">
@@ -96,16 +99,6 @@ useECharts(chartRef, getChartOption, () => [props.quote, isDark.value])
   width: 100%;
   height: 220px;
   margin-bottom: var(--sp-3);
-}
-
-.empty-hint {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 120px;
-  margin-bottom: var(--sp-3);
-  color: var(--color-text-tertiary);
-  font-size: var(--fs-sm);
 }
 
 .bid-ask-section {

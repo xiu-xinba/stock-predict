@@ -32,23 +32,23 @@ const riskInfo = computed(() => (props.riskLevel ? riskLevelMap[props.riskLevel]
 <template>
   <CollapsibleCard title="风险指标" :default-collapsed="false" class="card-container" body-max-height="300px">
     <template #header-extra>
-      <div class="risk-level-badge" v-if="riskLevel" :style="{ background: colorWithAlpha(riskInfo.color, 0.12), color: riskInfo.color }">
+      <div v-if="riskLevel" class="risk-level-badge" :style="{ background: colorWithAlpha(riskInfo.color, 0.12), color: riskInfo.color }">
         {{ riskInfo.label }}
       </div>
     </template>
 
-    <div v-if="!risk.volatility_1y && !risk.max_drawdown_1y" class="empty-hint">
+    <div v-if="risk.volatility_1y == null && risk.max_drawdown_1y == null" class="empty-hint">
       暂无风险指标数据
     </div>
     <div v-else class="risk-grid">
-      <div class="risk-item" v-for="item in riskItems" :key="item.label">
+      <div v-for="item in riskItems" :key="item.label" class="risk-item">
         <div class="risk-label-row">
           <span class="risk-label">{{ item.label }}</span>
           <span class="risk-desc">{{ item.desc }}</span>
         </div>
         <div class="risk-value-row">
           <span class="risk-value" :class="{ 'text-down': item.value < 0 }">
-            {{ item.value > 0 && item.unit === '%' ? '+' : '' }}{{ item.value.toFixed(2) }}{{ item.unit }}
+            {{ (item.value ?? 0) > 0 && item.unit === '%' ? '+' : '' }}{{ (item.value ?? 0).toFixed(2) }}{{ item.unit }}
           </span>
         </div>
       </div>
@@ -78,8 +78,6 @@ const riskInfo = computed(() => (props.riskLevel ? riskLevelMap[props.riskLevel]
   overflow: hidden;
 }
 .risk-value { font-size: var(--fs-xl); font-weight: var(--fw-bold); color: var(--color-text-primary); font-family: var(--font-mono); }
-
-.empty-hint { font-size: var(--fs-sm); color: var(--color-text-tertiary); text-align: center; padding: var(--sp-4) 0; }
 
 @media (max-width: 768px) {
   .risk-grid { grid-template-columns: 1fr; }

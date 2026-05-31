@@ -16,7 +16,13 @@
   --fs-2xl: 32px;
   --fs-3xl: 40px;
   --fs-4xl: 48px;
-  --fs-5xl: 48px;
+  --fs-5xl: 64px;
+
+  --z-base: 1;
+  --z-dock: 50;
+  --z-fab: 55;
+  --z-dock-pill: 70;
+  --z-overlay: 1000;
 
   --lh-tight: 1.2;
   --lh-snug: 1.35;

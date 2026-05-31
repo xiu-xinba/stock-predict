@@ -114,7 +114,7 @@ useECharts(chartRef, getChartOption, () => [props.financials.quarterly, isDark.v
       </div>
     </div>
 
-    <div v-if="financials.quarterly && financials.quarterly.length" class="chart-wrap" ref="chartRef" />
+    <div v-if="financials.quarterly && financials.quarterly.length" ref="chartRef" class="chart-wrap" />
     <div v-else class="empty-hint">暂无财务数据</div>
   </CollapsibleCard>
 </template>
@@ -130,15 +130,6 @@ useECharts(chartRef, getChartOption, () => [props.financials.quarterly, isDark.v
 .chart-wrap {
   width: 100%;
   height: 240px;
-}
-
-.empty-hint {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 120px;
-  color: var(--color-text-tertiary);
-  font-size: var(--fs-sm);
 }
 
 @media (max-width: 768px) {

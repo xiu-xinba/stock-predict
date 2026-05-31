@@ -23,6 +23,7 @@ function saveStockToStorage(items: StockItem[]) {
   try {
     localStorage.setItem(STOCK_STORAGE_KEY, JSON.stringify(items))
   } catch {
+    // Watchlist persistence is optional; keep in-memory state usable.
   }
 }
 

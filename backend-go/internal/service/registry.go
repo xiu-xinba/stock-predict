@@ -11,7 +11,7 @@ import (
 type Registry struct {
 	Funds       *FundService
 	Market      *MarketService
-	Prediction  *PredictionService
+	Watchlist   *WatchlistService
 	Detail      *FundDetailService
 	Stocks      *StockService
 	StockDetail *StockDetailService
@@ -26,13 +26,13 @@ func NewRegistry(fundRepo store.FundRepository, cfg config.Config, logger *slog.
 	detail := NewFundDetailService(fundRepo, quote, logger)
 	stockQuote := NewStockQuoteClient(8 * time.Second)
 	stocks := NewStockService(logger)
-	prediction := NewPredictionService(fundRepo, market, stocks, cfg, logger)
+	watchlist := NewWatchlistService(fundRepo, cfg, logger)
 	stockDetail := NewStockDetailService(stocks, stockQuote, logger)
 	search := NewSearchService(fundRepo, stocks, searchIdx)
 	return &Registry{
 		Funds:       funds,
 		Market:      market,
-		Prediction:  prediction,
+		Watchlist:   watchlist,
 		Detail:      detail,
 		Stocks:      stocks,
 		StockDetail: stockDetail,

@@ -542,9 +542,9 @@
                         <span class="tag tag-module">安全</span>
                     </div>
                 </div>
-                <div class="issue-desc"><code>serve_model.py</code> 使用 <code>ThreadingHTTPServer</code>，无任何认证机制、API Key 校验或速率限制。任何人都可以通过 <code>/predict/{fund_code}</code> 端点获取预测结果。</div>
+                <div class="issue-desc">旧预测服务使用线程 HTTP 服务，缺少认证机制、API Key 校验或速率限制。该实现已从主项目拆分。</div>
                 <div class="issue-detail">
-                    <div><dt>文件</dt><dd><code>serve_model.py:49</code></dd></div>
+                    <div><dt>文件</dt><dd>旧预测服务</dd></div>
                     <div><dt>影响</dt><dd>未授权访问和 DDoS 攻击</dd></div>
                     <div><dt>根因</dt><dd>MVP 阶段未考虑安全防护</dd></div>
                 </div>
@@ -646,7 +646,7 @@
                         <span class="tag tag-module">并发</span>
                     </div>
                 </div>
-                <div class="issue-desc"><code>ModelPredictor</code> 的 <code>reload()</code> 方法直接修改 <code>self.bundle</code>、<code>self.prepared</code> 等实例属性，而 <code>serve_model.py</code> 使用 <code>ThreadingHTTPServer</code>（多线程）。如果在一个线程执行 <code>reload()</code> 的同时另一个线程正在 <code>predict()</code>，可能导致读取到不一致的状态。</div>
+                <div class="issue-desc">旧预测服务的模型重载与请求处理存在共享状态并发风险。该实现已从主项目拆分。</div>
                 <div class="issue-detail">
                     <div><dt>文件</dt><dd><code>predict_model.py:101-135</code></dd></div>
                     <div><dt>影响</dt><dd>推理服务并发场景崩溃</dd></div>
@@ -963,7 +963,7 @@
         <div class="issue-card severity-medium" data-module="python">
             <div class="issue-header"><div class="issue-title">路径遍历防护缺失</div><div class="issue-tags"><span class="tag tag-medium">中</span><span class="tag tag-module">Python</span></div></div>
             <div class="issue-desc">从 registry JSON 文件中读取 model_path 和 samples_path 后直接使用，未校验路径合法性，存在信息泄露风险。</div>
-            <div class="issue-detail"><div><dt>文件</dt><dd><code>serve_model.py:142-158</code></dd></div></div>
+            <div class="issue-detail"><div><dt>文件</dt><dd>旧预测服务</dd></div></div>
         </div>
 
         <div class="issue-card severity-medium" data-module="python">
@@ -1005,7 +1005,7 @@
         <div class="issue-card severity-medium" data-module="python">
             <div class="issue-header"><div class="issue-title">URL 路径参数未做输入验证</div><div class="issue-tags"><span class="tag tag-medium">中</span><span class="tag tag-module">Python</span></div></div>
             <div class="issue-desc"><code>_fund_code_from_path</code> 仅做了 unquote 处理，未验证格式（如应为 6 位数字），恶意用户可构造特殊路径。</div>
-            <div class="issue-detail"><div><dt>文件</dt><dd><code>serve_model.py:170-176</code></dd></div></div>
+            <div class="issue-detail"><div><dt>文件</dt><dd>旧预测服务</dd></div></div>
         </div>
 
         <div class="issue-card severity-medium" data-module="python">

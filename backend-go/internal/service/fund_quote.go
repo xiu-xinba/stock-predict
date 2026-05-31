@@ -7,7 +7,6 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -170,8 +169,8 @@ func parseEastmoneyFundGZQuote(payload []byte) (dto.FundItem, bool) {
 	if len(code) != 6 || !util.IsAllDigits(code) {
 		return dto.FundItem{}, false
 	}
-	latestNAV := parseQuoteFloat(raw.UnitNAV)
-	estimatedNAV := parseQuoteFloat(raw.Estimate)
+	latestNAV := util.ParseQuoteFloat(raw.UnitNAV)
+	estimatedNAV := util.ParseQuoteFloat(raw.Estimate)
 	if estimatedNAV == 0 {
 		estimatedNAV = latestNAV
 	}
@@ -187,7 +186,7 @@ func parseEastmoneyFundGZQuote(payload []byte) (dto.FundItem, bool) {
 		FundName:     strings.TrimSpace(raw.Name),
 		LatestNAV:    latestNAV,
 		EstimatedNAV: estimatedNAV,
-		ChangePct:    parseQuoteFloat(raw.Change),
+		ChangePct:    util.ParseQuoteFloat(raw.Change),
 		QuoteDate:    quoteTime,
 		QuoteSource:  "eastmoney_fundgz",
 	}, true
@@ -210,7 +209,7 @@ func parseTencentFundQuotes(payload []byte) map[string]dto.FundItem {
 		if len(code) != 6 || !util.IsAllDigits(code) {
 			continue
 		}
-		price := parseQuoteFloat(fields[3])
+		price := util.ParseQuoteFloat(fields[3])
 		if price == 0 {
 			continue
 		}
@@ -219,7 +218,7 @@ func parseTencentFundQuotes(payload []byte) map[string]dto.FundItem {
 			FundName:     strings.TrimSpace(fields[1]),
 			LatestNAV:    price,
 			EstimatedNAV: price,
-			ChangePct:    parseQuoteFloat(fields[32]),
+			ChangePct:    util.ParseQuoteFloat(fields[32]),
 			QuoteDate:    strings.TrimSpace(fields[30]),
 			QuoteSource:  "tencent_quote",
 		}
@@ -236,18 +235,6 @@ func listedFundSymbol(code string) (string, bool) {
 	default:
 		return "", false
 	}
-}
-
-func parseQuoteFloat(raw string) float64 {
-	raw = strings.TrimSpace(strings.TrimSuffix(strings.ReplaceAll(raw, ",", ""), "%"))
-	if raw == "" || raw == "--" || raw == "---" {
-		return 0
-	}
-	value, err := strconv.ParseFloat(raw, 64)
-	if err != nil {
-		return 0
-	}
-	return value
 }
 
 func isMoneyFund(fundType string) bool {

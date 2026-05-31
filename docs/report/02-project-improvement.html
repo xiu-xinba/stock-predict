@@ -457,11 +457,11 @@
 
 <div class="issue-card">
   <div class="header">
-    <span class="title">模型服务未实际部署</span>
+    <span class="title">预测模型已拆分为独立项目</span>
     <span class="badge p0">P0</span>
     <span class="badge high">高</span>
   </div>
-  <p class="desc">Go 后端的 ModelClient 代码已就绪，但三个模型服务 URL 均为空（<code>MODEL_SERVICE_URL</code> 等环境变量未配置），Python 推理服务未运行。</p>
+  <p class="desc">当前主项目仅保留预测入口占位，模型训练与推理不再由该仓库维护。</p>
 </div>
 
 <div class="issue-card">
@@ -529,16 +529,14 @@
 
 <div class="issue-card suggestion">
   <div class="header">
-    <span class="title">部署模型推理服务</span>
+    <span class="title">保留预测入口占位</span>
     <span class="badge p0">P0</span>
   </div>
-  <p class="desc">启动 Python <code>serve_model.py</code>，配置 Go 后端环境变量，打通端到端预测链路。</p>
+  <p class="desc">预测模型训练与推理拆分为独立项目；当前主项目只维护入口、路由和占位文案。</p>
   <div class="detail">
     <ul>
-      <li>日级模型：<code>MODEL_SERVICE_URL=http://localhost:8501</code></li>
-      <li>周级模型：<code>WEEKLY_MODEL_SERVICE_URL=http://localhost:8502</code></li>
-      <li>盘中模型：<code>INTRADAY_MODEL_SERVICE_URL=http://localhost:8503</code></li>
-      <li>添加模型服务健康检查和重试/熔断机制</li>
+      <li>有效代码的预测 API 返回 HTTP 501。</li>
+      <li>前端预测页展示独立项目占位。</li>
     </ul>
   </div>
   <div class="effect-box"><strong>预期效果：</strong>预测结果从基线公式变为真实模型推理，预测准确率显著提升</div>
@@ -670,7 +668,7 @@
     <span class="badge p2">P2</span>
     <span class="badge medium">中</span>
   </div>
-  <p class="desc"><code>serve_model.py</code> 从预计算的 samples CSV 读取特征行，不支持实时特征计算。新基金或新日期的数据无法即时推理。</p>
+  <p class="desc">预测模型训练与推理已拆分到独立项目，当前主项目不维护实时特征计算。</p>
 </div>
 
 <h3>3.2 改进建议</h3>

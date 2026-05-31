@@ -70,7 +70,8 @@ export function clearAuthToken() {
 }
 
 export function getCookie(name: string): string {
-  const match = document.cookie.match(new RegExp(`(?:^|;\\s*)${name.replace(/([.$?*|{}()\[\]\\\/+^])/g, '\\$1')}=([^;]*)`))
+  const escapedName = name.replace(/([.*+?^${}()|[\]\\])/g, '\\$1')
+  const match = document.cookie.match(new RegExp(`(?:^|;\\s*)${escapedName}=([^;]*)`))
   return match ? decodeURIComponent(match[1]) : ''
 }
 

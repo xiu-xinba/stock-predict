@@ -22,6 +22,7 @@ function saveToStorage(items: WatchlistItem[]) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(items))
   } catch {
+    // Watchlist persistence is optional; keep in-memory state usable.
   }
 }
 

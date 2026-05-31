@@ -8,18 +8,6 @@ import (
 	"stock-predict-go/internal/util"
 )
 
-func parseQuoteFloat(raw string) float64 {
-	raw = strings.TrimSpace(strings.TrimSuffix(strings.ReplaceAll(raw, ",", ""), "%"))
-	if raw == "" || raw == "--" || raw == "---" {
-		return 0
-	}
-	value, err := strconv.ParseFloat(raw, 64)
-	if err != nil {
-		return 0
-	}
-	return value
-}
-
 func clearQuoteFields(f dto.FundItem) dto.FundItem {
 	f.LatestNAV = 0
 	f.CumulativeNAV = 0

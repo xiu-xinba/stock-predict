@@ -1,28 +1,43 @@
 package service
 
+import (
+	"sync"
+	"time"
+)
+
 type lruEntry struct {
-	key   string
-	value any
-	prev  *lruEntry
-	next  *lruEntry
+	key      string
+	value    any
+	cachedAt time.Time
+	prev     *lruEntry
+	next     *lruEntry
 }
 
 type DetailCache struct {
+	mu         sync.Mutex
 	maxEntries int
+	ttl        time.Duration
 	items      map[string]*lruEntry
 	head       *lruEntry
 	tail       *lruEntry
 }
 
-func NewDetailCache(maxEntries int) *DetailCache {
+func NewDetailCache(maxEntries int, ttl time.Duration) *DetailCache {
 	return &DetailCache{
 		maxEntries: maxEntries,
+		ttl:        ttl,
 		items:      make(map[string]*lruEntry),
 	}
 }
 
 func (c *DetailCache) Get(key string) (any, bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	if entry, ok := c.items[key]; ok {
+		if time.Since(entry.cachedAt) > c.ttl {
+			c.evict()
+			return nil, false
+		}
 		c.moveToFront(entry)
 		return entry.value, true
 	}
@@ -30,15 +45,18 @@ func (c *DetailCache) Get(key string) (any, bool) {
 }
 
 func (c *DetailCache) Set(key string, value any) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	if entry, ok := c.items[key]; ok {
 		entry.value = value
+		entry.cachedAt = time.Now()
 		c.moveToFront(entry)
 		return
 	}
 	if len(c.items) >= c.maxEntries {
 		c.evict()
 	}
-	entry := &lruEntry{key: key, value: value}
+	entry := &lruEntry{key: key, value: value, cachedAt: time.Now()}
 	c.items[key] = entry
 	c.pushFront(entry)
 }

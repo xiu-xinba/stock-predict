@@ -22,7 +22,7 @@ const navPriceLabel = computed(() => {
 })
 
 const isInWatchlist = computed(() =>
-  watchlistStore.items.some(i => i.fund_code === props.basic.fund_code)
+  watchlistStore.isInWatchlist(props.basic.fund_code)
 )
 
 const infoItems = computed(() => {
@@ -48,11 +48,16 @@ function toggleWatchlist() {
   if (isInWatchlist.value) {
     watchlistStore.removeItem(props.basic.fund_code)
   } else {
-    watchlistStore.addItem({
+    const result = watchlistStore.addItem({
       fund_code: props.basic.fund_code,
       fund_name: props.basic.fund_name,
       fund_type: props.basic.fund_type,
     })
+    if (result === 'duplicate') {
+      alert('该基金已在自选中')
+    } else if (result === 'limit') {
+      alert('自选列表已满（最多50只）')
+    }
   }
 }
 

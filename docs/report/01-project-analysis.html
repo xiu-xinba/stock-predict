@@ -348,9 +348,7 @@
     <tr><td><code>backend-go/internal/api/</code></td><td>路由/中间件/响应</td></tr>
     <tr><td><code>backend-go/internal/service/</code></td><td>业务逻辑层</td></tr>
     <tr><td><code>backend-go/internal/store/</code></td><td>内存存储</td></tr>
-    <tr><td><code>model-training/src/fund_model_training/</code></td><td>训练流水线核心代码</td></tr>
-    <tr><td><code>model-training/configs/</code></td><td>训练配置 YAML</td></tr>
-    <tr><td><code>model-training/tests/</code></td><td>22个测试文件</td></tr>
+    <tr><td>预测模型工程</td><td>已拆分为独立项目，主项目仅保留入口占位</td></tr>
   </tbody>
 </table>
 
@@ -485,7 +483,7 @@
     <tr><td>评估指标</td><td><code>metrics.py</code></td><td><span class="badge done">完成</span></td><td>高</td></tr>
     <tr><td>合约定义（15张表）</td><td><code>index_fund_contract.py</code></td><td><span class="badge done">完成</span></td><td>高</td></tr>
     <tr><td>模型晋升/回滚</td><td><code>promote_model.py</code> / <code>rollback_model.py</code></td><td><span class="badge done">完成</span></td><td>高</td></tr>
-    <tr><td>HTTP推理服务</td><td><code>serve_model.py</code></td><td><span class="badge done">完成</span></td><td>高</td></tr>
+    <tr><td>预测入口占位</td><td>Go API / 前端入口</td><td><span class="badge done">完成</span></td><td>高</td></tr>
     <tr><td>预测日志+回填+评估</td><td><code>prediction_logging.py</code></td><td><span class="badge done">完成</span></td><td>高</td></tr>
     <tr><td>漂移检测（PSI+KS）</td><td><code>drift_report.py</code></td><td><span class="badge done">完成</span></td><td>高</td></tr>
     <tr><td>影子评估</td><td><code>shadow_evaluation.py</code></td><td><span class="badge done">完成</span></td><td>高</td></tr>
@@ -544,7 +542,7 @@
     <tr><td>特征存储（Feast）集成</td><td>模型训练</td><td>配置中已规划，代码未实现</td></tr>
     <tr><td>编排器（Airflow/Prefect）集成</td><td>模型训练</td><td>配置中已规划，代码未实现</td></tr>
     <tr><td>sklearn模型ONNX导出</td><td>模型训练</td><td>仅 LightGBM 路径支持 ONNX</td></tr>
-    <tr><td>实时特征计算</td><td>模型训练</td><td>serve_model 从预计算 CSV 读取</td></tr>
+    <tr><td>实时特征计算</td><td>独立预测项目</td><td>不在当前主项目内维护</td></tr>
     <tr><td>前端单元测试</td><td>前端</td><td>无 vitest/jest 依赖，零测试覆盖</td></tr>
     <tr><td>OpenAPI/Swagger文档</td><td>全局</td><td>无 API 契约规范文档</td></tr>
     <tr><td>前端项目文档</td><td>前端</td><td>README 仅为 Vite 模板默认文字</td></tr>
@@ -623,7 +621,7 @@
     </tr>
     <tr>
       <td>模型格式</td>
-      <td>model-training README 重点描述 ONNX 合约</td>
+      <td>预测模型工程已拆分为独立项目</td>
       <td>当前实际使用 joblib 格式，ONNX 未在主链路使用</td>
       <td><span class="badge mid">中</span></td>
     </tr>
@@ -695,11 +693,11 @@
 <h3>优先级建议</h3>
 <div class="priority-item">
   <span class="num p0">1</span>
-  <div class="desc"><strong>P0 — 后端接入真实数据源</strong><br><span>利用模型训练模块已有的 akshare 采集管道，为后端提供真实基金/行情数据</span></div>
+  <div class="desc"><strong>P0 — 后端接入真实数据源</strong><br><span>为后端提供真实基金/行情数据</span></div>
 </div>
 <div class="priority-item">
   <span class="num p0">2</span>
-  <div class="desc"><strong>P0 — 部署模型推理服务</strong><br><span>启动 Python serve_model，配置 Go 后端环境变量，打通端到端预测链路</span></div>
+  <div class="desc"><strong>P0 — 预测入口占位</strong><br><span>当前主项目保留入口，预测模型由独立项目后续接入</span></div>
 </div>
 <div class="priority-item">
   <span class="num p1">3</span>

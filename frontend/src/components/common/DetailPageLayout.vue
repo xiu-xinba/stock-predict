@@ -23,7 +23,7 @@ const emit = defineEmits<{
 <template>
   <div class="detail-page-layout">
     <div v-if="loading && !hasContent" class="skeleton-wrap">
-      <div class="skeleton-card skeleton-pulse" v-for="i in skeletonCount" :key="i" />
+      <div v-for="i in skeletonCount" :key="i" class="skeleton-card skeleton-pulse" />
     </div>
 
     <ErrorState v-else-if="error" :message="error.message" @retry="emit('retry')" />

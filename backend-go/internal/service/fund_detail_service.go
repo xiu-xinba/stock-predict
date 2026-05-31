@@ -18,6 +18,7 @@ import (
 
 const (
 	eastmoneyNAVURL = "http://fund.eastmoney.com/f10/F10DataApi.aspx?type=lsjz&code=%s&page=1&sdate=&edate=&per=365"
+	riskFreeRate    = 0.015
 )
 
 type FundDetailService struct {
@@ -34,7 +35,7 @@ func NewFundDetailService(store FundRepository, quote *FundQuoteClient, logger *
 		quote:  quote,
 		logger: logger,
 		client: &http.Client{Timeout: 10 * time.Second},
-		cache:  NewDetailCache(1000),
+		cache:  NewDetailCache(1000, 5*time.Minute),
 	}
 }
 
@@ -135,9 +136,9 @@ func parseNAVHistory(payload []byte) []dto.NAVPoint {
 	points := make([]dto.NAVPoint, 0, len(matches))
 	for _, m := range matches {
 		date := strings.TrimSpace(m[1])
-		nav := parseQuoteFloat(m[2])
-		cumNav := parseQuoteFloat(m[3])
-		changePct := parseQuoteFloat(m[4])
+		nav := util.ParseQuoteFloat(m[2])
+		cumNav := util.ParseQuoteFloat(m[3])
+		changePct := util.ParseQuoteFloat(m[4])
 		if nav <= 0 {
 			continue
 		}
@@ -252,8 +253,8 @@ func (s *FundDetailService) calculateRisk(navHistory []dto.NAVPoint) dto.FundRis
 		}
 	}
 
-	riskFreeRate := 0.015 / 252
-	excessMean := mean - riskFreeRate
+	riskFreeRateDaily := riskFreeRate / 252
+	excessMean := mean - riskFreeRateDaily
 	sharpe := 0.0
 	if variance > 0 {
 		sharpe = excessMean / math.Sqrt(variance) * math.Sqrt(252)

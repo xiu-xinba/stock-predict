@@ -1,4 +1,4 @@
-import { ref, watch } from 'vue'
+import { ref, watch, onUnmounted } from 'vue'
 import { useSearchStore } from '@/stores/search'
 
 export function useSearch() {
@@ -52,6 +52,10 @@ export function useSearch() {
     if (!val.trim()) {
       showDropdown.value = false
     }
+  })
+
+  onUnmounted(() => {
+    if (debounceTimer) clearTimeout(debounceTimer)
   })
 
   return {

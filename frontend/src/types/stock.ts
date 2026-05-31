@@ -1,5 +1,3 @@
-import type { PredictionResult, PredictionDataQuality } from './predict'
-
 export interface StockItem {
   stock_code: string
   stock_name: string
@@ -140,13 +138,4 @@ export interface StockRankingItem {
   current_price: number
   volume: number
   amount: number
-}
-
-export interface StockPredictionData {
-  stock_code: string
-  stock_name: string
-  next_day_prediction?: PredictionResult
-  weekly_prediction?: PredictionResult
-  intraday_prediction?: PredictionResult
-  data_quality?: PredictionDataQuality
 }

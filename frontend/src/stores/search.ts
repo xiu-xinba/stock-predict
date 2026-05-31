@@ -53,11 +53,15 @@ export const useSearchStore = defineStore('search', () => {
           persistHistory()
         }
       }
-    } catch {}
+    } catch {
+      // Ignore invalid or inaccessible persisted search history.
+    }
   }
 
   function persistHistory() {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(history.value)) } catch {}
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(history.value)) } catch {
+      // Search history is optional; private browsing may block localStorage.
+    }
   }
 
   function saveHistory(keyword: string, type: SearchTab = 'all') {
@@ -77,7 +81,9 @@ export const useSearchStore = defineStore('search', () => {
 
   function clearHistory() {
     history.value = []
-    try { localStorage.removeItem(STORAGE_KEY) } catch {}
+    try { localStorage.removeItem(STORAGE_KEY) } catch {
+      // Search history is optional; private browsing may block localStorage.
+    }
   }
 
   async function search(keyword?: string, pageNum?: number) {
@@ -140,7 +146,9 @@ export const useSearchStore = defineStore('search', () => {
       if (stockRes.status === 'fulfilled' && stockRes.value.code === 0 && stockRes.value.data) {
         stockFilters.value = stockRes.value.data
       }
-    } catch {} finally {
+    } catch {
+      // Filter metadata is non-critical for search; keep overlay usable.
+    } finally {
       filtersLoading.value = false
     }
   }

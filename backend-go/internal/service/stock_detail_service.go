@@ -37,7 +37,7 @@ func NewStockDetailService(stocks *StockService, quote *StockQuoteClient, logger
 		quote:  quote,
 		logger: logger,
 		client: &http.Client{Timeout: 10 * time.Second},
-		cache:  NewDetailCache(1000),
+		cache:  NewDetailCache(1000, 5*time.Minute),
 	}
 }
 
@@ -156,12 +156,12 @@ func (s *StockDetailService) fetchKlineData(ctx context.Context, code, period st
 		}
 		klines = append(klines, dto.KlinePoint{
 			Date:   parts[0],
-			Open:   parseQuoteFloat(parts[1]),
-			Close:  parseQuoteFloat(parts[2]),
-			High:   parseQuoteFloat(parts[3]),
-			Low:    parseQuoteFloat(parts[4]),
-			Volume: parseQuoteFloat(parts[5]),
-			Amount: parseQuoteFloat(parts[6]),
+			Open:   util.ParseQuoteFloat(parts[1]),
+			Close:  util.ParseQuoteFloat(parts[2]),
+			High:   util.ParseQuoteFloat(parts[3]),
+			Low:    util.ParseQuoteFloat(parts[4]),
+			Volume: util.ParseQuoteFloat(parts[5]),
+			Amount: util.ParseQuoteFloat(parts[6]),
 		})
 	}
 
@@ -222,11 +222,11 @@ func (s *StockDetailService) fetchCapitalFlow(ctx context.Context, code string) 
 		if len(parts) < 6 {
 			continue
 		}
-		mainIn := parseQuoteFloat(parts[1])
-		mainOut := parseQuoteFloat(parts[2])
-		retailIn := parseQuoteFloat(parts[3])
-		retailOut := parseQuoteFloat(parts[4])
-		netIn := parseQuoteFloat(parts[5])
+		mainIn := util.ParseQuoteFloat(parts[1])
+		mainOut := util.ParseQuoteFloat(parts[2])
+		retailIn := util.ParseQuoteFloat(parts[3])
+		retailOut := util.ParseQuoteFloat(parts[4])
+		netIn := util.ParseQuoteFloat(parts[5])
 		history = append(history, dto.CapitalFlowPoint{
 			Date:          parts[0],
 			MainInflow:    mainIn,

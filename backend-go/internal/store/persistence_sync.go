@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"stock-predict-go/internal/dto"
+	"stock-predict-go/internal/util"
 )
 
 var eastmoneyFundCodePattern = regexp.MustCompile(`\["([^"]*)","([^"]*)","([^"]*)","([^"]*)","([^"]*)"\]`)
@@ -197,20 +198,20 @@ func ReadEastmoneyFundRankHandlerJS(payload []byte) ([]dto.FundItem, error) {
 		if code == "" {
 			continue
 		}
-		latestNAV := parseQuoteFloat(cols[4])
+		latestNAV := util.ParseQuoteFloat(cols[4])
 		funds = append(funds, dto.FundItem{
 			FundCode:      code,
 			FundName:      strings.TrimSpace(cols[1]),
 			PinyinAbbr:    strings.ToUpper(strings.TrimSpace(cols[2])),
 			QuoteDate:     strings.TrimSpace(cols[3]),
 			LatestNAV:     latestNAV,
-			CumulativeNAV: parseQuoteFloat(cols[5]),
-			ChangePct:     parseQuoteFloat(cols[6]),
-			Return1M:      parseQuoteFloat(cols[8]),
-			Return3M:      parseQuoteFloat(cols[9]),
-			Return6M:      parseQuoteFloat(cols[10]),
-			Return1Y:      parseQuoteFloat(cols[11]),
-			Return3Y:      parseQuoteFloat(cols[13]),
+			CumulativeNAV: util.ParseQuoteFloat(cols[5]),
+			ChangePct:     util.ParseQuoteFloat(cols[6]),
+			Return1M:      util.ParseQuoteFloat(cols[8]),
+			Return3M:      util.ParseQuoteFloat(cols[9]),
+			Return6M:      util.ParseQuoteFloat(cols[10]),
+			Return1Y:      util.ParseQuoteFloat(cols[11]),
+			Return3Y:      util.ParseQuoteFloat(cols[13]),
 			InceptionDate: strings.TrimSpace(cols[16]),
 			EstimatedNAV:  latestNAV,
 			QuoteSource:   "eastmoney_rank",

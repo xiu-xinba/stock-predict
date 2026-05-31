@@ -157,7 +157,7 @@
             <span :class="['fund-change', getChangeClass(item.change_pct)]">
               <template v-if="item.change_pct > 0">▲</template>
               <template v-else-if="item.change_pct < 0">▼</template>
-              {{ item.change_pct !== 0 ? (item.change_pct > 0 ? '+' : '') + item.change_pct.toFixed(2) + '%' : '--' }}
+              {{ Math.abs(item.change_pct) > 0.005 ? (item.change_pct > 0 ? '+' : '') + item.change_pct.toFixed(2) + '%' : '--' }}
             </span>
           </article>
         </div>

@@ -32,12 +32,16 @@ func (r *Router) stockFilters(c *gin.Context) {
 func (r *Router) stockDetail(c *gin.Context) {
 	stockCode := c.Param("stockCode")
 	if !isSixDigitCode(stockCode) {
-		writeJSON(c, http.StatusOK, dto.APIResponse{Code: -1, Message: "股票代码必须为6位数字", Data: nil})
+		writeError(c, http.StatusBadRequest, -1, "股票代码必须为6位数字")
 		return
 	}
 	result, err := r.services.StockDetail.GetDetail(c.Request.Context(), stockCode)
 	if errors.Is(err, service.ErrInvalidStockCode) {
-		writeJSON(c, http.StatusOK, dto.APIResponse{Code: -1, Message: "股票代码必须为6位数字", Data: nil})
+		writeError(c, http.StatusBadRequest, -1, "股票代码必须为6位数字")
+		return
+	}
+	if errors.Is(err, service.ErrStockNotFound) {
+		writeError(c, http.StatusNotFound, -1, "未找到该股票")
 		return
 	}
 	if err != nil {
@@ -50,19 +54,10 @@ func (r *Router) stockDetail(c *gin.Context) {
 func (r *Router) predictStock(c *gin.Context) {
 	stockCode := c.Param("stockCode")
 	if !isSixDigitCode(stockCode) {
-		writeJSON(c, http.StatusOK, dto.APIResponse{Code: -1, Message: "股票代码必须为6位数字", Data: nil})
+		writeError(c, http.StatusBadRequest, -1, "股票代码必须为6位数字")
 		return
 	}
-	result, err := r.services.Prediction.PredictStock(stockCode)
-	if errors.Is(err, service.ErrInvalidStockCode) {
-		writeJSON(c, http.StatusOK, dto.APIResponse{Code: -1, Message: "股票代码必须为6位数字", Data: nil})
-		return
-	}
-	if err != nil {
-		writeError(c, http.StatusInternalServerError, -1, "服务器内部错误")
-		return
-	}
-	writeSuccess(c, result)
+	writeError(c, http.StatusNotImplemented, -2, "预测模型已拆分为独立项目，当前主项目仅保留入口。")
 }
 
 func (r *Router) stockQuotes(c *gin.Context) {
@@ -97,7 +92,7 @@ func (r *Router) stockQuotes(c *gin.Context) {
 func (r *Router) stockRanking(c *gin.Context) {
 	rankingType := c.Param("type")
 	if rankingType != "gainers" && rankingType != "losers" && rankingType != "volume" {
-		writeJSON(c, http.StatusOK, dto.APIResponse{Code: -1, Message: "type 必须为 gainers、losers 或 volume", Data: nil})
+		writeError(c, http.StatusBadRequest, -1, "无效的排名类型")
 		return
 	}
 	size := 10
@@ -108,7 +103,7 @@ func (r *Router) stockRanking(c *gin.Context) {
 	}
 	items, err := r.services.Stocks.Ranking(c.Request.Context(), rankingType, size)
 	if errors.Is(err, service.ErrInvalidRankingType) {
-		writeJSON(c, http.StatusOK, dto.APIResponse{Code: -1, Message: "type 必须为 gainers、losers 或 volume", Data: nil})
+		writeError(c, http.StatusBadRequest, -1, "无效的排名类型")
 		return
 	}
 	if err != nil {

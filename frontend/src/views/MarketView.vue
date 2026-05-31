@@ -114,7 +114,7 @@ watch(activeTab, (tab) => {
   if (tab === 'stock' && stockGainers.value.length === 0 && stockLosers.value.length === 0) {
     fetchStockRankings()
   }
-})
+}, { immediate: true })
 
 function handleVisibility() {
   if (document.hidden) {

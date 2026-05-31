@@ -27,7 +27,7 @@ func (r *Router) fundFilters(c *gin.Context) {
 
 func (r *Router) fundCoverage(c *gin.Context) {
 	report := r.store.CoverageReport()
-	c.JSON(http.StatusOK, dto.APIResponse{Code: 0, Message: "ok", Data: report})
+	writeSuccess(c, report)
 }
 
 func (r *Router) syncFunds(c *gin.Context) {
@@ -49,21 +49,12 @@ func (r *Router) syncFunds(c *gin.Context) {
 }
 
 func (r *Router) predict(c *gin.Context) {
-	var path dto.PredictPath
-	if err := c.ShouldBindUri(&path); err != nil {
-		writeError(c, http.StatusBadRequest, -1, "路径参数格式错误")
+	fundCode := c.Param("fundCode")
+	if !isSixDigitCode(fundCode) {
+		writeError(c, http.StatusBadRequest, -1, "基金代码必须为6位数字")
 		return
 	}
-	result, err := r.services.Prediction.PredictByFundCode(c.Request.Context(), path.FundCode)
-	if errors.Is(err, service.ErrInvalidFundCode) {
-		writeJSON(c, http.StatusOK, dto.APIResponse{Code: -1, Message: "基金代码必须为6位数字", Data: nil})
-		return
-	}
-	if err != nil {
-		writeError(c, http.StatusInternalServerError, -1, "服务器内部错误")
-		return
-	}
-	writeSuccess(c, result)
+	writeError(c, http.StatusNotImplemented, -2, "预测模型已拆分为独立项目，当前主项目仅保留入口。")
 }
 
 func (r *Router) watchlistQuotes(c *gin.Context) {
@@ -92,7 +83,7 @@ func (r *Router) watchlistQuotes(c *gin.Context) {
 			return
 		}
 	}
-	writeSuccess(c, r.services.Prediction.WatchlistQuotes(payload.Codes))
+	writeSuccess(c, r.services.Watchlist.Quotes(payload.Codes))
 }
 
 func (r *Router) fundDetail(c *gin.Context) {
@@ -103,11 +94,11 @@ func (r *Router) fundDetail(c *gin.Context) {
 	}
 	result, err := r.services.Detail.GetDetail(c.Request.Context(), path.FundCode)
 	if errors.Is(err, service.ErrInvalidFundCode) {
-		writeJSON(c, http.StatusOK, dto.APIResponse{Code: -1, Message: "基金代码必须为6位数字", Data: nil})
+		writeError(c, http.StatusBadRequest, -1, "基金代码必须为6位数字")
 		return
 	}
 	if errors.Is(err, service.ErrFundNotFound) {
-		writeJSON(c, http.StatusOK, dto.APIResponse{Code: -1, Message: "未找到该基金", Data: nil})
+		writeError(c, http.StatusNotFound, -1, "未找到该基金")
 		return
 	}
 	if err != nil {

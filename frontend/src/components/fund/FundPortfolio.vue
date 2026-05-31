@@ -51,7 +51,7 @@ useECharts(pieRef, getPieOption, () => [props.portfolio.sector_allocation, isDar
       <div class="holdings-section">
         <h3 class="sub-title">前十大持仓</h3>
         <div class="holdings-list">
-          <div class="holding-row" v-for="(item, i) in portfolio.top_holdings" :key="item.code">
+          <div v-for="(item, i) in portfolio.top_holdings" :key="item.code" class="holding-row">
             <span class="holding-rank">{{ i + 1 }}</span>
             <span class="holding-name">{{ item.name }}</span>
             <span class="holding-ratio">{{ item.ratio.toFixed(1) }}%</span>
@@ -64,7 +64,7 @@ useECharts(pieRef, getPieOption, () => [props.portfolio.sector_allocation, isDar
 
       <div class="sector-section">
         <h3 class="sub-title">行业分布</h3>
-        <div class="pie-wrap" ref="pieRef" />
+        <div ref="pieRef" class="pie-wrap" />
       </div>
     </div>
   </CollapsibleCard>

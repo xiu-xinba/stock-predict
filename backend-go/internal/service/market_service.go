@@ -65,39 +65,6 @@ func (s *MarketService) Indices() []dto.MarketIndex {
 	return items
 }
 
-func (s *MarketService) Snapshot() dto.MarketSnapshot {
-	indices := s.Indices()
-	byCode := map[string]dto.MarketIndex{}
-	for _, idx := range indices {
-		byCode[idx.Code] = idx
-	}
-	return dto.MarketSnapshot{
-		ShIndex:           byCode["000001"].Value,
-		ShIndexChangePct:  byCode["000001"].ChangePct,
-		SzIndex:           byCode["399001"].Value,
-		SzIndexChangePct:  byCode["399001"].ChangePct,
-		CybIndex:          byCode["399006"].Value,
-		CybIndexChangePct: byCode["399006"].ChangePct,
-		UpdateTime:        time.Now().Format(time.RFC3339Nano),
-	}
-}
-
-func (s *MarketService) AverageCNChange() float64 {
-	indices := s.Indices()
-	total := 0.0
-	count := 0
-	for _, idx := range indices {
-		if idx.Market == "cn" {
-			total += idx.ChangePct
-			count++
-		}
-	}
-	if count == 0 {
-		return 0
-	}
-	return total / float64(count)
-}
-
 func SortRanking(items []dto.FundRankingItem, rankingType string) {
 	sort.SliceStable(items, func(i, j int) bool {
 		if rankingType == "losers" {
@@ -112,7 +79,7 @@ func SortRanking(items []dto.FundRankingItem, rankingType string) {
 
 func deterministicChange(code string, vol float64, now time.Time) float64 {
 	day := now.YearDay() + now.Year()*400
-	raw := int(stableIndexHash(code+time.Now().Location().String())%10000) + day*37
+	raw := int(stableIndexHash(code+now.Location().String())%10000) + day*37
 	centered := float64(raw%2000)/1000 - 1
 	return util.RoundVal(centered*vol, 2)
 }
@@ -133,4 +100,3 @@ func stableIndexHash(value string) uint32 {
 	_, _ = h.Write([]byte(value))
 	return h.Sum32()
 }
-

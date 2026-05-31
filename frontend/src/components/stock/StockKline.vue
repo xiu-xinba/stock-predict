@@ -71,6 +71,17 @@ function calculateMA(data: { close: number }[], period: number): (number | null)
   })
 }
 
+interface TooltipParam {
+  axisValue?: string
+  color?: string
+  seriesName?: string
+  value?: unknown
+}
+
+interface BarColorParam {
+  dataIndex: number
+}
+
 function getChartOption() {
   const base = getBaseChartOption()
   const data = filteredKlines.value
@@ -145,7 +156,7 @@ function getChartOption() {
     tooltip: {
       ...base.tooltip,
       axisPointer: { type: 'cross' },
-      formatter: (params: any) => {
+      formatter: (params: TooltipParam | TooltipParam[]) => {
         if (!Array.isArray(params)) return ''
         const date = params[0]?.axisValue ?? ''
         let html = `<div style="font-size:${cssVar('--fs-sm')};margin-bottom:4px">${date}</div>`
@@ -210,7 +221,7 @@ function getChartOption() {
         type: 'bar',
         data: volumes,
         itemStyle: {
-          color: (params: any) => {
+          color: (params: BarColorParam) => {
             const idx = params.dataIndex
             return data[idx].close >= data[idx].open ? upColor : downColor
           },
@@ -235,6 +246,7 @@ useECharts(chartRef, getChartOption, () => [filteredKlines.value, isDark.value])
         <button
           v-for="(_, key) in periodLabels"
           :key="key"
+          type="button"
           class="period-tab"
           :class="{ active: period === key }"
           @click.stop="period = key"
@@ -244,7 +256,7 @@ useECharts(chartRef, getChartOption, () => [filteredKlines.value, isDark.value])
       </div>
     </template>
 
-    <div class="chart-wrap" ref="chartRef" />
+    <div ref="chartRef" class="chart-wrap" />
   </CollapsibleCard>
 </template>
 

@@ -1,6 +1,6 @@
 import request from './index'
 import { API_ROUTES } from './routes'
-import type { ApiResponse, StockSearchData, StockDetailData, StockRankingItem, StockPredictionData, StockQuote } from '@/types'
+import type { ApiResponse, StockSearchData, StockDetailData, StockRankingItem, StockQuote } from '@/types'
 
 export async function fetchStockList(params: {
   keyword?: string
@@ -17,11 +17,6 @@ export async function fetchStockList(params: {
 
 export async function fetchStockDetail(stockCode: string): Promise<ApiResponse<StockDetailData>> {
   const { data } = await request.get<ApiResponse<StockDetailData>>(API_ROUTES.stock.detail(stockCode))
-  return data
-}
-
-export async function predictStock(stockCode: string): Promise<ApiResponse<StockPredictionData>> {
-  const { data } = await request.get<ApiResponse<StockPredictionData>>(API_ROUTES.stock.predict(stockCode))
   return data
 }
 

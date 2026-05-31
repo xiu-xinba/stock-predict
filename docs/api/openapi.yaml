@@ -1,8 +1,8 @@
 openapi: 3.0.3
 
 info:
-  title: 股票/基金预测平台 API
-  description: 股票与基金预测平台后端服务接口文档，提供基金搜索、股票搜索、市场行情、预测分析等功能。
+  title: 股票/基金行情平台 API
+  description: 股票与基金行情平台后端服务接口文档，提供基金搜索、股票搜索、市场行情和预测入口占位等功能。
   version: 1.0.0
 
 servers:
@@ -32,7 +32,7 @@ paths:
     get:
       tags: [系统]
       summary: 健康检查
-      description: 返回服务运行状态，包括模型加载情况、基金/股票数据加载情况
+      description: 返回服务运行状态，包括基金/股票数据加载情况；预测模型已拆分，model_loaded 固定为 false。
       operationId: health
       responses:
         "200":
@@ -46,6 +46,25 @@ paths:
                     properties:
                       data:
                         $ref: "#/components/schemas/HealthData"
+
+  /api/v1/metrics:
+    get:
+      tags: [系统]
+      summary: 运行指标
+      description: 返回进程内最小运行指标，包括请求数、错误数、状态码分布、平均耗时和运行时间。
+      operationId: metrics
+      responses:
+        "200":
+          description: 运行指标快照
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/APIResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/MetricsData"
 
   /api/v1/search:
     get:
@@ -217,7 +236,7 @@ paths:
     get:
       tags: [基金]
       summary: 基金覆盖率报告
-      description: 返回基金数据覆盖率统计，包括行情覆盖、历史数据覆盖、模型支持情况等
+      description: 返回基金数据覆盖率统计，包括行情覆盖和基金类型分布等
       operationId: fundCoverage
       responses:
         "200":
@@ -322,8 +341,8 @@ paths:
   /api/v1/predict/{fundCode}:
     get:
       tags: [预测]
-      summary: 基金预测
-      description: 根据基金代码获取预测分析结果，包括日度、周度、日内预测及数据质量评估
+      summary: 基金预测入口占位
+      description: 预测模型已拆分为独立项目，当前主项目仅保留入口。
       operationId: predictFund
       parameters:
         - name: fundCode
@@ -334,8 +353,8 @@ paths:
             type: string
             pattern: "^[0-9]{6}$"
       responses:
-        "200":
-          description: 基金预测结果
+        "501":
+          description: 预测功能已拆分为独立项目
           content:
             application/json:
               schema:
@@ -344,11 +363,11 @@ paths:
                   - type: object
                     properties:
                       data:
-                        $ref: "#/components/schemas/PredictionData"
+                        type: object
+                        nullable: true
+                        description: 预测模型已拆分，当前固定为 null
         "400":
           $ref: "#/components/responses/BadRequest"
-        "500":
-          $ref: "#/components/responses/InternalServerError"
 
   /api/v1/watchlist/quotes:
     post:
@@ -533,8 +552,8 @@ paths:
   /api/v1/stock/{stockCode}/predict:
     get:
       tags: [预测]
-      summary: 股票预测
-      description: 根据股票代码获取预测分析结果，包括日度、周度、日内预测
+      summary: 股票预测入口占位
+      description: 预测模型已拆分为独立项目，当前主项目仅保留入口。
       operationId: predictStock
       parameters:
         - name: stockCode
@@ -545,8 +564,8 @@ paths:
             type: string
             pattern: "^[0-9]{6}$"
       responses:
-        "200":
-          description: 股票预测结果
+        "501":
+          description: 预测功能已拆分为独立项目
           content:
             application/json:
               schema:
@@ -555,11 +574,11 @@ paths:
                   - type: object
                     properties:
                       data:
-                        $ref: "#/components/schemas/StockPredictionData"
+                        type: object
+                        nullable: true
+                        description: 预测模型已拆分，当前固定为 null
         "400":
           $ref: "#/components/responses/BadRequest"
-        "500":
-          $ref: "#/components/responses/InternalServerError"
 
   /api/v1/stocks/quotes:
     post:
@@ -687,7 +706,7 @@ components:
           example: ok
         model_loaded:
           type: boolean
-          description: 预测模型是否已加载
+          description: 预测模型已拆分为独立项目，当前固定为 false
         funds_loaded:
           type: boolean
           description: 基金数据是否已加载
@@ -698,6 +717,41 @@ components:
           type: string
           description: 运行时环境
           example: go
+
+    MetricsData:
+      type: object
+      description: 进程内运行指标快照
+      properties:
+        request_count:
+          type: integer
+          format: int64
+          description: 已记录请求总数
+        error_count:
+          type: integer
+          format: int64
+          description: HTTP 4xx/5xx 请求总数
+        in_flight:
+          type: integer
+          format: int64
+          description: 当前处理中请求数
+        avg_duration_ms:
+          type: number
+          format: double
+          description: 平均请求耗时毫秒
+        status_counts:
+          type: object
+          additionalProperties:
+            type: integer
+            format: int64
+          description: 按 HTTP 状态码统计的请求数
+        uptime_seconds:
+          type: integer
+          format: int64
+          description: 进程运行秒数
+        collected_at:
+          type: string
+          format: date-time
+          description: 指标采集时间
 
     FundItem:
       type: object
@@ -816,21 +870,6 @@ components:
         funds_with_quote:
           type: integer
           description: 有行情数据的基金数
-        funds_with_history:
-          type: integer
-          description: 有历史数据的基金数
-        funds_with_trainable_samples:
-          type: integer
-          description: 有可训练样本的基金数
-        model_supported_funds:
-          type: integer
-          description: 模型支持的基金数
-        baseline_only_funds:
-          type: integer
-          description: 仅基线预测的基金数
-        unsupported_funds:
-          type: integer
-          description: 不支持的基金数
         counts_by_fund_type:
           type: object
           additionalProperties:
@@ -841,9 +880,6 @@ components:
           additionalProperties:
             type: integer
           description: 按行情来源统计
-        sample_cutoff_time:
-          type: string
-          description: 样本截止时间
 
     FundSyncResult:
       type: object
@@ -1000,309 +1036,6 @@ components:
         data_source:
           type: string
           description: 数据来源
-
-    MarketSnapshot:
-      type: object
-      description: 市场快照
-      properties:
-        sh_index:
-          type: number
-          format: double
-          description: 上证指数
-        sh_index_change_pct:
-          type: number
-          format: double
-          description: 上证指数涨跌幅
-        sz_index:
-          type: number
-          format: double
-          description: 深证成指
-        sz_index_change_pct:
-          type: number
-          format: double
-          description: 深证成指涨跌幅
-        cyb_index:
-          type: number
-          format: double
-          description: 创业板指
-        cyb_index_change_pct:
-          type: number
-          format: double
-          description: 创业板指涨跌幅
-        update_time:
-          type: string
-          description: 更新时间
-
-    PredictionResult:
-      type: object
-      description: 预测结果
-      properties:
-        horizon:
-          type: string
-          description: 预测周期
-        target_window:
-          type: string
-          description: 目标窗口
-        model_source:
-          type: string
-          description: 模型来源
-        model_candidate:
-          type: string
-          description: 模型候选
-        feature_set:
-          type: string
-          description: 特征集
-        model_asof_time:
-          type: string
-          description: 模型截止时间
-        model_coverage_status:
-          type: string
-          description: 模型覆盖状态
-          enum: [model_supported, baseline_only, unsupported_fund, model_unavailable]
-        model_coverage_note:
-          type: string
-          description: 模型覆盖说明
-        direction:
-          type: string
-          description: 预测方向
-          enum: [up, down, flat]
-        direction_confidence:
-          type: number
-          format: double
-          description: 方向置信度
-        predicted_change_pct:
-          type: number
-          format: double
-          description: 预测涨跌幅百分比
-        change_range:
-          $ref: "#/components/schemas/ChangeRange"
-        prediction_interval:
-          $ref: "#/components/schemas/PredictionInterval"
-        return_decomposition:
-          $ref: "#/components/schemas/ReturnDecomposition"
-        actionability_gate:
-          $ref: "#/components/schemas/ActionabilityGate"
-        top_factors:
-          type: array
-          items:
-            $ref: "#/components/schemas/FactorItem"
-          description: 主要影响因素
-        reliability:
-          type: string
-          description: 可靠性评级
-        reliability_note:
-          type: string
-          description: 可靠性说明
-        accuracy_target:
-          type: number
-          format: double
-          description: 准确率目标
-        meets_accuracy_target:
-          type: boolean
-          description: 是否达到准确率目标
-        signal_status:
-          type: string
-          description: 信号状态
-          enum: [actionable, low_confidence, no_signal]
-        is_actionable:
-          type: boolean
-          description: 是否可操作
-        calibration_note:
-          type: string
-          description: 校准说明
-
-    ChangeRange:
-      type: object
-      description: 预测变化范围
-      properties:
-        low:
-          type: number
-          format: double
-          description: 下限
-        high:
-          type: number
-          format: double
-          description: 上限
-
-    PredictionInterval:
-      type: object
-      description: 预测区间
-      properties:
-        low:
-          type: number
-          format: double
-          description: 区间下限
-        high:
-          type: number
-          format: double
-          description: 区间上限
-        method:
-          type: string
-          description: 区间估计方法
-        level:
-          type: number
-          format: double
-          description: 置信水平
-        empirical_coverage:
-          type: number
-          format: double
-          description: 经验覆盖率
-
-    ActionabilityGate:
-      type: object
-      description: 可操作性门控
-      properties:
-        actionable:
-          type: boolean
-          description: 是否可操作
-        reason:
-          type: string
-          description: 原因说明
-        min_high_confidence_accuracy:
-          type: number
-          format: double
-          description: 最低高置信度准确率
-        min_high_confidence_coverage:
-          type: number
-          format: double
-          description: 最低高置信度覆盖率
-        high_confidence_accuracy:
-          type: number
-          format: double
-          description: 高置信度准确率
-        high_confidence_coverage:
-          type: number
-          format: double
-          description: 高置信度覆盖率
-        max_calibration_ece:
-          type: number
-          format: double
-          description: 最大校准ECE
-        calibration_ece:
-          type: number
-          format: double
-          description: 校准ECE
-
-    ReturnDecomposition:
-      type: object
-      description: 收益分解
-      properties:
-        enabled:
-          type: boolean
-          description: 是否启用
-        method:
-          type: string
-          description: 分解方法
-        formula:
-          type: string
-          description: 计算公式
-        index_return_pct:
-          type: number
-          format: double
-          description: 指数收益率
-        tracking_error_pct:
-          type: number
-          format: double
-          description: 跟踪误差
-        direct_fund_return_pct:
-          type: number
-          format: double
-          description: 基金直接收益率
-        index_return_target:
-          type: string
-          description: 指数收益目标
-        tracking_error_target:
-          type: string
-          description: 跟踪误差目标
-
-    FactorItem:
-      type: object
-      description: 影响因素
-      properties:
-        name:
-          type: string
-          description: 因素名称
-        importance:
-          type: number
-          format: double
-          description: 重要性
-        description:
-          type: string
-          description: 因素描述
-
-    PredictionDataQuality:
-      type: object
-      description: 预测数据质量
-      properties:
-        has_realtime_quote:
-          type: boolean
-          description: 是否有实时行情
-        has_market_indices:
-          type: boolean
-          description: 是否有市场指数
-        has_holdings_data:
-          type: boolean
-          description: 是否有持仓数据
-        has_intraday_constituent_data:
-          type: boolean
-          description: 是否有日内成分数据
-        has_etf_flow_data:
-          type: boolean
-          description: 是否有ETF资金流数据
-        coverage_score:
-          type: number
-          format: double
-          description: 覆盖率得分
-        missing_sources:
-          type: array
-          items:
-            type: string
-          description: 缺失数据源列表
-        note:
-          type: string
-          description: 补充说明
-
-    PredictionData:
-      type: object
-      description: 基金预测数据
-      properties:
-        fund_code:
-          type: string
-          description: 基金代码
-        fund_name:
-          type: string
-          description: 基金名称
-        prediction:
-          $ref: "#/components/schemas/PredictionResult"
-        next_day_prediction:
-          $ref: "#/components/schemas/PredictionResult"
-        weekly_prediction:
-          $ref: "#/components/schemas/PredictionResult"
-        intraday_prediction:
-          $ref: "#/components/schemas/PredictionResult"
-        data_quality:
-          $ref: "#/components/schemas/PredictionDataQuality"
-        market_snapshot:
-          $ref: "#/components/schemas/MarketSnapshot"
-
-    StockPredictionData:
-      type: object
-      description: 股票预测数据
-      properties:
-        stock_code:
-          type: string
-          description: 股票代码
-        stock_name:
-          type: string
-          description: 股票名称
-        next_day_prediction:
-          $ref: "#/components/schemas/PredictionResult"
-        weekly_prediction:
-          $ref: "#/components/schemas/PredictionResult"
-        intraday_prediction:
-          $ref: "#/components/schemas/PredictionResult"
-        data_quality:
-          $ref: "#/components/schemas/PredictionDataQuality"
 
     FundDetailData:
       type: object

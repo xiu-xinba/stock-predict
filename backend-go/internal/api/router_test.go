@@ -61,6 +61,47 @@ func TestHealth(t *testing.T) {
 	}
 }
 
+func TestMetricsCountsRequestsAndErrors(t *testing.T) {
+	handler := newTestHandler()
+
+	handler.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/api/v1/health", nil))
+	handler.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/missing", nil))
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/metrics", nil)
+	handler.ServeHTTP(rec, req)
+
+	response := decodeAPIResponse(t, rec, http.StatusOK)
+	if response.Code != 0 {
+		t.Fatalf("expected API code 0, got %d: %s", response.Code, response.Message)
+	}
+	data, err := remarshal[struct {
+		RequestCount int            `json:"request_count"`
+		ErrorCount   int            `json:"error_count"`
+		InFlight     int            `json:"in_flight"`
+		StatusCounts map[string]int `json:"status_counts"`
+		UptimeSec    int64          `json:"uptime_seconds"`
+	}](response.Data)
+	if err != nil {
+		t.Fatalf("decode metrics data: %v", err)
+	}
+	if data.RequestCount < 2 {
+		t.Fatalf("expected at least two recorded requests, got %+v", data)
+	}
+	if data.ErrorCount < 1 {
+		t.Fatalf("expected at least one recorded error, got %+v", data)
+	}
+	if data.StatusCounts["200"] < 1 || data.StatusCounts["404"] < 1 {
+		t.Fatalf("expected status counts for 200 and 404, got %+v", data.StatusCounts)
+	}
+	if data.InFlight < 1 {
+		t.Fatalf("expected metrics request to be counted in-flight, got %+v", data)
+	}
+	if data.UptimeSec < 0 {
+		t.Fatalf("expected non-negative uptime, got %+v", data)
+	}
+}
+
 func TestMarketIndicesIncludeSP500(t *testing.T) {
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/market/indices", nil)
@@ -90,26 +131,27 @@ func TestPredictFund(t *testing.T) {
 
 	newTestHandler().ServeHTTP(rec, req)
 
-	var body dto.APIResponse
-	decodeResponse(t, rec, &body)
-	data, err := remarshal[dto.PredictionData](body.Data)
-	if err != nil {
-		t.Fatalf("decode prediction data: %v", err)
+	response := decodeAPIResponse(t, rec, http.StatusNotImplemented)
+	if response.Code != -2 {
+		t.Fatalf("expected feature-disabled code -2, got %d", response.Code)
 	}
-	if data.FundCode != "000001" {
-		t.Fatalf("expected fund 000001, got %q", data.FundCode)
+	if response.Message != "预测模型已拆分为独立项目，当前主项目仅保留入口。" {
+		t.Fatalf("unexpected feature-disabled message: %q", response.Message)
 	}
-	if data.NextDayPrediction.Horizon != "next_day" {
-		t.Fatalf("unexpected next-day horizon: %q", data.NextDayPrediction.Horizon)
+}
+
+func TestPredictStockFeatureDisabled(t *testing.T) {
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/stock/000001/predict", nil)
+
+	newTestHandler().ServeHTTP(rec, req)
+
+	response := decodeAPIResponse(t, rec, http.StatusNotImplemented)
+	if response.Code != -2 {
+		t.Fatalf("expected feature-disabled code -2, got %d", response.Code)
 	}
-	if data.IntradayPrediction.Horizon != "intraday_5m" {
-		t.Fatalf("unexpected intraday horizon: %q", data.IntradayPrediction.Horizon)
-	}
-	if data.WeeklyPrediction.Horizon != "next_week" {
-		t.Fatalf("unexpected weekly horizon: %q", data.WeeklyPrediction.Horizon)
-	}
-	if data.NextDayPrediction.SignalStatus == "" {
-		t.Fatal("expected next-day signal status")
+	if response.Message != "预测模型已拆分为独立项目，当前主项目仅保留入口。" {
+		t.Fatalf("unexpected feature-disabled message: %q", response.Message)
 	}
 }
 
@@ -189,7 +231,7 @@ func TestInvalidMarketRankingType(t *testing.T) {
 
 	newTestHandler().ServeHTTP(rec, req)
 
-	response := decodeAPIResponse(t, rec, http.StatusOK)
+	response := decodeAPIResponse(t, rec, http.StatusBadRequest)
 	if response.Code != -1 {
 		t.Fatalf("expected API code -1, got %d", response.Code)
 	}
@@ -201,7 +243,7 @@ func TestInvalidPredictCode(t *testing.T) {
 
 	newTestHandler().ServeHTTP(rec, req)
 
-	response := decodeAPIResponse(t, rec, http.StatusOK)
+	response := decodeAPIResponse(t, rec, http.StatusBadRequest)
 	if response.Code != -1 {
 		t.Fatalf("expected API code -1, got %d", response.Code)
 	}

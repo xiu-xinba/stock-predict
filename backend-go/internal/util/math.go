@@ -1,6 +1,10 @@
 package util
 
-import "math"
+import (
+	"math"
+	"strconv"
+	"strings"
+)
 
 func Clamp(v, min, max float64) float64 {
 	if math.IsNaN(v) || math.IsInf(v, 0) {
@@ -24,4 +28,16 @@ func IsAllDigits(s string) bool {
 		}
 	}
 	return true
+}
+
+func ParseQuoteFloat(raw string) float64 {
+	raw = strings.TrimSpace(strings.TrimSuffix(strings.ReplaceAll(raw, ",", ""), "%"))
+	if raw == "" || raw == "--" || raw == "---" {
+		return 0
+	}
+	value, err := strconv.ParseFloat(raw, 64)
+	if err != nil {
+		return 0
+	}
+	return value
 }

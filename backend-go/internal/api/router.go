@@ -13,16 +13,19 @@ import (
 )
 
 type Router struct {
-	cfg       config.Config
-	services  *service.Registry
-	store     store.FundRepository
-	searchIdx *store.SearchIndex
-	logger    *slog.Logger
-	stopCh    chan struct{}
+	cfg              config.Config
+	services         *service.Registry
+	store            store.FundRepository
+	searchIdx        *store.SearchIndex
+	logger           *slog.Logger
+	stopCh           chan struct{}
+	metricsCollector *metricsCollector
+	engine           *gin.Engine
 }
 
-func NewRouter(cfg config.Config, services *service.Registry, fundRepo store.FundRepository, logger *slog.Logger, searchIdx *store.SearchIndex) http.Handler {
-	router := &Router{cfg: cfg, services: services, store: fundRepo, searchIdx: searchIdx, logger: logger, stopCh: make(chan struct{})}
+func NewRouter(cfg config.Config, services *service.Registry, fundRepo store.FundRepository, logger *slog.Logger, searchIdx *store.SearchIndex) *Router {
+	metrics := newMetricsCollector()
+	router := &Router{cfg: cfg, services: services, store: fundRepo, searchIdx: searchIdx, logger: logger, stopCh: make(chan struct{}), metricsCollector: metrics}
 
 	gin.SetMode(gin.ReleaseMode)
 	engine := gin.New()
@@ -38,11 +41,13 @@ func NewRouter(cfg config.Config, services *service.Registry, fundRepo store.Fun
 		csrfProtection(cfg, router.stopCh),
 		gzipMiddleware(),
 		maxBody(),
+		metricsMiddleware(metrics),
 		rateLimiter(logger, router.stopCh),
 	)
 
 	v1 := engine.Group("/api/v1")
 	v1.GET("/health", router.health)
+	v1.GET("/metrics", router.metrics)
 	v1.GET("/search", router.unifiedSearch)
 	v1.GET("/funds/search", router.searchFunds)
 	v1.GET("/funds/filters", router.fundFilters)
@@ -65,13 +70,14 @@ func NewRouter(cfg config.Config, services *service.Registry, fundRepo store.Fun
 		writeError(c, http.StatusNotFound, -1, "not found")
 	})
 
-	return engine
+	router.engine = engine
+	return router
 }
 
 func (r *Router) health(c *gin.Context) {
 	writeJSON(c, http.StatusOK, map[string]any{
 		"status":        "ok",
-		"model_loaded":  r.services.Prediction.ModelLoaded(),
+		"model_loaded":  false,
 		"funds_loaded":  r.services.Funds.Count() > 0,
 		"stocks_loaded": r.services.Stocks.IsLoaded(),
 		"runtime":       "go",
@@ -80,6 +86,10 @@ func (r *Router) health(c *gin.Context) {
 
 func (r *Router) Close() {
 	close(r.stopCh)
+}
+
+func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	r.engine.ServeHTTP(w, req)
 }
 
 func isSixDigitCode(value string) bool {

@@ -51,10 +51,11 @@ const dirClass = computed(() => getDirection(Number(props.changePercent)))
       </div>
       <div class="header-actions">
         <button
+          type="button"
           class="icon-btn"
           :class="{ active: isInWatchlist }"
-          @click="emit('toggleWatchlist')"
           :title="isInWatchlist ? '移出自选' : '加入自选'"
+          @click="emit('toggleWatchlist')"
         >
           <svg width="20" height="20" viewBox="0 0 24 24" :fill="isInWatchlist ? 'var(--color-brand)' : 'none'" stroke="currentColor" stroke-width="2">
             <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
@@ -73,7 +74,7 @@ const dirClass = computed(() => getDirection(Number(props.changePercent)))
     </div>
 
     <div class="info-grid" :style="{ gridTemplateColumns: `repeat(${gridColumns}, 1fr)` }">
-      <div class="kv-item" v-for="(item, idx) in infoItems" :key="idx">
+      <div v-for="(item, idx) in infoItems" :key="idx" class="kv-item">
         <span class="kv-label">{{ item.label }}</span>
         <span class="kv-value">{{ item.value }}</span>
       </div>

@@ -19,6 +19,10 @@ const chartRef = ref<HTMLElement>()
 const mainDir = computed(() => getDirection(props.capitalFlow.main_net_inflow))
 const retailDir = computed(() => getDirection(props.capitalFlow.retail_net_inflow))
 
+interface BarColorParam {
+  value: number
+}
+
 function getChartOption() {
   const base = getBaseChartOption()
   const history = props.capitalFlow.flow_history || []
@@ -72,7 +76,7 @@ function getChartOption() {
         type: 'bar',
         data: mainNetInflows,
         itemStyle: {
-          color: (params: any) => params.value >= 0 ? upColor : downColor,
+          color: (params: BarColorParam) => params.value >= 0 ? upColor : downColor,
           opacity: 0.7,
         },
         barMaxWidth: 12,
@@ -82,7 +86,7 @@ function getChartOption() {
         type: 'bar',
         data: retailNetInflows,
         itemStyle: {
-          color: (params: any) => params.value >= 0 ? upColor : downColor,
+          color: (params: BarColorParam) => params.value >= 0 ? upColor : downColor,
           opacity: 0.4,
         },
         barMaxWidth: 12,
@@ -122,7 +126,7 @@ useECharts(chartRef, getChartOption, () => [props.capitalFlow.flow_history, isDa
       </div>
     </div>
 
-    <div class="chart-wrap" ref="chartRef" />
+    <div ref="chartRef" class="chart-wrap" />
   </CollapsibleCard>
 </template>
 

@@ -75,7 +75,7 @@ function toggleThemeWithTide(event?: MouseEvent) {
   document.documentElement.style.setProperty('--tide-y', `${y}px`)
   document.documentElement.style.setProperty('--tide-r', `${endRadius}px`)
 
-  const transition = (document as any).startViewTransition(async () => {
+  const transition = document.startViewTransition(async () => {
     mode.value = newMode
   })
 
@@ -91,7 +91,9 @@ function toggleThemeWithTide(event?: MouseEvent) {
         pseudoElement: '::view-transition-new(root)',
       },
     )
-  }).catch(() => {})
+  }).catch(() => {
+    // Ignore animation failures; the theme state has already changed.
+  })
 }
 
 export function useTheme() {

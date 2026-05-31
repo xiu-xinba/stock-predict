@@ -23,13 +23,3 @@ type MarketIndex struct {
 	UpdateTime    string    `json:"update_time"`
 	DataSource    string    `json:"data_source"`
 }
-
-type MarketSnapshot struct {
-	ShIndex           float64 `json:"sh_index"`
-	ShIndexChangePct  float64 `json:"sh_index_change_pct"`
-	SzIndex           float64 `json:"sz_index"`
-	SzIndexChangePct  float64 `json:"sz_index_change_pct"`
-	CybIndex          float64 `json:"cyb_index"`
-	CybIndexChangePct float64 `json:"cyb_index_change_pct"`
-	UpdateTime        string  `json:"update_time"`
-}

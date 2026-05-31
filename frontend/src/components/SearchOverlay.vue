@@ -21,7 +21,7 @@
               @focus="onFocus"
               @keydown="onKeydown"
             >
-            <button v-if="store.query" class="search-clear" type="button" @click="clearInput" aria-label="清除搜索">
+            <button v-if="store.query" class="search-clear" type="button" aria-label="清除搜索" @click="clearInput">
               <svg viewBox="0 0 1024 1024" width="16" height="16"><path fill="currentColor" d="M512 64C264.6 64 64 264.6 64 512s200.6 448 448 448 448-200.6 448-448S759.4 64 512 64zm165.4 618.2-44.2 44.2L512 555.2 390.8 726.4l-44.2-44.2L467.8 512 346.6 340.8l44.2-44.2L512 468.8l121.2-171.2 44.2 44.2L556.2 512z"/></svg>
             </button>
             <kbd class="search-kbd">ESC</kbd>
@@ -122,7 +122,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, nextTick, onUnmounted } from 'vue'
+import { computed, watch, nextTick, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useSearch } from '@/composables/useSearch'
 import { getDirection, formatSignedPct } from '@/utils/format'
@@ -174,12 +174,12 @@ function switchTab(tab: 'all' | 'funds' | 'stocks') {
 
 function goFund(code: string) {
   close()
-  router.push({ name: 'Predict', query: { fundCode: code } })
+  router.push('/fund/' + code)
 }
 
 function goStock(code: string) {
   close()
-  router.push({ name: 'Predict', query: { stockCode: code } })
+  router.push('/stock/' + code)
 }
 
 function marketLabel(market: string): string {
@@ -232,9 +232,7 @@ watch(() => props.open, (val) => {
 })
 
 onUnmounted(() => {
-  if (props.open) {
-    unlockBodyScroll()
-  }
+  unlockBodyScroll()
 })
 </script>
 
@@ -242,7 +240,7 @@ onUnmounted(() => {
 .search-overlay {
   position: fixed;
   inset: 0;
-  z-index: 1000;
+  z-index: var(--z-overlay);
   pointer-events: none;
   visibility: hidden;
   transition: visibility 0s 0.2s;

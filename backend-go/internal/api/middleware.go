@@ -17,6 +17,12 @@ import (
 	"stock-predict-go/internal/config"
 )
 
+const (
+	rateLimitPerMinute = 60
+	csrfCookieMaxAge   = 86400
+	maxBodyBytes       = 1 << 20
+)
+
 type rateLimitEntry struct {
 	count    int
 	expireAt time.Time
@@ -27,9 +33,11 @@ func rateLimiter(logger *slog.Logger, stopCh chan struct{}) gin.HandlerFunc {
 	entries := make(map[string]*rateLimitEntry)
 
 	go func() {
+		ticker := time.NewTicker(time.Minute)
+		defer ticker.Stop()
 		for {
 			select {
-			case <-time.After(time.Minute):
+			case <-ticker.C:
 				mu.Lock()
 				now := time.Now()
 				for ip, e := range entries {
@@ -59,7 +67,7 @@ func rateLimiter(logger *slog.Logger, stopCh chan struct{}) gin.HandlerFunc {
 			return
 		}
 		e.count++
-		if e.count > 60 {
+		if e.count > rateLimitPerMinute {
 			mu.Unlock()
 			writeError(c, http.StatusTooManyRequests, -1, "请求过于频繁，请稍后再试")
 			c.Abort()
@@ -72,7 +80,7 @@ func rateLimiter(logger *slog.Logger, stopCh chan struct{}) gin.HandlerFunc {
 
 func maxBody() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 1<<20)
+		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, maxBodyBytes)
 		c.Next()
 	}
 }
@@ -195,9 +203,11 @@ func csrfProtection(cfg config.Config, stopCh chan struct{}) gin.HandlerFunc {
 	entries := make(map[string]*csrfEntry)
 
 	go func() {
+		ticker := time.NewTicker(5 * time.Minute)
+		defer ticker.Stop()
 		for {
 			select {
-			case <-time.After(5 * time.Minute):
+			case <-ticker.C:
 				mu.Lock()
 				now := time.Now()
 				for k, e := range entries {
@@ -224,7 +234,7 @@ func csrfProtection(cfg config.Config, stopCh chan struct{}) gin.HandlerFunc {
 			existingToken, _ := c.Cookie(cookieKey)
 			if existingToken == "" {
 				existingToken = token
-				c.SetCookie(cookieKey, existingToken, 86400, "/", "", !cfg.IsDevelopment(), true)
+				c.SetCookie(cookieKey, existingToken, csrfCookieMaxAge, "/", "", !cfg.IsDevelopment(), true)
 				mu.Lock()
 				entries[existingToken] = &csrfEntry{
 					token:    existingToken,

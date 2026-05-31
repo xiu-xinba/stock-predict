@@ -27,6 +27,8 @@ const periodLabels: Record<PeriodKey, string> = {
   '3y': '近3年',
 }
 
+const periodEntries = Object.entries(periodLabels) as [PeriodKey, string][]
+
 const periodDays: Record<PeriodKey, number> = {
   '1m': 22,
   '3m': 66,
@@ -42,6 +44,11 @@ const returnMap = computed(() => ({
   '1y': props.performance.return_1y,
   '3y': props.performance.return_3y,
 }))
+
+interface TooltipParam {
+  axisValue?: string
+  value?: unknown
+}
 
 const filteredHistory = computed(() => {
   const h = props.performance.nav_history
@@ -84,7 +91,7 @@ function getChartOption() {
     },
     tooltip: {
       ...base.tooltip,
-      formatter: (params: any) => {
+      formatter: (params: TooltipParam[]) => {
         const p = params[0]
         return `<div style="font-size:${cssVar('--fs-xs')};color:${cssVar('--color-chart-axis')}">${p.axisValue}</div>
                 <div style="font-weight:600">净值: ${Number(p.value).toFixed(4)}</div>`
@@ -115,24 +122,25 @@ useECharts(chartRef, getChartOption, () => [filteredHistory.value, isDark.value]
   <CollapsibleCard title="业绩表现" class="fund-performance card-container" body-max-height="600px">
     <div class="period-tabs">
       <button
-        v-for="(_, key) in periodLabels"
+        v-for="[key, label] in periodEntries"
         :key="key"
+        type="button"
         class="period-tab"
         :class="{ active: period === key }"
-        @click="period = key as any"
+        @click="period = key"
       >
-        {{ periodLabels[key] }}
+        {{ label }}
         <span class="period-return" :class="getDirection(returnMap[key])">
           {{ formatSignedPct(returnMap[key], 2) }}
         </span>
       </button>
     </div>
 
-    <div class="chart-wrap" ref="chartRef" />
+    <div ref="chartRef" class="chart-wrap" />
 
     <div class="return-grid">
-      <div class="return-item" v-for="(_, key) in periodLabels" :key="key">
-        <span class="return-label">{{ periodLabels[key] }}</span>
+      <div v-for="[key, label] in periodEntries" :key="key" class="return-item">
+        <span class="return-label">{{ label }}</span>
         <span class="return-value" :class="getDirection(returnMap[key])">
           {{ formatSignedPct(returnMap[key], 2) }}
         </span>
