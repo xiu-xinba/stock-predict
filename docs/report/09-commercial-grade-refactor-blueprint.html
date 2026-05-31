@@ -1,0 +1,1037 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>商业级架构治理与重构蓝图 - Stock Predict</title>
+  <style>
+    :root {
+      --bg: #111216;
+      --surface: #1c1d22;
+      --surface-2: #25262d;
+      --surface-3: #30313a;
+      --border: rgba(255, 255, 255, 0.1);
+      --border-strong: rgba(255, 255, 255, 0.18);
+      --text: #f0f0f4;
+      --text-2: #c3c4cc;
+      --text-3: #8b8d99;
+      --brand: #5e9eff;
+      --brand-soft: rgba(94, 158, 255, 0.12);
+      --critical: #f06a63;
+      --critical-soft: rgba(240, 106, 99, 0.12);
+      --high: #f0a050;
+      --high-soft: rgba(240, 160, 80, 0.12);
+      --medium: #f2c94c;
+      --medium-soft: rgba(242, 201, 76, 0.12);
+      --low: #54c985;
+      --low-soft: rgba(84, 201, 133, 0.12);
+      --info: #8e9eff;
+      --info-soft: rgba(142, 158, 255, 0.12);
+      --mono: "SF Mono", "Cascadia Code", "JetBrains Mono", Consolas, monospace;
+      --font: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      --radius: 8px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      line-height: 1.65;
+      font-size: 15px;
+    }
+
+    a {
+      color: var(--brand);
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    code, pre {
+      font-family: var(--mono);
+    }
+
+    code {
+      padding: 1px 5px;
+      border-radius: 4px;
+      background: var(--surface-3);
+      color: var(--text);
+      font-size: 0.88em;
+    }
+
+    pre {
+      margin: 0;
+      padding: 1rem;
+      overflow: auto;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: #0b0c10;
+      color: #d7d9e0;
+      font-size: 0.83rem;
+      line-height: 1.55;
+    }
+
+    .page-header {
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(180deg, #1c1d22 0%, #111216 100%);
+    }
+
+    .header-inner {
+      width: min(1180px, calc(100% - 40px));
+      margin: 0 auto;
+      padding: 3rem 0 2.25rem;
+    }
+
+    .kicker {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.85rem;
+      padding: 0.25rem 0.6rem;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      color: var(--brand);
+      background: var(--brand-soft);
+      font-size: 0.78rem;
+      font-weight: 650;
+      letter-spacing: 0;
+    }
+
+    h1 {
+      margin: 0 0 0.8rem;
+      font-size: clamp(2rem, 4vw, 3.2rem);
+      line-height: 1.12;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      max-width: 820px;
+      margin: 0;
+      color: var(--text-2);
+      font-size: 1.02rem;
+    }
+
+    .meta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-top: 1.5rem;
+      color: var(--text-3);
+      font-size: 0.85rem;
+    }
+
+    .meta-pill {
+      padding: 0.35rem 0.6rem;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .layout {
+      width: min(1180px, calc(100% - 40px));
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 260px minmax(0, 1fr);
+      gap: 2rem;
+      padding: 2rem 0 4rem;
+    }
+
+    .toc {
+      position: sticky;
+      top: 1rem;
+      align-self: start;
+      padding: 1rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+
+    .toc-title {
+      margin: 0 0 0.75rem;
+      color: var(--text);
+      font-size: 0.85rem;
+      font-weight: 700;
+    }
+
+    .toc a {
+      display: block;
+      padding: 0.45rem 0;
+      color: var(--text-2);
+      font-size: 0.86rem;
+    }
+
+    .toc a:hover {
+      color: var(--brand);
+      text-decoration: none;
+    }
+
+    main {
+      min-width: 0;
+    }
+
+    section {
+      margin-bottom: 2rem;
+      scroll-margin-top: 1rem;
+    }
+
+    .section-card {
+      padding: 1.4rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+
+    h2 {
+      margin: 0 0 1rem;
+      font-size: 1.35rem;
+      line-height: 1.3;
+      letter-spacing: 0;
+    }
+
+    h3 {
+      margin: 1.4rem 0 0.7rem;
+      font-size: 1rem;
+      line-height: 1.35;
+      letter-spacing: 0;
+    }
+
+    p {
+      margin: 0 0 0.9rem;
+      color: var(--text-2);
+    }
+
+    ul {
+      margin: 0.5rem 0 0;
+      padding-left: 1.25rem;
+      color: var(--text-2);
+    }
+
+    li {
+      margin: 0.45rem 0;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 0.85rem;
+      margin-top: 1rem;
+    }
+
+    .stat {
+      min-height: 118px;
+      padding: 1rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface-2);
+    }
+
+    .stat-value {
+      display: block;
+      margin-bottom: 0.5rem;
+      color: var(--text);
+      font-size: 1.65rem;
+      line-height: 1;
+      font-weight: 800;
+    }
+
+    .stat-label {
+      display: block;
+      color: var(--text-3);
+      font-size: 0.78rem;
+      line-height: 1.45;
+    }
+
+    .evidence-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.85rem;
+    }
+
+    .evidence {
+      padding: 1rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface-2);
+    }
+
+    .evidence-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 0.75rem;
+      margin-bottom: 0.65rem;
+    }
+
+    .evidence-title {
+      margin: 0;
+      color: var(--text);
+      font-size: 0.95rem;
+      font-weight: 700;
+    }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.16rem 0.5rem;
+      border-radius: 999px;
+      font-size: 0.74rem;
+      font-weight: 750;
+      white-space: nowrap;
+    }
+
+    .status-pass {
+      color: var(--low);
+      background: var(--low-soft);
+      border: 1px solid rgba(84, 201, 133, 0.22);
+    }
+
+    .status-fail {
+      color: var(--critical);
+      background: var(--critical-soft);
+      border: 1px solid rgba(240, 106, 99, 0.22);
+    }
+
+    .issue-list {
+      display: grid;
+      gap: 0.85rem;
+    }
+
+    .issue {
+      padding: 1rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface-2);
+    }
+
+    .issue-critical { border-left: 4px solid var(--critical); }
+    .issue-high { border-left: 4px solid var(--high); }
+    .issue-medium { border-left: 4px solid var(--medium); }
+    .issue-low { border-left: 4px solid var(--low); }
+    .issue-info { border-left: 4px solid var(--info); }
+
+    .issue-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 0.55rem;
+    }
+
+    .issue-title {
+      margin: 0;
+      color: var(--text);
+      font-size: 0.98rem;
+      font-weight: 750;
+    }
+
+    .badge {
+      flex: 0 0 auto;
+      padding: 0.2rem 0.52rem;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 0;
+    }
+
+    .badge-critical { color: var(--critical); background: var(--critical-soft); }
+    .badge-high { color: var(--high); background: var(--high-soft); }
+    .badge-medium { color: var(--medium); background: var(--medium-soft); }
+    .badge-low { color: var(--low); background: var(--low-soft); }
+    .badge-info { color: var(--info); background: var(--info-soft); }
+
+    .issue p {
+      margin-bottom: 0.6rem;
+      font-size: 0.91rem;
+    }
+
+    .file-line {
+      color: var(--brand);
+      font-family: var(--mono);
+      font-size: 0.82rem;
+      word-break: break-all;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 720px;
+      background: var(--surface-2);
+    }
+
+    th, td {
+      padding: 0.75rem 0.85rem;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      color: var(--text);
+      font-size: 0.82rem;
+      font-weight: 800;
+      background: rgba(255, 255, 255, 0.035);
+    }
+
+    td {
+      color: var(--text-2);
+      font-size: 0.88rem;
+    }
+
+    tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .phase {
+      display: grid;
+      grid-template-columns: 96px minmax(0, 1fr);
+      gap: 1rem;
+      padding: 1rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface-2);
+      margin-bottom: 0.85rem;
+    }
+
+    .phase-code {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 72px;
+      border-radius: var(--radius);
+      background: #0b0c10;
+      color: var(--brand);
+      font-family: var(--mono);
+      font-weight: 850;
+      font-size: 1.05rem;
+    }
+
+    .phase h3 {
+      margin-top: 0;
+    }
+
+    .callout {
+      margin-top: 1rem;
+      padding: 1rem;
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius);
+      background: rgba(94, 158, 255, 0.08);
+    }
+
+    .callout strong {
+      color: var(--text);
+    }
+
+    .footer-note {
+      padding-top: 1.25rem;
+      border-top: 1px solid var(--border);
+      color: var(--text-3);
+      font-size: 0.82rem;
+    }
+
+    @media (max-width: 920px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .toc {
+        position: static;
+      }
+
+      .stats-grid,
+      .evidence-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .header-inner,
+      .layout {
+        width: min(100% - 24px, 1180px);
+      }
+
+      .phase {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="page-header">
+    <div class="header-inner">
+      <div class="kicker">Stock Predict 商业级治理蓝图</div>
+      <h1>前后端代码审查与架构优化报告</h1>
+      <p class="subtitle">
+        本报告基于当前仓库的实际结构、文档、依赖和本轮基线验证结果，给出不改动业务代码前提下的系统性审查结论与分阶段重构路线。目标是把现有项目从“功能型工程”推进到“可持续交付、可审计、可运营”的商业级工程基线。
+      </p>
+      <div class="meta-row">
+        <span class="meta-pill">生成日期：2026-05-31</span>
+        <span class="meta-pill">范围：审查与方案，不含代码改动</span>
+        <span class="meta-pill">仓库：E:\Desktop\Code\stock predict</span>
+        <span class="meta-pill">形态：静态 HTML 报告</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav class="toc" aria-label="报告目录">
+      <p class="toc-title">目录</p>
+      <a href="#summary">1. 执行摘要</a>
+      <a href="#evidence">2. 基线证据</a>
+      <a href="#frontend">3. 前端审查</a>
+      <a href="#backend">4. 后端审查</a>
+      <a href="#model">5. 模型训练审查</a>
+      <a href="#architecture">6. 架构优化蓝图</a>
+      <a href="#standards">7. 工程规范</a>
+      <a href="#roadmap">8. 分阶段路线图</a>
+      <a href="#acceptance">9. 验收门禁</a>
+    </nav>
+
+    <main>
+      <section id="summary" class="section-card">
+        <h2>1. 执行摘要</h2>
+        <p>
+          当前项目已经具备商业化雏形：前端采用 Vue 3 + TypeScript + Pinia，后端采用 Go + Gin + SQLite FTS5，模型训练独立为 Python 包，并且已有 README、架构文档和 OpenAPI 文档。主要短板不在“有没有架构”，而在工程门禁、契约一致性、质量自动化、生产部署与运维闭环。
+        </p>
+        <p>
+          当前最优策略是分阶段治理：先修复阻塞构建和测试的 P0 问题，再建立 CI 与契约测试，随后逐步拆分大文件和稳定模块边界。直接进行全量目录重组会放大风险，因为现有系统已经有功能和文档沉淀，应该优先用门禁和边界收敛系统。
+        </p>
+        <div class="stats-grid">
+          <div class="stat">
+            <span class="stat-value">2</span>
+            <span class="stat-label">当前阻塞项：前端生产构建失败、模型训练测试失败</span>
+          </div>
+          <div class="stat">
+            <span class="stat-value">60</span>
+            <span class="stat-label">前端 ESLint error 数，主要来自浏览器 globals 与空 catch</span>
+          </div>
+          <div class="stat">
+            <span class="stat-value">4</span>
+            <span class="stat-label">建议治理阶段：P0 修复、P1 门禁、P2 架构整理、P3 运营化</span>
+          </div>
+          <div class="stat">
+            <span class="stat-value">3</span>
+            <span class="stat-label">核心子系统：frontend、backend-go、model-training</span>
+          </div>
+        </div>
+      </section>
+
+      <section id="evidence" class="section-card">
+        <h2>2. 基线证据</h2>
+        <p>
+          以下结果来自本轮实际运行命令，不是静态推断。后续任何“完成”声明都应以这些命令全部通过为最低门槛。
+        </p>
+        <div class="evidence-grid">
+          <article class="evidence">
+            <div class="evidence-head">
+              <h3 class="evidence-title">Go 后端测试</h3>
+              <span class="status status-pass">PASS</span>
+            </div>
+            <pre>cd backend-go
+go test ./...
+
+结果：cmd/api 无测试文件；internal/api、config、service、store 测试通过。</pre>
+          </article>
+
+          <article class="evidence">
+            <div class="evidence-head">
+              <h3 class="evidence-title">Go 静态检查</h3>
+              <span class="status status-pass">PASS</span>
+            </div>
+            <pre>cd backend-go
+go vet ./...
+
+结果：退出码 0，无 vet 报错。</pre>
+          </article>
+
+          <article class="evidence">
+            <div class="evidence-head">
+              <h3 class="evidence-title">前端单元测试</h3>
+              <span class="status status-pass">PASS</span>
+            </div>
+            <pre>cd frontend
+npm run test:run
+
+结果：2 个测试文件通过，21 个测试通过。</pre>
+          </article>
+
+          <article class="evidence">
+            <div class="evidence-head">
+              <h3 class="evidence-title">前端生产构建</h3>
+              <span class="status status-fail">FAIL</span>
+            </div>
+            <pre>cd frontend
+npm run build
+
+失败：src/components/SearchOverlay.vue(125,10)
+'ref' is declared but its value is never read.</pre>
+          </article>
+
+          <article class="evidence">
+            <div class="evidence-head">
+              <h3 class="evidence-title">前端 Lint</h3>
+              <span class="status status-fail">FAIL</span>
+            </div>
+            <pre>cd frontend
+npm run lint
+
+结果：97 problems，60 errors，37 warnings。
+主要类型：no-undef、no-empty、no-useless-escape、no-explicit-any。</pre>
+          </article>
+
+          <article class="evidence">
+            <div class="evidence-head">
+              <h3 class="evidence-title">模型训练测试</h3>
+              <span class="status status-fail">FAIL</span>
+            </div>
+            <pre>cd model-training
+python -m pytest
+
+结果：89 collected，88 passed，1 failed。
+失败：test_build_samples.py::BuildSamplesTests::test_build_daily_weekly_samples_with_market_features。</pre>
+          </article>
+        </div>
+      </section>
+
+      <section id="frontend" class="section-card">
+        <h2>3. 前端审查</h2>
+        <div class="issue-list">
+          <article class="issue issue-critical">
+            <div class="issue-top">
+              <h3 class="issue-title">生产构建当前不可交付</h3>
+              <span class="badge badge-critical">P0</span>
+            </div>
+            <p>
+              <span class="file-line">frontend/src/components/SearchOverlay.vue:125</span>
+            </p>
+            <p>
+              `npm run build` 在 TypeScript 编译阶段失败，原因是从 `vue` 导入的 `ref` 未使用。这个问题本身很小，但影响级别很高：只要构建失败，前端无法生成可发布产物，任何后续 UI 或功能验收都不具备商业交付意义。
+            </p>
+            <p>
+              治理建议：P0 阶段删除未使用导入，并将 `npm run build` 纳入 CI 必过项。构建错误必须视为发布阻断，而不是开发警告。
+            </p>
+          </article>
+
+          <article class="issue issue-high">
+            <div class="issue-top">
+              <h3 class="issue-title">ESLint 环境配置与代码规则不匹配</h3>
+              <span class="badge badge-high">P1</span>
+            </div>
+            <p>
+              <span class="file-line">frontend/eslint.config.js</span>
+            </p>
+            <p>
+              `npm run lint` 报出大量 `window`、`document`、`setTimeout`、`HTMLElement`、`KeyboardEvent` 未定义错误。项目实际是浏览器 SPA，但 ESLint flat config 未声明 browser globals，导致规则噪音淹没真实问题。
+            </p>
+            <p>
+              治理建议：为前端 ESLint 配置浏览器全局变量，同时保留 `no-empty`、`no-unused-vars`、`no-explicit-any` 等质量规则。第一阶段目标不是降低规则，而是让规则能准确表达项目运行环境。
+            </p>
+          </article>
+
+          <article class="issue issue-high">
+            <div class="issue-top">
+              <h3 class="issue-title">CSRF 前后端实现存在契约冲突风险</h3>
+              <span class="badge badge-high">P1</span>
+            </div>
+            <p>
+              <span class="file-line">backend-go/internal/api/middleware.go:223</span><br>
+              <span class="file-line">frontend/src/api/index.ts:73</span>
+            </p>
+            <p>
+              后端设置 `csrf_token` Cookie 时启用了 HttpOnly；前端却通过 `document.cookie` 读取该 Cookie 并写入 `X-CSRF-Token`。HttpOnly Cookie 不能被 JavaScript 读取，因此在启用凭据和真实 POST 流程时，前端可能无法提供 CSRF Header。
+            </p>
+            <p>
+              治理建议：明确 CSRF 方案二选一。方案 A：后端通过非 HttpOnly CSRF Cookie 或响应头提供可读令牌，前端读取并提交 Header。方案 B：使用 BFF/session 方案，让前端不直接读取令牌。当前实现必须通过集成测试覆盖。
+            </p>
+          </article>
+
+          <article class="issue issue-medium">
+            <div class="issue-top">
+              <h3 class="issue-title">类型安全已有基础，但缺少契约自动校验</h3>
+              <span class="badge badge-medium">P2</span>
+            </div>
+            <p>
+              <span class="file-line">frontend/src/api/*.ts</span><br>
+              <span class="file-line">docs/api/openapi.yaml</span>
+            </p>
+            <p>
+              前端 API 层已有 `ApiResponse<T>` 和领域类型，OpenAPI 文档也覆盖主要接口。但 TypeScript 类型、Go DTO 和 OpenAPI 之间仍是手动同步，缺少生成或差异检测机制。随着股票、基金、预测三套模型继续演化，字段漂移会成为高频风险。
+            </p>
+            <p>
+              治理建议：以 OpenAPI 为契约源，建立至少一条自动校验链路：后端 handler 测试对齐 OpenAPI 示例，前端类型由 OpenAPI 生成或用 contract tests 验证关键接口字段。
+            </p>
+          </article>
+
+          <article class="issue issue-medium">
+            <div class="issue-top">
+              <h3 class="issue-title">部分组件承担过多职责</h3>
+              <span class="badge badge-medium">P2</span>
+            </div>
+            <p>
+              <span class="file-line">frontend/src/components/SearchOverlay.vue:670 lines</span><br>
+              <span class="file-line">frontend/src/views/WatchlistView.vue:584 lines</span><br>
+              <span class="file-line">frontend/src/App.vue:483 lines</span>
+            </p>
+            <p>
+              搜索浮层、Watchlist 页面和 App 容器包含 UI、交互、滚动锁定、键盘处理、状态协调和样式。长文件不是天然问题，但这些文件的职责已经跨越多个变化原因，后续维护时容易形成局部修改影响全局行为。
+            </p>
+            <p>
+              治理建议：P2 阶段按职责拆分：UI 子组件、交互 composable、可复用布局、领域 store。拆分前必须先补足关键行为测试，避免“整理目录”变成行为回归。
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section id="backend" class="section-card">
+        <h2>4. 后端审查</h2>
+        <div class="issue-list">
+          <article class="issue issue-low">
+            <div class="issue-top">
+              <h3 class="issue-title">后端当前质量基线较稳定</h3>
+              <span class="badge badge-low">GOOD</span>
+            </div>
+            <p>
+              Go 后端测试和 `go vet` 已通过。路由、服务、仓库、配置、中间件分层清晰，`Registry` 组装方式符合当前项目规模。搜索索引、基金仓库、股票服务、预测服务已有明确边界。
+            </p>
+            <p>
+              治理重点不应是推倒重来，而是补齐契约测试、生产配置约束、外部数据源隔离和可观测性。
+            </p>
+          </article>
+
+          <article class="issue issue-high">
+            <div class="issue-top">
+              <h3 class="issue-title">安全策略需要从“已有实现”升级为“可验收策略”</h3>
+              <span class="badge badge-high">P1</span>
+            </div>
+            <p>
+              <span class="file-line">backend-go/internal/api/middleware.go</span>
+            </p>
+            <p>
+              后端已有安全头、CORS、CSRF、限流、管理员令牌和请求体大小限制，这是良好基础。但生产化还缺少可执行验收：CORS 禁止通配符与 credentials 组合、CSRF 令牌流向、管理员令牌强度、反向代理下 ClientIP 策略、限流粒度都需要自动测试或部署文档约束。
+            </p>
+            <p>
+              治理建议：建立安全验收测试集，覆盖 OPTIONS、GET 令牌下发、POST CSRF 成功/失败、管理员接口认证、生产环境 CORS 配置和 429 行为。
+            </p>
+          </article>
+
+          <article class="issue issue-medium">
+            <div class="issue-top">
+              <h3 class="issue-title">服务层文件规模偏大，后续演进成本会上升</h3>
+              <span class="badge badge-medium">P2</span>
+            </div>
+            <p>
+              <span class="file-line">backend-go/internal/service/prediction_service.go:561 lines</span><br>
+              <span class="file-line">backend-go/internal/service/stock_sync.go:545 lines</span><br>
+              <span class="file-line">backend-go/internal/service/stock_detail_service.go:401 lines</span>
+            </p>
+            <p>
+              预测服务同时承担基线估计、模型服务调用、数据质量、周期组合和降级策略；股票同步同时承担 HTTP 获取、解析、清洗、拼音和合并。它们已经是稳定业务核心，后续新增模型或数据源时应拆成更细边界。
+            </p>
+            <p>
+              治理建议：先通过接口测试固定行为，再拆出 `prediction/baseline`、`prediction/client`、`prediction/quality`、`stocksource/eastmoney`、`stocksource/normalize` 等内部包或文件组。
+            </p>
+          </article>
+
+          <article class="issue issue-medium">
+            <div class="issue-top">
+              <h3 class="issue-title">外部数据源适配层需要统一超时、重试和错误分类</h3>
+              <span class="badge badge-medium">P2</span>
+            </div>
+            <p>
+              基金、股票、行情和模型服务都依赖外部 HTTP 服务。当前已有 URL 白名单和模型客户端熔断思路，但数据源调用策略散落在不同 service 中。商业运营环境中，外部数据源抖动是常态，需要统一错误分类、重试预算、降级策略和监控指标。
+            </p>
+            <p>
+              治理建议：抽象 `DataProvider` 和 `ProviderError`，记录来源、请求耗时、失败原因、重试次数，并将降级行为暴露给前端的数据质量字段。
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section id="model" class="section-card">
+        <h2>5. 模型训练审查</h2>
+        <div class="issue-list">
+          <article class="issue issue-critical">
+            <div class="issue-top">
+              <h3 class="issue-title">模型训练测试存在阻塞失败</h3>
+              <span class="badge badge-critical">P0</span>
+            </div>
+            <p>
+              <span class="file-line">model-training/src/fund_model_training/features.py:153</span><br>
+              <span class="file-line">model-training/tests/test_build_samples.py:86</span>
+            </p>
+            <p>
+              `prepare_features(samples, "index_fund_daily_v1")` 在生成 `fund_drawdown_20d` 时失败。根因是 `_drawdown_20d` 使用 `groupby.apply` 后返回结构在当前 pandas 版本下成为多列 DataFrame，不能赋给单列。
+            </p>
+            <p>
+              治理建议：P0 阶段用回归测试锁定 `fund_drawdown_20d` 的 Series 输出、索引对齐和无 NaN 行为，再调整实现。该失败会影响训练样本构建可信度，必须早于任何模型指标讨论。
+            </p>
+          </article>
+
+          <article class="issue issue-medium">
+            <div class="issue-top">
+              <h3 class="issue-title">Python 工程缺少统一静态质量门禁</h3>
+              <span class="badge badge-medium">P2</span>
+            </div>
+            <p>
+              <span class="file-line">model-training/pyproject.toml</span>
+            </p>
+            <p>
+              Python 包已经有 pytest 和大量模型管道测试，这是优势。但当前未看到 ruff、mypy/pyright、coverage、依赖锁定和安全扫描的统一配置。模型训练代码涉及数据清洗、特征工程和模型治理，静态质量门禁对长期维护很关键。
+            </p>
+            <p>
+              治理建议：逐步引入 `ruff check`、`ruff format`、类型检查和 coverage 阈值，先从核心纯函数模块启用，再扩大到数据采集适配器。
+            </p>
+          </article>
+
+          <article class="issue issue-medium">
+            <div class="issue-top">
+              <h3 class="issue-title">模型上线标准需要文档化为发布门禁</h3>
+              <span class="badge badge-medium">P2</span>
+            </div>
+            <p>
+              项目已有冠军模型、shadow evaluation、drift report、promotion/rollback 等脚本与测试。下一步应把这些能力整理为明确的模型发布 SOP：数据版本、训练配置、评估阈值、人工审批、回滚路径、线上监控和预测解释字段。
+            </p>
+            <p>
+              治理建议：新增 `docs/model-governance.md`，把“模型可上线”的条件写成表格化门禁，而不是散落在 README 和脚本命名中。
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section id="architecture" class="section-card">
+        <h2>6. 架构优化蓝图</h2>
+        <p>
+          推荐目标不是重建项目，而是在当前三段式结构上建立“边界更清晰、契约可验证、变更可追踪”的商业级工程框架。
+        </p>
+
+        <h3>目标目录结构</h3>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>目录</th>
+                <th>定位</th>
+                <th>治理要求</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>frontend/src/api</code></td>
+                <td>唯一 HTTP 接入层</td>
+                <td>从 OpenAPI 或契约测试保障类型一致；禁止组件直接拼接口路径。</td>
+              </tr>
+              <tr>
+                <td><code>frontend/src/components</code></td>
+                <td>展示组件与小型交互组件</td>
+                <td>大型业务组件拆出 composables；组件 props 和 emits 类型化。</td>
+              </tr>
+              <tr>
+                <td><code>frontend/src/stores</code></td>
+                <td>领域状态和缓存策略</td>
+                <td>明确竞态防护、错误状态、刷新节流和持久化边界。</td>
+              </tr>
+              <tr>
+                <td><code>backend-go/internal/api</code></td>
+                <td>HTTP handler、中间件、响应格式</td>
+                <td>只做参数、认证和响应，不承载业务决策。</td>
+              </tr>
+              <tr>
+                <td><code>backend-go/internal/service</code></td>
+                <td>业务用例层</td>
+                <td>按领域拆分预测、搜索、行情、同步；大文件逐步拆为内部协作者。</td>
+              </tr>
+              <tr>
+                <td><code>backend-go/internal/store</code></td>
+                <td>持久化和搜索索引</td>
+                <td>统一接口、事务边界和测试 fixture；避免业务规则进入存储层。</td>
+              </tr>
+              <tr>
+                <td><code>model-training/src/fund_model_training</code></td>
+                <td>训练、特征、评估、服务</td>
+                <td>特征工程函数可测试、模型发布门禁文档化、数据采集适配器隔离。</td>
+              </tr>
+              <tr>
+                <td><code>docs</code></td>
+                <td>架构、API、部署、维护、治理报告</td>
+                <td>报告与执行计划分离；OpenAPI 作为接口契约源。</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>接口契约治理</h3>
+        <ul>
+          <li>以 <code>docs/api/openapi.yaml</code> 作为外部接口契约源，所有新增接口必须先更新或生成契约。</li>
+          <li>前端 API 层只能依赖 <code>API_ROUTES</code> 和类型化方法，组件不得直接引用硬编码 URL。</li>
+          <li>后端 handler 测试覆盖 OpenAPI 中的关键响应结构，包括错误响应。</li>
+          <li>预测结果字段必须保留数据质量、信号状态和模型覆盖说明，避免给用户制造虚假确定性。</li>
+        </ul>
+      </section>
+
+      <section id="standards" class="section-card">
+        <h2>7. 商业级工程规范</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>领域</th>
+                <th>推荐规范</th>
+                <th>落地方式</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>版本控制</td>
+                <td>采用短生命周期 feature 分支，主干保持可构建。</td>
+                <td>分支命名：<code>codex/&lt;scope&gt;-&lt;topic&gt;</code>；合并前必须跑完门禁。</td>
+              </tr>
+              <tr>
+                <td>提交信息</td>
+                <td>采用 Conventional Commits。</td>
+                <td>示例：<code>fix(frontend): restore production build</code>、<code>test(model): cover drawdown feature generation</code>。</td>
+              </tr>
+              <tr>
+                <td>前端质量</td>
+                <td>TypeScript 严格模式、ESLint、构建、Vitest 全部通过。</td>
+                <td>CI 执行 <code>npm run lint</code>、<code>npm run build</code>、<code>npm run test:run</code>。</td>
+              </tr>
+              <tr>
+                <td>后端质量</td>
+                <td>Go test、go vet、接口测试、安全中间件测试。</td>
+                <td>CI 执行 <code>go test ./...</code>、<code>go vet ./...</code>。</td>
+              </tr>
+              <tr>
+                <td>模型质量</td>
+                <td>pytest、特征稳定性、模型评估、漂移监控、发布回滚。</td>
+                <td>CI 至少执行核心 pytest；训练发布使用独立手动门禁。</td>
+              </tr>
+              <tr>
+                <td>文档</td>
+                <td>架构、API、部署、维护和模型治理分离。</td>
+                <td>新增 <code>docs/deployment.md</code>、<code>docs/maintenance.md</code>、<code>docs/model-governance.md</code>。</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="roadmap" class="section-card">
+        <h2>8. 分阶段路线图</h2>
+
+        <article class="phase">
+          <div class="phase-code">P0</div>
+          <div>
+            <h3>恢复可交付基线</h3>
+            <p>
+              修复前端构建失败和模型训练测试失败。目标是所有核心命令能通过，不做大规模重构。
+            </p>
+            <ul>
+              <li>修复 <code>SearchOverlay.vue</code> 未使用导入。</li>
+              <li>为 <code>_drawdown_20d</code> 增加回归测试并修复 Series 输出。</li>
+              <li>重新运行前端构建、前端测试、Go 测试、Python 测试。</li>
+            </ul>
+          </div>
+        </article>
+
+        <article class="phase">
+          <div class="phase-code">P1</div>
+          <div>
+            <h3>建立工程门禁与安全契约</h3>
+            <p>
+              让质量检查成为自动化流程，并补齐 CSRF、CORS、管理员认证和 API 契约测试。
+            </p>
+            <ul>
+              <li>修复 ESLint 配置噪音，保留真实质量规则。</li>
+              <li>明确 CSRF 方案并增加端到端或 handler 级测试。</li>
+              <li>新增 CI workflow，至少覆盖前端、后端和模型核心测试。</li>
+              <li>建立 OpenAPI 与前后端类型一致性的检查方式。</li>
+            </ul>
+          </div>
+        </article>
+
+        <article class="phase">
+          <div class="phase-code">P2</div>
+          <div>
+            <h3>模块化重构与文档体系完善</h3>
+            <p>
+              在测试保护下拆分大型前端组件、后端服务文件和模型训练模块。文档从说明型升级为运营型。
+            </p>
+            <ul>
+              <li>拆分 SearchOverlay、WatchlistView、PredictionService、StockSync 等高复杂度文件。</li>
+              <li>补齐部署指南、维护手册、模型治理文档。</li>
+              <li>统一错误分类、数据源降级、前端错误展示和日志字段。</li>
+            </ul>
+          </div>
+        </article>
+
+        <article class="phase">
+          <div class="phase-code">P3</div>
+          <div>
+            <h3>生产化运营能力</h3>
+            <p>
+              补齐容器化、环境配置、监控、告警、备份和发布回滚流程，让系统具备可运营能力。
+            </p>
+            <ul>
+              <li>提供 Dockerfile、compose 或部署脚本。</li>
+              <li>定义运行时健康检查、日志字段和关键指标。</li>
+              <li>建立模型服务上线、回滚、漂移监控和预测质量复盘流程。</li>
+            </ul>
+          </div>
+        </article>
+      </section>
+
+      <section id="acceptance" class="section-card">
+        <h2>9. 验收门禁</h2>
+        <p>
+          商业级项目的“完成”必须由可重复命令和文档清单共同证明。建议以下命令作为后续每个实施阶段的最低门禁。
+        </p>
+        <pre>cd backend-go
+go test ./...
+go vet ./...
+
+cd ../frontend
+npm run lint
+npm run build
+npm run test:run
+
+cd ../model-training
+python -m pytest</pre>
+
+        <div class="callout">
+          <p>
+            <strong>下一步建议：</strong>将本报告转化为实施计划时，先从 P0 开始，每个修复都遵循“测试先行、验证后声明完成”的节奏。P0 完成后再进入 P1 的 CI、安全和契约治理。
+          </p>
+        </div>
+
+        <h3>文档验收清单</h3>
+        <ul>
+          <li><code>docs/architecture.md</code> 与实际目录、接口、中间件保持一致。</li>
+          <li><code>docs/api/openapi.yaml</code> 覆盖所有公开接口、错误响应和认证要求。</li>
+          <li><code>docs/deployment.md</code> 说明开发、测试、生产环境的启动、配置、密钥和反向代理。</li>
+          <li><code>docs/maintenance.md</code> 说明日志、备份、数据同步、常见故障和回滚流程。</li>
+          <li><code>docs/model-governance.md</code> 说明模型训练、评估、发布、回滚和漂移监控门禁。</li>
+        </ul>
+      </section>
+
+      <p class="footer-note">
+        本报告是审查与治理蓝图，不代表上述问题已修复。后续进入执行阶段时，应按阶段创建实施计划，并在每个阶段结束时重新运行完整验收命令。
+      </p>
+    </main>
+  </div>
+</body>
+</html>
