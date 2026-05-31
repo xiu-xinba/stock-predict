@@ -13,12 +13,17 @@ export const useMarketStore = defineStore('market', () => {
   const lastRefresh = ref<string | null>(null)
   const error = ref<string | null>(null)
   const refreshTimer = ref<number | null>(null)
+  const lastFetchTime = ref<number>(0)
   let refCount = 0
   let abortController: AbortController | null = null
   let requestSeq = 0
 
   async function fetchMarketData(force = false) {
     if (loading.value && !force) return
+
+    if (!force && lastFetchTime.value > 0 && Date.now() - lastFetchTime.value < 30000) {
+      return
+    }
 
     // Cancel previous in-flight request
     if (abortController) {
@@ -66,6 +71,7 @@ export const useMarketStore = defineStore('market', () => {
 
       if (!hasError) {
         lastRefresh.value = new Date().toLocaleTimeString('zh-CN')
+        lastFetchTime.value = Date.now()
         error.value = null
       } else if (indices.value.length > 0) {
         lastRefresh.value = new Date().toLocaleTimeString('zh-CN')
@@ -89,7 +95,9 @@ export const useMarketStore = defineStore('market', () => {
     refCount++
     if (!refreshTimer.value) {
       fetchMarketData()
-      refreshTimer.value = setInterval(fetchMarketData, interval)
+      refreshTimer.value = setInterval(() => {
+        if (!loading.value) fetchMarketData()
+      }, interval)
     }
   }
 

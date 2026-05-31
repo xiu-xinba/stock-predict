@@ -27,14 +27,17 @@ func newTestHandler() http.Handler {
 		ShutdownTimeout: 1,
 	}
 	logger := slog.New(slog.NewTextHandler(bytes.NewBuffer(nil), nil))
-	services := service.NewRegistry(store.NewMemoryStore(), cfg, logger)
-	return api.NewRouter(cfg, services, logger)
+	fundStore := store.NewMemoryStore()
+	searchIdx, _ := store.NewSearchIndex("file:test_search?mode=memory", logger)
+	services := service.NewRegistry(fundStore, cfg, logger, searchIdx)
+	return api.NewRouter(cfg, services, fundStore, logger, searchIdx)
 }
 
-func newTestHandlerWithConfig(cfg config.Config, fundStore *store.MemoryStore) http.Handler {
+func newTestHandlerWithConfig(cfg config.Config, fundStore store.FundRepository) http.Handler {
 	logger := slog.New(slog.NewTextHandler(bytes.NewBuffer(nil), nil))
-	services := service.NewRegistry(fundStore, cfg, logger)
-	return api.NewRouter(cfg, services, logger)
+	searchIdx, _ := store.NewSearchIndex("file:test_search?mode=memory", logger)
+	services := service.NewRegistry(fundStore, cfg, logger, searchIdx)
+	return api.NewRouter(cfg, services, fundStore, logger, searchIdx)
 }
 
 func TestHealth(t *testing.T) {
@@ -141,7 +144,8 @@ func TestSyncFundsImportsConfiguredCSV(t *testing.T) {
 	defer remote.Close()
 	cfg := config.Config{
 		Port:            "0",
-		Env:             "development",
+		Env:             "test",
+		AdminToken:      "test-admin-token",
 		CORSOrigins:     []string{"http://localhost:5173"},
 		FundUniverseURL: remote.URL,
 		FundSyncCSVPath: csvPath,
@@ -154,6 +158,7 @@ func TestSyncFundsImportsConfiguredCSV(t *testing.T) {
 
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/funds/sync", nil)
+	req.Header.Set("Authorization", "Bearer test-admin-token")
 	handler.ServeHTTP(rec, req)
 
 	response := decodeAPIResponse(t, rec, http.StatusOK)

@@ -32,6 +32,7 @@ backend-go/tmp/
 backend-go/.gocache/
 backend-go/*.exe
 backend-go/data/*.json
+backend-go/dc_*.json
 
 # ============================================
 # IDE / 编辑器

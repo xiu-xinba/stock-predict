@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
@@ -12,6 +13,7 @@ import (
 	"time"
 
 	"stock-predict-go/internal/dto"
+	"stock-predict-go/internal/util"
 )
 
 const (
@@ -27,15 +29,20 @@ type fundQuoteProvider interface {
 type FundQuoteClient struct {
 	client *http.Client
 	now    func() time.Time
+	logger *slog.Logger
 }
 
-func NewFundQuoteClient(timeout time.Duration) *FundQuoteClient {
+func NewFundQuoteClient(timeout time.Duration, logger *slog.Logger) *FundQuoteClient {
 	if timeout <= 0 {
 		timeout = 8 * time.Second
+	}
+	if logger == nil {
+		logger = slog.Default()
 	}
 	return &FundQuoteClient{
 		client: &http.Client{Timeout: timeout},
 		now:    time.Now,
+		logger: logger,
 	}
 }
 
@@ -43,6 +50,11 @@ func (c *FundQuoteClient) RefreshQuotes(ctx context.Context, funds []dto.FundIte
 	quotes := make(map[string]dto.FundItem, len(funds))
 	listedSymbols := make([]string, 0, len(funds))
 	for _, fund := range funds {
+		if isMoneyFund(fund.FundType) {
+			fund.QuoteSource = "money_fund_yield"
+			quotes[fund.FundCode] = fund
+			continue
+		}
 		if symbol, ok := listedFundSymbol(fund.FundCode); ok {
 			listedSymbols = append(listedSymbols, symbol)
 		}
@@ -83,6 +95,10 @@ func (c *FundQuoteClient) RefreshQuotes(ctx context.Context, funds []dto.FundIte
 
 func (c *FundQuoteClient) fetchTencentQuotes(ctx context.Context, symbols []string) map[string]dto.FundItem {
 	url := fmt.Sprintf(tencentQuoteURL, strings.Join(symbols, ","))
+	if !isAllowedURL(url) {
+		c.logger.Warn("URL not in whitelist, skipping request", "url", url)
+		return nil
+	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil
@@ -106,6 +122,10 @@ func (c *FundQuoteClient) fetchTencentQuotes(ctx context.Context, symbols []stri
 
 func (c *FundQuoteClient) fetchEastmoneyFundGZQuote(ctx context.Context, code string) (dto.FundItem, bool) {
 	url := fmt.Sprintf(eastmoneyFundGZURL, code, c.now().UnixMilli())
+	if !isAllowedURL(url) {
+		c.logger.Warn("URL not in whitelist, skipping request", "url", url)
+		return dto.FundItem{}, false
+	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return dto.FundItem{}, false
@@ -147,7 +167,7 @@ func parseEastmoneyFundGZQuote(payload []byte) (dto.FundItem, bool) {
 		return dto.FundItem{}, false
 	}
 	code := strings.TrimSpace(raw.FundCode)
-	if len(code) != 6 || !allDigits(code) {
+	if len(code) != 6 || !util.IsAllDigits(code) {
 		return dto.FundItem{}, false
 	}
 	latestNAV := parseQuoteFloat(raw.UnitNAV)
@@ -187,7 +207,7 @@ func parseTencentFundQuotes(payload []byte) map[string]dto.FundItem {
 			continue
 		}
 		code := strings.TrimSpace(fields[2])
-		if len(code) != 6 || !allDigits(code) {
+		if len(code) != 6 || !util.IsAllDigits(code) {
 			continue
 		}
 		price := parseQuoteFloat(fields[3])
@@ -209,9 +229,9 @@ func parseTencentFundQuotes(payload []byte) map[string]dto.FundItem {
 
 func listedFundSymbol(code string) (string, bool) {
 	switch {
-	case len(code) == 6 && allDigits(code) && strings.HasPrefix(code, "5"):
+	case len(code) == 6 && util.IsAllDigits(code) && strings.HasPrefix(code, "5"):
 		return "sh" + code, true
-	case len(code) == 6 && allDigits(code) && strings.HasPrefix(code, "1"):
+	case len(code) == 6 && util.IsAllDigits(code) && strings.HasPrefix(code, "1"):
 		return "sz" + code, true
 	default:
 		return "", false
@@ -228,4 +248,9 @@ func parseQuoteFloat(raw string) float64 {
 		return 0
 	}
 	return value
+}
+
+func isMoneyFund(fundType string) bool {
+	t := strings.ToLower(fundType)
+	return t == "货币型" || t == "货币市场型" || t == "money" || strings.Contains(t, "货币")
 }

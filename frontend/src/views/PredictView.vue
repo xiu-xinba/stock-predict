@@ -1,43 +1,34 @@
 <template>
   <div class="predict-view">
-    <section class="page-head">
-      <div>
-        <p class="page-kicker">Prediction</p>
-        <h1 class="page-title">模型预测</h1>
-        <p class="page-desc">基金方向、波动区间与因子贡献</p>
-      </div>
-    </section>
-
-    <FundSearch />
-
     <transition name="fade" mode="out-in">
       <div v-if="store.loading" key="loading" class="state-loading">
-        <div class="skeleton-top"></div>
+        <div class="skeleton-top card skeleton-pulse"></div>
         <div class="skeleton-grid">
-          <div class="skeleton-block"></div>
-          <div class="skeleton-block"></div>
+          <div class="skeleton-block card skeleton-pulse"></div>
+          <div class="skeleton-block card skeleton-pulse"></div>
         </div>
       </div>
 
       <PredictionCard v-else-if="store.prediction" key="result" />
 
-      <div v-else-if="store.error" key="error" class="state-panel error">
+      <div v-else-if="store.error" key="error" class="state-panel error card">
         <div class="state-icon">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2 1 21h22L12 2zm1 15h-2v-2h2v2zm0-4h-2V8h2v5z"/></svg>
         </div>
         <div>
           <h2>预测请求失败</h2>
           <p>{{ store.error }}</p>
+          <button class="retry-btn" type="button" @click="loadPrediction">重试</button>
         </div>
       </div>
 
-      <div v-else key="empty" class="state-panel empty">
+      <div v-else key="empty" class="state-panel empty card">
         <div class="state-icon">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M4 5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v14H4V5zm2 0v12h12V5H6zm2 2h8v2H8V7zm0 4h5v2H8v-2z"/></svg>
+          <svg viewBox="0 0 1024 1024" aria-hidden="true"><path fill="currentColor" d="m795.904 750.72 124.992 124.928a32 32 0 0 1-45.248 45.248L750.656 795.904a416 416 0 1 1 45.248-45.248zM480 832a352 352 0 1 0 0-704 352 352 0 0 0 0 704"/></svg>
         </div>
         <div>
-          <h2>等待基金代码</h2>
-          <p>预测结果将在此处生成。</p>
+          <h2>搜索基金开始预测</h2>
+          <p>点击右上角搜索图标，输入基金名称或代码</p>
         </div>
       </div>
     </transition>
@@ -46,23 +37,21 @@
 
 <script setup lang="ts">
 import { onMounted, watch } from 'vue'
-import { useRoute } from 'vue-router'
 import { usePredictionStore } from '@/stores/prediction'
-import FundSearch from '@/components/FundSearch.vue'
+import { useFundCodeRoute } from '@/composables/useFundCodeRoute'
 import PredictionCard from '@/components/PredictionCard.vue'
 
+defineOptions({ name: 'PredictView' })
+
 const store = usePredictionStore()
-const route = useRoute()
+const { fundCode } = useFundCodeRoute()
 
 function loadPrediction() {
-  const fundCode = route.params.fundCode as string
-  if (fundCode && /^\d{6}$/.test(fundCode)) {
-    store.predict(fundCode)
-  }
+  if (fundCode.value) store.predict(fundCode.value)
 }
 
 onMounted(loadPrediction)
-watch(() => route.params.fundCode, loadPrediction)
+watch(fundCode, loadPrediction)
 </script>
 
 <style scoped>
@@ -70,32 +59,6 @@ watch(() => route.params.fundCode, loadPrediction)
   display: flex;
   flex-direction: column;
   gap: var(--sp-4);
-}
-
-.page-head {
-  padding: var(--sp-2) 0 var(--sp-1);
-}
-
-.page-kicker {
-  margin: 0 0 var(--sp-1);
-  color: var(--color-brand);
-  font-size: var(--fs-xs);
-  font-weight: var(--fw-bold);
-  line-height: var(--lh-tight);
-}
-
-.page-title {
-  margin: 0;
-  color: var(--color-text-primary);
-  font-size: var(--fs-3xl);
-  font-weight: var(--fw-extrabold);
-  line-height: var(--lh-snug);
-}
-
-.page-desc {
-  margin: var(--sp-1) 0 0;
-  color: var(--color-text-secondary);
-  font-size: var(--fs-sm);
 }
 
 .state-loading {
@@ -108,9 +71,6 @@ watch(() => route.params.fundCode, loadPrediction)
 .skeleton-block {
   position: relative;
   overflow: hidden;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  background: var(--color-bg-card);
 }
 
 .skeleton-top {
@@ -127,30 +87,12 @@ watch(() => route.params.fundCode, loadPrediction)
   height: 240px;
 }
 
-.skeleton-top::after,
-.skeleton-block::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(90deg, transparent 25%, var(--color-border-light) 50%, transparent 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
-}
-
-@keyframes shimmer {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
-}
-
 .state-panel {
   display: flex;
   align-items: center;
   gap: var(--sp-4);
   min-height: 160px;
   padding: var(--sp-6);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  background: var(--color-bg-card);
 }
 
 .state-icon {
@@ -187,17 +129,23 @@ watch(() => route.params.fundCode, loadPrediction)
   font-size: var(--fs-sm);
 }
 
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.16s ease;
+.retry-btn {
+  margin-top: var(--sp-2);
+  padding: var(--sp-2) var(--sp-4);
+  border-radius: var(--radius-md);
+  background: var(--color-brand);
+  color: var(--color-brand-contrast);
+  font-size: var(--fs-sm);
+  cursor: pointer;
+  border: none;
+  transition: background var(--transition-fast);
 }
 
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
+.retry-btn:hover {
+  background: var(--color-brand-hover);
 }
 
-@media (max-width: 760px) {
+@media (max-width: 768px) {
   .skeleton-grid {
     grid-template-columns: 1fr;
   }
@@ -205,6 +153,16 @@ watch(() => route.params.fundCode, loadPrediction)
   .state-panel {
     align-items: flex-start;
     padding: var(--sp-4);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fade-enter-active,
+  .fade-leave-active,
+  .skeleton-top::after,
+  .skeleton-block::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
   }
 }
 </style>

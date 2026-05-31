@@ -1,5 +1,5 @@
 /**
- * TypeScript 类型定义 — 前后端数据契约
+ * TypeScript 类型定义 - 前后端数据契约
  *
  * 本文件定义了与后端 API 响应结构一一对应的 TypeScript 接口，
  * 确保前端对 API 返回数据的访问具有类型安全和自动补全。
@@ -8,7 +8,7 @@
  * 避免额外的 camelCase 转换层，降低维护成本。
  */
 
-/** 预测因子项 — 模型中贡献度最高的特征 */
+/** 预测因子项 - 模型中贡献度最高的特征 */
 export interface FactorItem {
   /** 因子英文标识，如 momentum_5d、return_10d */
   name: string
@@ -79,7 +79,7 @@ export type PredictionModelCoverageStatus =
   | 'unsupported_fund'
   | 'model_unavailable'
 
-/** 预测结果 — 核心业务数据 */
+/** 预测结果 - 核心业务数据 */
 export interface PredictionResult {
   /** 预测周期，如 next_day / intraday_5m */
   horizon: string
@@ -141,7 +141,7 @@ export interface PredictionDataQuality {
   note: string
 }
 
-/** 市场快照 — 三大 A 股指数实时数据 */
+/** 市场快照 - 三大 A 股指数实时数据 */
 export interface MarketSnapshot {
   /** 上证综合指数点位 */
   sh_index: number
@@ -161,25 +161,18 @@ export interface MarketSnapshot {
 
 /** 预测接口响应的 data 字段 */
 export interface PredictionData {
-  /** 基金代码（6 位数字） */
   fund_code: string
-  /** 基金名称 */
   fund_name: string
-  /** 预测结果 */
-  prediction: PredictionResult
-  /** 隔日预测 */
-  next_day_prediction: PredictionResult
-  /** 未来一周预测 */
-  weekly_prediction: PredictionResult
-  /** 盘中未来五分钟预测 */
-  intraday_prediction: PredictionResult
-  /** 数据覆盖情况 */
-  data_quality: PredictionDataQuality
-  /** 市场快照 */
-  market_snapshot: MarketSnapshot
+  fund_type?: string
+  prediction?: PredictionResult
+  next_day_prediction?: PredictionResult
+  weekly_prediction?: PredictionResult
+  intraday_prediction?: PredictionResult
+  data_quality?: PredictionDataQuality
+  market_snapshot?: MarketSnapshot
 }
 
-/** 后端统一响应格式 — 所有 API 均使用此包装 */
+/** 后端统一响应格式 - 所有 API 均使用此包装 */
 export interface ApiResponse<T> {
   /** 业务状态码，0 表示成功 */
   code: number
@@ -205,6 +198,10 @@ export interface FundItem {
   latest_nav?: number
   /** 累计净值 */
   cumulative_nav?: number
+  /** 估算净值 */
+  estimated_nav?: number
+  /** 涨跌幅(%) */
+  change_pct?: number
   /** 近1月收益率(%) */
   return_1m?: number
   /** 近3月收益率(%) */

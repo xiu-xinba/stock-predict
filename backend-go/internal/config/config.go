@@ -21,9 +21,13 @@ type Config struct {
 	FundAutoSyncOnStart       bool
 	FundAutoSyncMinCount      int
 	FundRealtimeQuotesEnabled bool
+	StockAutoSyncOnStart      bool
 	ModelServiceURL           string
 	WeeklyModelServiceURL     string
 	IntradayModelServiceURL   string
+	CacheTTLMinutes           int
+	EastMoneyBaseURL          string
+	TencentQuoteBaseURL       string
 	ReadTimeout               time.Duration
 	WriteTimeout              time.Duration
 	ShutdownTimeout           time.Duration
@@ -33,7 +37,7 @@ func Load() Config {
 	return Config{
 		Port:                      env("PORT", "5070"),
 		Env:                       env("APP_ENV", "development"),
-		CORSOrigins:               splitCSV(env("CORS_ORIGINS", "http://localhost:5173")),
+		CORSOrigins:               splitCSV(envCORS()),
 		AdminToken:                env("ADMIN_TOKEN", ""),
 		FundStorePath:             env("FUND_STORE_PATH", "data/funds.json"),
 		FundUniverseURL:           env("FUND_UNIVERSE_URL", "https://fund.eastmoney.com/js/fundcode_search.js"),
@@ -42,9 +46,13 @@ func Load() Config {
 		FundAutoSyncOnStart:       boolEnv("FUND_AUTO_SYNC_ON_START", true),
 		FundAutoSyncMinCount:      intEnv("FUND_AUTO_SYNC_MIN_COUNT", 1000),
 		FundRealtimeQuotesEnabled: boolEnv("FUND_REALTIME_QUOTES_ENABLED", true),
+		StockAutoSyncOnStart:      boolEnv("STOCK_AUTO_SYNC_ON_START", true),
 		ModelServiceURL:           env("MODEL_SERVICE_URL", ""),
 		WeeklyModelServiceURL:     env("WEEKLY_MODEL_SERVICE_URL", ""),
 		IntradayModelServiceURL:   env("INTRADAY_MODEL_SERVICE_URL", ""),
+		CacheTTLMinutes:           intEnv("CACHE_TTL_MINUTES", 5),
+		EastMoneyBaseURL:          env("EASTMONEY_BASE_URL", "https://push2his.eastmoney.com"),
+		TencentQuoteBaseURL:       env("TENCENT_QUOTE_BASE_URL", "https://qt.gtimg.cn"),
 		ReadTimeout:               seconds("READ_TIMEOUT_SECONDS", 8),
 		WriteTimeout:              seconds("WRITE_TIMEOUT_SECONDS", 12),
 		ShutdownTimeout:           seconds("SHUTDOWN_TIMEOUT_SECONDS", 8),
@@ -53,6 +61,13 @@ func Load() Config {
 
 func (c Config) IsDevelopment() bool {
 	return strings.EqualFold(c.Env, "development") || strings.EqualFold(c.Env, "dev")
+}
+
+func (c Config) CacheTTL() time.Duration {
+	if c.CacheTTLMinutes <= 0 {
+		return 5 * time.Minute
+	}
+	return time.Duration(c.CacheTTLMinutes) * time.Minute
 }
 
 func (c Config) LogLevel() slog.Level {
@@ -100,16 +115,23 @@ func defaultFundMetricsURL(now time.Time) string {
 	return fmt.Sprintf("https://fund.eastmoney.com/data/rankhandler.aspx?op=ph&dt=kf&ft=all&rs=&gs=0&sc=dm&st=asc&sd=%s&ed=%s&qdii=&tabSubtype=,,,,,&pi=1&pn=50000&dx=1&v=%d", start, end, now.UnixMilli())
 }
 
+func envCORS() string {
+	if v := strings.TrimSpace(os.Getenv("CORS_ALLOWED_ORIGINS")); v != "" {
+		return v
+	}
+	return env("CORS_ORIGINS", "")
+}
+
 func splitCSV(value string) []string {
+	if value == "" {
+		return nil
+	}
 	parts := strings.Split(value, ",")
 	out := make([]string, 0, len(parts))
 	for _, part := range parts {
 		if trimmed := strings.TrimSpace(part); trimmed != "" {
 			out = append(out, trimmed)
 		}
-	}
-	if len(out) == 0 {
-		return []string{"http://localhost:5173"}
 	}
 	return out
 }

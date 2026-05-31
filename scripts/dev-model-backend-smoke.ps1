@@ -1,3 +1,29 @@
+<#
+.SYNOPSIS
+    模型服务与后端联调冒烟测试
+
+.DESCRIPTION
+    启动一个模型服务实例和 Go 后端实例，执行基金数据同步和单基金预测请求，
+    验证端到端预测流程是否正常工作。测试完成后自动清理所有启动的进程。
+    适用于开发阶段快速验证模型服务与后端的集成是否正常。
+
+.EXAMPLE
+    .\scripts\dev-model-backend-smoke.ps1
+    .\scripts\dev-model-backend-smoke.ps1 -BackendPort 5070 -ModelPort 8090 -FundCode "510300"
+
+.PREREQUISITES
+    - Python 3.11+ 及 fund_model_training 包已安装（pip install -e ".[data,dev]"）
+    - Go 1.21+ 已安装
+    - 模型 artifact 文件已存在于 model-training/artifacts/
+    - 训练样本 CSV 已存在于 model-training/data/processed/
+    - PowerShell 5.1+ 或 PowerShell 7+
+
+.NOTES
+    默认测试基金代码：510300（沪深300ETF）
+    默认端口：后端 5070、模型服务 8090
+    此脚本会在 finally 块中自动停止所有启动的进程，无需手动清理
+    日志文件保存在 .run-logs/ 目录下
+#>
 param(
   [int]$BackendPort = 5070,
   [int]$ModelPort = 8090,

@@ -723,3 +723,120 @@ def _call_index_intraday(ak, symbol: str, period: str, start_date: str | None, e
             errors.append(f"stock_zh_index_spot_em: {exc}")
     detail = "; ".join(errors) if errors else "No known AkShare index intraday function found."
     raise RuntimeError(f"AkShare index intraday collection failed for {symbol}. {detail}")
+
+
+def collect_open_fund_nav(
+    symbol: str,
+    start_date: str,
+    end_date: str,
+    skip_validation: bool = False,
+):
+    pd = require_pandas()
+    ak = require_akshare()
+    raw = None
+    errors: list[str] = []
+    if hasattr(ak, "fund_open_fund_info_em"):
+        try:
+            raw = ak.fund_open_fund_info_em(symbol=symbol, indicator="单位净值走势")
+        except Exception as exc:
+            errors.append(f"fund_open_fund_info_em: {exc}")
+    if raw is None or raw.empty:
+        raise RuntimeError(f"Open fund NAV collection failed for {symbol}. {'; '.join(errors)}")
+    trade_date = datetime_series(raw, ("净值日期", "日期", "date", "trade_date"))
+    nav = numeric_series(raw, ("单位净值", "净值", "nav", "value"))
+    accumulated_nav = numeric_series(raw, ("累计净值", "accumulated_nav", "acc_nav"))
+    out = pd.DataFrame({
+        "fund_code": standardize_code(symbol),
+        "trade_date": trade_date,
+        "available_time": _market_close_time(trade_date),
+        "nav": nav,
+        "accumulated_nav": accumulated_nav if accumulated_nav.notna().any() else nav,
+        "adjusted_nav": nav,
+        "estimated_nav": None,
+        "share": None,
+        "aum": None,
+        "flow": None,
+    })
+    if start_date:
+        start = pd.to_datetime(start_date, errors="coerce")
+        mask = pd.to_datetime(out["trade_date"], errors="coerce") >= start
+        out = out.loc[mask]
+    if end_date:
+        end = pd.to_datetime(end_date, errors="coerce")
+        mask = pd.to_datetime(out["trade_date"], errors="coerce") <= end
+        out = out.loc[mask]
+    return enforce_contract(out, "fund_daily", skip_validation=skip_validation)
+
+
+def collect_money_fund_yield(
+    symbol: str,
+    start_date: str,
+    end_date: str,
+    skip_validation: bool = False,
+):
+    pd = require_pandas()
+    ak = require_akshare()
+    raw = None
+    errors: list[str] = []
+    if hasattr(ak, "fund_money_fund_daily_em"):
+        try:
+            raw = ak.fund_money_fund_daily_em(symbol=symbol, start_date=start_date, end_date=end_date)
+        except Exception as exc:
+            errors.append(f"fund_money_fund_daily_em: {exc}")
+    if (raw is None or raw.empty) and hasattr(ak, "fund_open_fund_info_em"):
+        try:
+            raw = ak.fund_open_fund_info_em(symbol=symbol, indicator="单位净值走势")
+        except Exception as exc:
+            errors.append(f"fund_open_fund_info_em fallback: {exc}")
+    if raw is None or raw.empty:
+        raise RuntimeError(f"Money fund yield collection failed for {symbol}. {'; '.join(errors)}")
+    trade_date = datetime_series(raw, ("净值日期", "日期", "date", "trade_date"))
+    nav = numeric_series(raw, ("万份收益", "单位净值", "净值", "nav", "value"))
+    annualized = numeric_series(raw, ("七日年化收益率", "七日年化", "annualized_yield"))
+    out = pd.DataFrame({
+        "fund_code": standardize_code(symbol),
+        "trade_date": trade_date,
+        "available_time": _market_close_time(trade_date),
+        "nav": nav,
+        "accumulated_nav": nav,
+        "adjusted_nav": nav,
+        "estimated_nav": None,
+        "share": None,
+        "aum": None,
+        "flow": None,
+        "annualized_yield_7d": annualized,
+    })
+    return enforce_contract(out, "fund_daily", skip_validation=skip_validation)
+
+
+def collect_lof_daily(symbol: str, start_date: str, end_date: str, adjust: str = "", skip_validation: bool = False):
+    pd = require_pandas()
+    ak = require_akshare()
+    raw = None
+    errors: list[str] = []
+    if hasattr(ak, "fund_lof_hist_em"):
+        try:
+            raw = ak.fund_lof_hist_em(symbol=symbol, period="daily", start_date=start_date, end_date=end_date, adjust=adjust)
+        except Exception as exc:
+            errors.append(f"fund_lof_hist_em: {exc}")
+    if (raw is None or raw.empty) and hasattr(ak, "fund_etf_hist_em"):
+        try:
+            raw = ak.fund_etf_hist_em(symbol=symbol, period="daily", start_date=start_date, end_date=end_date, adjust=adjust)
+        except Exception as exc:
+            errors.append(f"fund_etf_hist_em fallback: {exc}")
+    if raw is None or raw.empty:
+        raise RuntimeError(f"LOF daily collection failed for {symbol}. {'; '.join(errors)}")
+    close = numeric_series(raw, ("收盘", "close"))
+    trade_date = datetime_series(raw, ("日期", "date", "trade_date"))
+    out = pd.DataFrame({
+        "fund_code": standardize_code(symbol),
+        "trade_date": trade_date,
+        "available_time": _market_close_time(trade_date),
+        "nav": close,
+        "adjusted_nav": close,
+        "estimated_nav": None,
+        "share": None,
+        "aum": None,
+        "flow": None,
+    })
+    return enforce_contract(out, "fund_daily", skip_validation=skip_validation)

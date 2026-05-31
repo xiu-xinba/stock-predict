@@ -1,0 +1,1485 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>基金预测 · 首页原型</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  --color-brand: #8ab4ff;
+  --color-brand-hover: #a6c8ff;
+  --color-brand-soft: rgba(138, 180, 255, 0.14);
+  --color-brand-muted: #375a9e;
+  --color-brand-contrast: #080c14;
+  --color-up: #ff8a7a;
+  --color-down: #47d8a0;
+  --color-flat: #98a2b3;
+  --color-warning: #f7c56b;
+  --color-danger: #ff8a7a;
+  --color-bg-page: #080c14;
+  --color-bg-card: #101826;
+  --color-bg-elevated: #162033;
+  --color-bg-hover: #1b2638;
+  --color-border: #263244;
+  --color-text-primary: #f8fafc;
+  --color-text-secondary: #98a2b3;
+  --color-hk: #f7c56b;
+  --color-us: #8ab4ff;
+  --fs-2xs: 10px;
+  --fs-xs: 11px;
+  --fs-sm: 12px;
+  --fs-base: 14px;
+  --fs-md: 16px;
+  --fs-lg: 18px;
+  --fs-xl: 20px;
+  --fs-2xl: 24px;
+  --fs-3xl: 28px;
+  --fs-4xl: 32px;
+  --lh-tight: 1.15;
+  --lh-snug: 1.3;
+  --lh-normal: 1.5;
+  --lh-relaxed: 1.65;
+  --ls-tighter: -0.02em;
+  --ls-tight: -0.01em;
+  --ls-normal: 0;
+  --ls-wide: 0.02em;
+  --ls-wider: 0.04em;
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700;
+  --fw-extrabold: 800;
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+  --sp-12: 48px;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-full: 9999px;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.3), 0 1px 3px rgba(0,0,0,0.15);
+  --shadow-md: 0 4px 6px rgba(0,0,0,0.3), 0 2px 4px rgba(0,0,0,0.2);
+  --shadow-lg: 0 10px 15px rgba(0,0,0,0.4), 0 4px 6px rgba(0,0,0,0.2);
+  --transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+html.light {
+  --color-brand: #175cd3;
+  --color-brand-hover: #1849a9;
+  --color-brand-soft: #f5f8ff;
+  --color-brand-muted: #84adff;
+  --color-brand-contrast: #ffffff;
+  --color-up: #b42318;
+  --color-down: #067647;
+  --color-flat: #667085;
+  --color-warning: #b54708;
+  --color-danger: #b42318;
+  --color-bg-page: #ffffff;
+  --color-bg-card: #ffffff;
+  --color-bg-elevated: #ffffff;
+  --color-bg-hover: #f9fafb;
+  --color-border: #eaecf0;
+  --color-text-primary: #101828;
+  --color-text-secondary: #667085;
+  --color-hk: #b54708;
+  --color-us: #3538cd;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.05), 0 1px 3px rgba(0,0,0,0.03);
+  --shadow-md: 0 4px 6px rgba(0,0,0,0.07), 0 2px 4px rgba(0,0,0,0.04);
+  --shadow-lg: 0 10px 15px rgba(0,0,0,0.1), 0 4px 6px rgba(0,0,0,0.05);
+}
+
+html {
+  -webkit-tap-highlight-color: transparent;
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  font-size: var(--fs-base);
+  line-height: var(--lh-normal);
+  color: var(--color-text-primary);
+  background: var(--color-bg-page);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--color-bg-card);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.topbar-logo {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.topbar-logo svg {
+  width: 20px;
+  height: 20px;
+  color: var(--color-brand);
+}
+
+.topbar-logo-text {
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--ls-tight);
+  color: var(--color-text-primary);
+}
+
+.topbar-subtitle {
+  font-size: var(--fs-xs);
+  color: var(--color-text-secondary);
+  letter-spacing: var(--ls-wide);
+  text-transform: uppercase;
+}
+
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.topbar-page-title {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  color: var(--color-text-secondary);
+}
+
+.theme-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  background: var(--color-bg-elevated);
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.theme-toggle:hover {
+  background: var(--color-bg-hover);
+  border-color: var(--color-brand-muted);
+}
+
+.theme-toggle svg {
+  width: 16px;
+  height: 16px;
+  color: var(--color-text-secondary);
+  transition: color var(--transition-fast);
+}
+
+.theme-toggle:hover svg {
+  color: var(--color-brand);
+}
+
+.main-content {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: var(--sp-6) var(--sp-4) 120px;
+}
+
+.market-pulse {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-8);
+}
+
+.pulse-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  transition: background var(--transition-fast);
+}
+
+.pulse-item:hover {
+  background: var(--color-bg-hover);
+}
+
+.pulse-name {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  color: var(--color-text-secondary);
+}
+
+.pulse-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+}
+
+.pulse-value {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-tight);
+  letter-spacing: var(--ls-tight);
+}
+
+.pulse-change {
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-medium);
+  line-height: var(--lh-tight);
+  letter-spacing: var(--ls-wide);
+}
+
+.pulse-up { color: var(--color-up); }
+.pulse-down { color: var(--color-down); }
+.pulse-flat { color: var(--color-flat); }
+
+.pulse-region {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-full);
+  margin-right: var(--sp-1);
+  flex-shrink: 0;
+}
+
+.pulse-region-a { background: var(--color-up); }
+.pulse-region-hk { background: var(--color-hk); }
+.pulse-region-us { background: var(--color-us); }
+
+.search-section {
+  margin-bottom: var(--sp-8);
+}
+
+.search-wrapper {
+  position: relative;
+  max-width: 560px;
+}
+
+.search-input {
+  width: 100%;
+  height: 44px;
+  padding: 0 var(--sp-4) 0 40px;
+  font-family: inherit;
+  font-size: var(--fs-base);
+  color: var(--color-text-primary);
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  outline: none;
+  transition: border-color var(--transition-fast), background var(--transition-fast);
+}
+
+.search-input::placeholder {
+  color: var(--color-text-secondary);
+}
+
+.search-input:focus {
+  border-color: var(--color-brand);
+  background: var(--color-bg-elevated);
+}
+
+.search-icon {
+  position: absolute;
+  left: var(--sp-3);
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  color: var(--color-text-secondary);
+  pointer-events: none;
+  transition: color var(--transition-fast);
+}
+
+.search-input:focus ~ .search-icon {
+  color: var(--color-brand);
+}
+
+.search-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  display: none;
+  z-index: 50;
+}
+
+.search-dropdown.active {
+  display: block;
+  animation: dropdown-in 0.2s var(--ease-out-expo);
+}
+
+@keyframes dropdown-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.search-result-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--sp-3) var(--sp-4);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.search-result-item:hover {
+  background: var(--color-bg-hover);
+}
+
+.search-result-left {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.search-result-code {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--color-text-primary);
+  letter-spacing: var(--ls-wide);
+}
+
+.search-result-name {
+  font-size: var(--fs-xs);
+  color: var(--color-text-secondary);
+}
+
+.search-result-type {
+  font-size: var(--fs-2xs);
+  color: var(--color-text-secondary);
+  background: var(--color-bg-hover);
+  padding: 2px var(--sp-2);
+  border-radius: var(--radius-sm);
+  letter-spacing: var(--ls-wide);
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--sp-4);
+}
+
+.section-title-group {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+}
+
+.section-title {
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--ls-tight);
+  color: var(--color-text-primary);
+}
+
+.section-count {
+  font-size: var(--fs-xs);
+  color: var(--color-text-secondary);
+  letter-spacing: var(--ls-wide);
+}
+
+.section-action {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  color: var(--color-brand);
+  cursor: pointer;
+  transition: color var(--transition-fast);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+}
+
+.section-action:hover {
+  color: var(--color-brand-hover);
+}
+
+.section-action svg {
+  width: 14px;
+  height: 14px;
+}
+
+.metrics-strip {
+  display: flex;
+  gap: var(--sp-4);
+  margin-bottom: var(--sp-4);
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.metric-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.metric-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+}
+
+.metric-dot-total { background: var(--color-brand); }
+.metric-dot-up { background: var(--color-up); }
+.metric-dot-down { background: var(--color-down); }
+.metric-dot-flat { background: var(--color-flat); }
+
+.metric-label {
+  font-size: var(--fs-xs);
+  color: var(--color-text-secondary);
+}
+
+.metric-value {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--color-text-primary);
+}
+
+.fund-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  background: var(--color-border);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  margin-bottom: var(--sp-8);
+}
+
+.fund-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto;
+  align-items: center;
+  gap: var(--sp-4);
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--color-bg-card);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.fund-row:hover {
+  background: var(--color-bg-hover);
+}
+
+.fund-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.fund-code-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.fund-code {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--color-text-primary);
+  letter-spacing: var(--ls-wide);
+}
+
+.fund-type-badge {
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-medium);
+  color: var(--color-text-secondary);
+  background: var(--color-bg-elevated);
+  padding: 1px var(--sp-2);
+  border-radius: var(--radius-sm);
+  letter-spacing: var(--ls-wide);
+}
+
+.fund-name {
+  font-size: var(--fs-xs);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fund-nav {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  color: var(--color-text-primary);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.fund-change {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  text-align: right;
+  white-space: nowrap;
+  min-width: 64px;
+}
+
+.fund-signal {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+}
+
+.signal-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-full);
+}
+
+.signal-actionable { background: var(--color-brand); }
+.signal-low-conf { background: var(--color-warning); }
+.signal-none { background: var(--color-flat); }
+
+.signal-label {
+  font-size: var(--fs-2xs);
+  color: var(--color-text-secondary);
+  letter-spacing: var(--ls-wide);
+}
+
+.coverage-section {
+  margin-bottom: var(--sp-8);
+}
+
+.coverage-card {
+  padding: var(--sp-4);
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.coverage-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--sp-3);
+}
+
+.coverage-title {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--color-text-primary);
+}
+
+.coverage-ratio {
+  font-size: var(--fs-xs);
+  color: var(--color-text-secondary);
+}
+
+.coverage-bar-track {
+  height: 4px;
+  background: var(--color-bg-elevated);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  margin-bottom: var(--sp-3);
+}
+
+.coverage-bar-fill {
+  height: 100%;
+  background: var(--color-brand);
+  border-radius: var(--radius-full);
+  transition: width 0.6s var(--ease-out-quart);
+}
+
+.coverage-breakdown {
+  display: flex;
+  gap: var(--sp-6);
+}
+
+.coverage-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.coverage-stat-value {
+  font-size: var(--fs-md);
+  font-weight: var(--fw-bold);
+  color: var(--color-text-primary);
+  line-height: var(--lh-tight);
+}
+
+.coverage-stat-label {
+  font-size: var(--fs-2xs);
+  color: var(--color-text-secondary);
+  letter-spacing: var(--ls-wide);
+}
+
+.quick-predict {
+  margin-bottom: var(--sp-8);
+}
+
+.quick-predict-card {
+  padding: var(--sp-5) var(--sp-4);
+  background: var(--color-brand-soft);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+}
+
+.quick-predict-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+
+.quick-predict-title {
+  font-size: var(--fs-base);
+  font-weight: var(--fw-semibold);
+  color: var(--color-text-primary);
+}
+
+.quick-predict-desc {
+  font-size: var(--fs-sm);
+  color: var(--color-text-secondary);
+}
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-4);
+  font-family: inherit;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  color: var(--color-brand-contrast);
+  background: var(--color-brand);
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background var(--transition-fast), transform var(--transition-fast);
+  white-space: nowrap;
+}
+
+.btn-primary:hover {
+  background: var(--color-brand-hover);
+}
+
+.btn-primary:active {
+  transform: scale(0.97);
+}
+
+.btn-primary svg {
+  width: 14px;
+  height: 14px;
+}
+
+.dock-container {
+  position: fixed;
+  bottom: var(--sp-4);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 200;
+}
+
+.dock {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  padding: var(--sp-1) var(--sp-2);
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+}
+
+.dock-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: var(--sp-2) var(--sp-4);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+  position: relative;
+}
+
+.dock-item:hover {
+  background: var(--color-bg-hover);
+}
+
+.dock-item.active {
+  background: var(--color-brand-soft);
+}
+
+.dock-item.active .dock-icon {
+  color: var(--color-brand);
+}
+
+.dock-item.active .dock-label {
+  color: var(--color-brand);
+}
+
+.dock-icon {
+  width: 20px;
+  height: 20px;
+  color: var(--color-text-secondary);
+  transition: color var(--transition-fast);
+}
+
+.dock-item:hover .dock-icon {
+  color: var(--color-text-primary);
+}
+
+.dock-label {
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-medium);
+  color: var(--color-text-secondary);
+  letter-spacing: var(--ls-wide);
+  transition: color var(--transition-fast);
+}
+
+.dock-item:hover .dock-label {
+  color: var(--color-text-primary);
+}
+
+.dock-indicator {
+  position: absolute;
+  top: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 4px;
+  border-radius: var(--radius-full);
+  background: var(--color-brand);
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+}
+
+.dock-item.active .dock-indicator {
+  opacity: 1;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-12) var(--sp-4);
+  text-align: center;
+}
+
+.empty-state-icon {
+  width: 40px;
+  height: 40px;
+  color: var(--color-text-secondary);
+  opacity: 0.4;
+}
+
+.empty-state-title {
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
+  color: var(--color-text-primary);
+}
+
+.empty-state-desc {
+  font-size: var(--fs-sm);
+  color: var(--color-text-secondary);
+  max-width: 280px;
+  line-height: var(--lh-relaxed);
+}
+
+.last-sync {
+  font-size: var(--fs-2xs);
+  color: var(--color-text-secondary);
+  letter-spacing: var(--ls-wide);
+}
+
+.refresh-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  padding: var(--sp-1) var(--sp-2);
+  font-family: inherit;
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-medium);
+  color: var(--color-text-secondary);
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.refresh-btn:hover {
+  background: var(--color-bg-hover);
+  color: var(--color-text-primary);
+}
+
+.refresh-btn svg {
+  width: 12px;
+  height: 12px;
+}
+
+.sort-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-3);
+}
+
+.sort-chip {
+  font-family: inherit;
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-medium);
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  padding: var(--sp-1) var(--sp-2);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+  letter-spacing: var(--ls-wide);
+}
+
+.sort-chip:hover {
+  background: var(--color-bg-hover);
+  color: var(--color-text-primary);
+}
+
+.sort-chip.active {
+  background: var(--color-brand-soft);
+  color: var(--color-brand);
+  border-color: var(--color-brand-muted);
+}
+
+.footer-info {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  padding: var(--sp-4) 0;
+  margin-top: var(--sp-8);
+  border-top: 1px solid var(--color-border);
+}
+
+.footer-text {
+  font-size: var(--fs-2xs);
+  color: var(--color-text-secondary);
+  letter-spacing: var(--ls-wide);
+}
+
+.footer-dot {
+  width: 3px;
+  height: 3px;
+  border-radius: var(--radius-full);
+  background: var(--color-border);
+}
+
+@media (max-width: 768px) {
+  .market-pulse {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .fund-row {
+    grid-template-columns: 1fr auto auto;
+  }
+
+  .fund-signal {
+    display: none;
+  }
+
+  .metrics-strip {
+    gap: var(--sp-3);
+    flex-wrap: wrap;
+  }
+
+  .coverage-breakdown {
+    gap: var(--sp-4);
+  }
+
+  .quick-predict-card {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .dock-container {
+    left: 0;
+    right: 0;
+    bottom: 0;
+    transform: none;
+  }
+
+  .dock {
+    width: 100%;
+    justify-content: space-around;
+    border-radius: 0;
+    padding: var(--sp-2) 0;
+  }
+
+  .dock-item {
+    padding: var(--sp-2) var(--sp-3);
+  }
+
+  .topbar-subtitle {
+    display: none;
+  }
+}
+
+@media (min-width: 769px) and (max-width: 1024px) {
+  .market-pulse {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (min-width: 1025px) {
+  .market-pulse {
+    grid-template-columns: repeat(5, 1fr);
+  }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, var(--color-bg-elevated) 25%, var(--color-bg-hover) 50%, var(--color-bg-elevated) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: var(--radius-sm);
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.fade-in {
+  animation: fadeIn 0.3s var(--ease-out-quart);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.tooltip {
+  position: relative;
+}
+
+.tooltip::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: var(--sp-1) var(--sp-2);
+  font-size: var(--fs-2xs);
+  color: var(--color-text-primary);
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-md);
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--transition-fast);
+}
+
+.tooltip:hover::after {
+  opacity: 1;
+}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-left">
+    <div class="topbar-logo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+      </svg>
+      <span class="topbar-logo-text">基金预测</span>
+    </div>
+    <span class="topbar-subtitle">Realtime Fund Analytics</span>
+  </div>
+  <div class="topbar-right">
+    <span class="topbar-page-title">自选监控</span>
+    <button class="theme-toggle tooltip" data-tip="切换主题" onclick="toggleTheme()" aria-label="切换主题">
+      <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="5"></circle>
+        <line x1="12" y1="1" x2="12" y2="3"></line>
+        <line x1="12" y1="21" x2="12" y2="23"></line>
+        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+        <line x1="1" y1="12" x2="3" y2="12"></line>
+        <line x1="21" y1="12" x2="23" y2="12"></line>
+        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+      </svg>
+      <svg class="icon-moon" style="display:none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+      </svg>
+    </button>
+  </div>
+</header>
+
+<main class="main-content">
+
+  <section class="market-pulse fade-in">
+    <div class="pulse-item">
+      <div style="display:flex;align-items:center;gap:var(--sp-2)">
+        <span class="pulse-region pulse-region-a"></span>
+        <span class="pulse-name">上证指数</span>
+      </div>
+      <div class="pulse-right">
+        <span class="pulse-value pulse-up">3,245.68</span>
+        <span class="pulse-change pulse-up">+0.82%</span>
+      </div>
+    </div>
+    <div class="pulse-item">
+      <div style="display:flex;align-items:center;gap:var(--sp-2)">
+        <span class="pulse-region pulse-region-a"></span>
+        <span class="pulse-name">深证成指</span>
+      </div>
+      <div class="pulse-right">
+        <span class="pulse-value pulse-down">10,856.32</span>
+        <span class="pulse-change pulse-down">-0.15%</span>
+      </div>
+    </div>
+    <div class="pulse-item">
+      <div style="display:flex;align-items:center;gap:var(--sp-2)">
+        <span class="pulse-region pulse-region-a"></span>
+        <span class="pulse-name">创业板指</span>
+      </div>
+      <div class="pulse-right">
+        <span class="pulse-value pulse-up">2,156.78</span>
+        <span class="pulse-change pulse-up">+1.23%</span>
+      </div>
+    </div>
+    <div class="pulse-item">
+      <div style="display:flex;align-items:center;gap:var(--sp-2)">
+        <span class="pulse-region pulse-region-hk"></span>
+        <span class="pulse-name">恒生指数</span>
+      </div>
+      <div class="pulse-right">
+        <span class="pulse-value pulse-down">18,432.56</span>
+        <span class="pulse-change pulse-down">-0.45%</span>
+      </div>
+    </div>
+    <div class="pulse-item">
+      <div style="display:flex;align-items:center;gap:var(--sp-2)">
+        <span class="pulse-region pulse-region-us"></span>
+        <span class="pulse-name">纳斯达克</span>
+      </div>
+      <div class="pulse-right">
+        <span class="pulse-value pulse-up">16,789.23</span>
+        <span class="pulse-change pulse-up">+0.67%</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="search-section fade-in">
+    <div class="search-wrapper">
+      <input
+        class="search-input"
+        type="text"
+        placeholder="搜索基金代码或名称…"
+        autocomplete="off"
+        id="searchInput"
+        onfocus="showDropdown()"
+        onblur="hideDropdown()"
+        oninput="filterSearch()"
+      >
+      <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="8"></circle>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+      </svg>
+      <div class="search-dropdown" id="searchDropdown">
+        <div class="search-result-item" onmousedown="selectFund('161725')">
+          <div class="search-result-left">
+            <span class="search-result-code">161725</span>
+            <span class="search-result-name">招商中证白酒指数</span>
+          </div>
+          <span class="search-result-type">指数</span>
+        </div>
+        <div class="search-result-item" onmousedown="selectFund('519736')">
+          <div class="search-result-left">
+            <span class="search-result-code">519736</span>
+            <span class="search-result-name">交银新成长混合</span>
+          </div>
+          <span class="search-result-type">混合</span>
+        </div>
+        <div class="search-result-item" onmousedown="selectFund('003834')">
+          <div class="search-result-left">
+            <span class="search-result-code">003834</span>
+            <span class="search-result-name">华夏能源革新</span>
+          </div>
+          <span class="search-result-type">股票</span>
+        </div>
+        <div class="search-result-item" onmousedown="selectFund('110011')">
+          <div class="search-result-left">
+            <span class="search-result-code">110011</span>
+            <span class="search-result-name">易方达中小盘混合</span>
+          </div>
+          <span class="search-result-type">混合</span>
+        </div>
+        <div class="search-result-item" onmousedown="selectFund('000961')">
+          <div class="search-result-left">
+            <span class="search-result-code">000961</span>
+            <span class="search-result-name">天弘沪深300ETF联接</span>
+          </div>
+          <span class="search-result-type">指数</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="fade-in">
+    <div class="section-header">
+      <div class="section-title-group">
+        <h2 class="section-title">自选监控</h2>
+        <span class="section-count">5 只</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:var(--sp-3)">
+        <span class="last-sync">最后同步 14:32:05</span>
+        <button class="refresh-btn" onclick="refreshData()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="23 4 23 10 17 10"></polyline>
+            <polyline points="1 20 1 14 7 14"></polyline>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+          </svg>
+          刷新
+        </button>
+      </div>
+    </div>
+
+    <div class="metrics-strip">
+      <div class="metric-item">
+        <span class="metric-dot metric-dot-total"></span>
+        <span class="metric-label">总数</span>
+        <span class="metric-value">5</span>
+      </div>
+      <div class="metric-item">
+        <span class="metric-dot metric-dot-up"></span>
+        <span class="metric-label">上涨</span>
+        <span class="metric-value">3</span>
+      </div>
+      <div class="metric-item">
+        <span class="metric-dot metric-dot-down"></span>
+        <span class="metric-label">下跌</span>
+        <span class="metric-value">1</span>
+      </div>
+      <div class="metric-item">
+        <span class="metric-dot metric-dot-flat"></span>
+        <span class="metric-label">持平</span>
+        <span class="metric-value">1</span>
+      </div>
+    </div>
+
+    <div class="sort-bar">
+      <button class="sort-chip active">时间</button>
+      <button class="sort-chip">涨跌幅</button>
+      <button class="sort-chip">净值</button>
+      <button class="sort-chip">名称</button>
+    </div>
+
+    <div class="fund-list" id="fundList">
+      <div class="fund-row" onclick="navigateTo('161725')">
+        <div class="fund-info">
+          <div class="fund-code-row">
+            <span class="fund-code">161725</span>
+            <span class="fund-type-badge">指数</span>
+          </div>
+          <span class="fund-name">招商中证白酒指数</span>
+        </div>
+        <span class="fund-nav">1.2345</span>
+        <span class="fund-change pulse-up">+1.82%</span>
+        <div class="fund-signal">
+          <span class="signal-dot signal-actionable"></span>
+          <span class="signal-label">可行动</span>
+        </div>
+      </div>
+      <div class="fund-row" onclick="navigateTo('519736')">
+        <div class="fund-info">
+          <div class="fund-code-row">
+            <span class="fund-code">519736</span>
+            <span class="fund-type-badge">混合</span>
+          </div>
+          <span class="fund-name">交银新成长混合</span>
+        </div>
+        <span class="fund-nav">2.5678</span>
+        <span class="fund-change pulse-up">+0.95%</span>
+        <div class="fund-signal">
+          <span class="signal-dot signal-low-conf"></span>
+          <span class="signal-label">低置信</span>
+        </div>
+      </div>
+      <div class="fund-row" onclick="navigateTo('003834')">
+        <div class="fund-info">
+          <div class="fund-code-row">
+            <span class="fund-code">003834</span>
+            <span class="fund-type-badge">股票</span>
+          </div>
+          <span class="fund-name">华夏能源革新</span>
+        </div>
+        <span class="fund-nav">3.8912</span>
+        <span class="fund-change pulse-up">+0.47%</span>
+        <div class="fund-signal">
+          <span class="signal-dot signal-actionable"></span>
+          <span class="signal-label">可行动</span>
+        </div>
+      </div>
+      <div class="fund-row" onclick="navigateTo('110011')">
+        <div class="fund-info">
+          <div class="fund-code-row">
+            <span class="fund-code">110011</span>
+            <span class="fund-type-badge">混合</span>
+          </div>
+          <span class="fund-name">易方达中小盘混合</span>
+        </div>
+        <span class="fund-nav">4.2156</span>
+        <span class="fund-change pulse-down">-0.63%</span>
+        <div class="fund-signal">
+          <span class="signal-dot signal-actionable"></span>
+          <span class="signal-label">可行动</span>
+        </div>
+      </div>
+      <div class="fund-row" onclick="navigateTo('000961')">
+        <div class="fund-info">
+          <div class="fund-code-row">
+            <span class="fund-code">000961</span>
+            <span class="fund-type-badge">指数</span>
+          </div>
+          <span class="fund-name">天弘沪深300ETF联接</span>
+        </div>
+        <span class="fund-nav">1.5623</span>
+        <span class="fund-change pulse-flat">0.00%</span>
+        <div class="fund-signal">
+          <span class="signal-dot signal-none"></span>
+          <span class="signal-label">无信号</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="coverage-section fade-in">
+    <div class="coverage-card">
+      <div class="coverage-header">
+        <span class="coverage-title">模型覆盖</span>
+        <span class="coverage-ratio">1,234 / 8,567 基金</span>
+      </div>
+      <div class="coverage-bar-track">
+        <div class="coverage-bar-fill" style="width: 14.4%"></div>
+      </div>
+      <div class="coverage-breakdown">
+        <div class="coverage-stat">
+          <span class="coverage-stat-value" style="color:var(--color-brand)">1,234</span>
+          <span class="coverage-stat-label">模型支持</span>
+        </div>
+        <div class="coverage-stat">
+          <span class="coverage-stat-value" style="color:var(--color-warning)">2,891</span>
+          <span class="coverage-stat-label">仅基线</span>
+        </div>
+        <div class="coverage-stat">
+          <span class="coverage-stat-value" style="color:var(--color-flat)">4,442</span>
+          <span class="coverage-stat-label">未覆盖</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="quick-predict fade-in">
+    <div class="quick-predict-card">
+      <div class="quick-predict-text">
+        <span class="quick-predict-title">查看任意基金的预测方向</span>
+        <span class="quick-predict-desc">输入基金代码，获取 AI 涨跌预测与置信度评估</span>
+      </div>
+      <button class="btn-primary" onclick="navigateTo('predict')">
+        开始预测
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+          <polyline points="12 5 19 12 12 19"></polyline>
+        </svg>
+      </button>
+    </div>
+  </section>
+
+  <footer class="footer-info">
+    <span class="footer-text">数据来源：腾讯财经 · 东方财富</span>
+    <span class="footer-dot"></span>
+    <span class="footer-text">行情延迟约 15 分钟</span>
+    <span class="footer-dot"></span>
+    <span class="footer-text">预测仅供参考，不构成投资建议</span>
+  </footer>
+
+</main>
+
+<nav class="dock-container" aria-label="主导航">
+  <div class="dock">
+    <div class="dock-item active" onclick="switchTab(this, '自选监控')">
+      <span class="dock-indicator"></span>
+      <svg class="dock-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+      </svg>
+      <span class="dock-label">自选</span>
+    </div>
+    <div class="dock-item" onclick="switchTab(this, '市场行情')">
+      <span class="dock-indicator"></span>
+      <svg class="dock-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="18" y1="20" x2="18" y2="10"></line>
+        <line x1="12" y1="20" x2="12" y2="4"></line>
+        <line x1="6" y1="20" x2="6" y2="14"></line>
+      </svg>
+      <span class="dock-label">行情</span>
+    </div>
+    <div class="dock-item" onclick="switchTab(this, '模型预测')">
+      <span class="dock-indicator"></span>
+      <svg class="dock-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"></path>
+        <line x1="9" y1="18" x2="15" y2="18"></line>
+        <line x1="10" y1="22" x2="14" y2="22"></line>
+      </svg>
+      <span class="dock-label">预测</span>
+    </div>
+  </div>
+</nav>
+
+<script>
+function toggleTheme() {
+  const html = document.documentElement;
+  const isDark = html.classList.contains('dark');
+  html.classList.toggle('dark', !isDark);
+  html.classList.toggle('light', isDark);
+  document.querySelector('.icon-sun').style.display = isDark ? 'none' : 'block';
+  document.querySelector('.icon-moon').style.display = isDark ? 'block' : 'none';
+}
+
+function showDropdown() {
+  const dropdown = document.getElementById('searchDropdown');
+  const input = document.getElementById('searchInput');
+  if (input.value.length > 0) {
+    dropdown.classList.add('active');
+  }
+}
+
+function hideDropdown() {
+  setTimeout(() => {
+    document.getElementById('searchDropdown').classList.remove('active');
+  }, 200);
+}
+
+function filterSearch() {
+  const input = document.getElementById('searchInput');
+  const dropdown = document.getElementById('searchDropdown');
+  const items = dropdown.querySelectorAll('.search-result-item');
+  const query = input.value.toLowerCase();
+  let hasVisible = false;
+
+  items.forEach(item => {
+    const code = item.querySelector('.search-result-code').textContent.toLowerCase();
+    const name = item.querySelector('.search-result-name').textContent.toLowerCase();
+    const visible = code.includes(query) || name.includes(query);
+    item.style.display = visible ? 'flex' : 'none';
+    if (visible) hasVisible = true;
+  });
+
+  dropdown.classList.toggle('active', hasVisible && query.length > 0);
+}
+
+function selectFund(code) {
+  document.getElementById('searchInput').value = code;
+  document.getElementById('searchDropdown').classList.remove('active');
+}
+
+function navigateTo(target) {
+  // prototype: no-op
+}
+
+function switchTab(el, title) {
+  document.querySelectorAll('.dock-item').forEach(item => item.classList.remove('active'));
+  el.classList.add('active');
+  document.querySelector('.topbar-page-title').textContent = title;
+}
+
+function refreshData() {
+  const btn = document.querySelector('.refresh-btn svg');
+  btn.style.transition = 'transform 0.6s var(--ease-out-quart)';
+  btn.style.transform = 'rotate(360deg)';
+  setTimeout(() => {
+    btn.style.transition = 'none';
+    btn.style.transform = 'rotate(0deg)';
+  }, 600);
+}
+
+document.querySelectorAll('.sort-chip').forEach(chip => {
+  chip.addEventListener('click', function() {
+    document.querySelectorAll('.sort-chip').forEach(c => c.classList.remove('active'));
+    this.classList.add('active');
+  });
+});
+
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.style.opacity = '1';
+      entry.target.style.transform = 'translateY(0)';
+    }
+  });
+}, { threshold: 0.1 });
+
+document.querySelectorAll('.fade-in').forEach(el => {
+  el.style.opacity = '0';
+  el.style.transform = 'translateY(8px)';
+  el.style.transition = 'opacity 0.4s var(--ease-out-quart), transform 0.4s var(--ease-out-quart)';
+  observer.observe(el);
+});
+</script>
+
+</body>
+</html>

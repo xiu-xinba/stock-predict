@@ -11,14 +11,21 @@ export function useECharts(
   let chartInstance: EChartsType | null = null
   let resizeObserver: ResizeObserver | null = null
   let resizeRaf: number | null = null
+  let pendingInit = false
 
   function renderChart() {
     if (!chartRef.value) return
+    const el = chartRef.value
+    if (el.clientWidth === 0 || el.clientHeight === 0) {
+      pendingInit = true
+      return
+    }
     try {
       if (!chartInstance) {
-        chartInstance = echarts.init(chartRef.value)
+        chartInstance = echarts.init(el)
       }
       chartInstance.setOption(getOption(), true)
+      pendingInit = false
     } catch {
       if (chartInstance) {
         chartInstance.dispose()
@@ -30,8 +37,12 @@ export function useECharts(
   function handleResize() {
     if (resizeRaf) cancelAnimationFrame(resizeRaf)
     resizeRaf = requestAnimationFrame(() => {
-      chartInstance?.resize()
       resizeRaf = null
+      if (pendingInit && chartRef.value && chartRef.value.clientWidth > 0 && chartRef.value.clientHeight > 0) {
+        renderChart()
+        return
+      }
+      chartInstance?.resize()
     })
   }
 
@@ -49,6 +60,7 @@ export function useECharts(
 
   onUnmounted(() => {
     if (resizeRaf) cancelAnimationFrame(resizeRaf)
+    resizeRaf = null
     resizeObserver?.disconnect()
     resizeObserver = null
     chartInstance?.dispose()

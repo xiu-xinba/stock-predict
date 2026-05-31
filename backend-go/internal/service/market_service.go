@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"stock-predict-go/internal/dto"
+	"stock-predict-go/internal/util"
 )
 
 type MarketService struct {
@@ -43,8 +44,8 @@ func (s *MarketService) Indices() []dto.MarketIndex {
 	for _, cfg := range indexConfigs {
 		changePct := deterministicChange(cfg.Code, cfg.Vol, now)
 		prev := cfg.Base
-		value := round(cfg.Base*(1+changePct/100), 2)
-		change := round(value-prev, 2)
+		value := util.RoundVal(cfg.Base*(1+changePct/100), 2)
+		change := util.RoundVal(value-prev, 2)
 		items = append(items, dto.MarketIndex{
 			Code:          cfg.Code,
 			Name:          cfg.Name,
@@ -52,10 +53,10 @@ func (s *MarketService) Indices() []dto.MarketIndex {
 			Value:         value,
 			Change:        change,
 			ChangePct:     changePct,
-			High:          round(math.Max(value, prev)*(1+cfg.Vol/1000), 2),
-			Low:           round(math.Min(value, prev)*(1-cfg.Vol/1000), 2),
+			High:          util.RoundVal(math.Max(value, prev)*(1+cfg.Vol/1000), 2),
+			Low:           util.RoundVal(math.Min(value, prev)*(1-cfg.Vol/1000), 2),
 			PrevClose:     prev,
-			Volume:        round(100000000+float64(stableIndexHash(cfg.Code)%900000000), 0),
+			Volume:        util.RoundVal(100000000+float64(stableIndexHash(cfg.Code)%900000000), 0),
 			MiniChartData: miniChart(prev, value, cfg.Code),
 			UpdateTime:    now.Format(time.RFC3339Nano),
 			DataSource:    "go_baseline",
@@ -113,7 +114,7 @@ func deterministicChange(code string, vol float64, now time.Time) float64 {
 	day := now.YearDay() + now.Year()*400
 	raw := int(stableIndexHash(code+time.Now().Location().String())%10000) + day*37
 	centered := float64(raw%2000)/1000 - 1
-	return round(centered*vol, 2)
+	return util.RoundVal(centered*vol, 2)
 }
 
 func miniChart(prev, current float64, code string) []float64 {
@@ -122,7 +123,7 @@ func miniChart(prev, current float64, code string) []float64 {
 	for i := range points {
 		progress := float64(i) / float64(len(points)-1)
 		noise := math.Sin(progress*math.Pi*3+hash*math.Pi) * math.Abs(current-prev) * 0.18
-		points[i] = round(prev+(current-prev)*progress+noise, 2)
+		points[i] = util.RoundVal(prev+(current-prev)*progress+noise, 2)
 	}
 	return points
 }
@@ -133,7 +134,3 @@ func stableIndexHash(value string) uint32 {
 	return h.Sum32()
 }
 
-func round(v float64, places int) float64 {
-	pow := math.Pow10(places)
-	return math.Round(v*pow) / pow
-}

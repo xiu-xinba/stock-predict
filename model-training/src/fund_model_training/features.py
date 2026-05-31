@@ -59,6 +59,8 @@ def prepare_features(df: pd.DataFrame, feature_set: str) -> tuple[pd.DataFrame, 
     _ensure_feature(out, "index_volatility_15m", lambda: _coalesce(out, ["index_volatility_15m"]))
     _ensure_feature(out, "fund_index_spread_1m", lambda: out["fund_return_1m"] - out["index_return_1m"])
     _ensure_feature(out, "fund_index_spread_5m", lambda: out["fund_return_5m"] - out["index_return_5m"])
+    _ensure_feature(out, "fund_return_20d", lambda: _group_pct_change(out, value_col, 20))
+    _ensure_feature(out, "fund_drawdown_20d", lambda: _drawdown_20d(out, value_col))
 
     for name in feature_names:
         out[name] = pd.to_numeric(out[name], errors="coerce")
@@ -166,3 +168,13 @@ def _etf_flow_proxy(df: pd.DataFrame) -> pd.Series:
     premium = _coalesce(df, ["nav_premium_pct", "premium_pct"])
     volume_ratio = _volume_ratio(df)
     return (flow * 0.55 + premium * 0.25 + (volume_ratio - 1.0) * 0.20).fillna(0.0)
+
+
+def _drawdown_20d(df: pd.DataFrame, value_col: str | None) -> pd.Series:
+    if not value_col:
+        return pd.Series(0.0, index=df.index)
+    def calc(group):
+        prices = group.sort_values("asof_time")
+        rolling_max = prices[value_col].rolling(20, min_periods=3).max()
+        return ((prices[value_col] - rolling_max) / rolling_max.replace(0, np.nan) * 100.0).replace([np.inf, -np.inf], np.nan).fillna(0.0)
+    return df.groupby("fund_code", group_keys=False).apply(calc, include_groups=False).reset_index(level=0, drop=True).reindex(df.index).fillna(0.0)

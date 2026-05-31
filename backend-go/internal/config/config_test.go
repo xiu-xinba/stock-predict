@@ -32,10 +32,10 @@ func TestLoadReadsFundStoreAndSyncPaths(t *testing.T) {
 	}
 }
 
-func TestSplitCSVFallsBackWhenEmpty(t *testing.T) {
+func TestSplitCSVReturnsNilWhenEmpty(t *testing.T) {
 	got := splitCSV(" , ")
 
-	if len(got) != 1 || got[0] != "http://localhost:5173" {
-		t.Fatalf("unexpected fallback origins: %+v", got)
+	if len(got) != 0 {
+		t.Fatalf("expected nil for empty input, got: %+v", got)
 	}
 }

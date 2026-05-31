@@ -562,9 +562,9 @@ def get_db():
 python -m venv venv
 venv\Scripts\activate  # Windows
 pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8000</code></pre>
+uvicorn app.main:app --reload --port 5070</code></pre>
 
-<p>预期：访问 <code>http://localhost:8000/api/v1/health</code> 返回 <code>{"status":"ok","model_loaded":false}</code></p>
+<p>预期：访问 <code>http://localhost:5070/api/v1/health</code> 返回 <code>{"status":"ok","model_loaded":false}</code></p>
 
 <!-- ===== 任务 2 ===== -->
 <h2 id="sec-task2">任务 2: Pydantic Schema 定义</h2>
@@ -797,7 +797,7 @@ def init_db():
   <label for="t3-5">验证：启动服务器，确认数据库表创建</label>
 </div>
 
-<pre><code>uvicorn app.main:app --reload --port 8000</code></pre>
+<pre><code>uvicorn app.main:app --reload --port 5070</code></pre>
 
 <p>预期：项目根目录生成 <code>data.db</code> 文件</p>
 
@@ -1338,26 +1338,26 @@ async def get_quotes(request: WatchlistQuoteRequest):
   <label for="t6-6">验证：启动服务器，手动测试所有端点</label>
 </div>
 
-<pre><code>uvicorn app.main:app --reload --port 8000</code></pre>
+<pre><code>uvicorn app.main:app --reload --port 5070</code></pre>
 
 <p>测试命令：</p>
 <pre><code># 健康检查
-curl http://localhost:8000/api/v1/health
+curl http://localhost:5070/api/v1/health
 
 # 大盘指数
-curl http://localhost:8000/api/v1/market/indices
+curl http://localhost:5070/api/v1/market/indices
 
 # 涨幅排行
-curl http://localhost:8000/api/v1/market/ranking/gainers?size=5
+curl http://localhost:5070/api/v1/market/ranking/gainers?size=5
 
 # 基金搜索
-curl "http://localhost:8000/api/v1/funds/search?keyword=华夏"
+curl "http://localhost:5070/api/v1/funds/search?keyword=华夏"
 
 # 预测
-curl http://localhost:8000/api/v1/predict/000001
+curl http://localhost:5070/api/v1/predict/000001
 
 # 自选行情
-curl -X POST http://localhost:8000/api/v1/watchlist/quotes -H "Content-Type: application/json" -d "{\"codes\":[\"000001\",\"110011\"]}"</code></pre>
+curl -X POST http://localhost:5070/api/v1/watchlist/quotes -H "Content-Type: application/json" -d "{\"codes\":[\"000001\",\"110011\"]}"</code></pre>
 
 <p>预期：所有端点返回 <code>{"code":0,"message":"success","data":...}</code> 格式</p>
 
@@ -1370,7 +1370,7 @@ curl -X POST http://localhost:8000/api/v1/watchlist/quotes -H "Content-Type: app
 
 <div class="checkbox-item">
   <input type="checkbox" id="t7-1">
-  <label for="t7-1">启动后端：<code>cd backend && uvicorn app.main:app --reload --port 8000</code></label>
+  <label for="t7-1">启动后端：<code>cd backend && uvicorn app.main:app --reload --port 5070</code></label>
 </div>
 
 <div class="checkbox-item">
@@ -1957,11 +1957,11 @@ cd backend
 python -m train.train_model
 
 # 启动服务器
-uvicorn app.main:app --reload --port 8000
+uvicorn app.main:app --reload --port 5070
 
 # 测试
-curl http://localhost:8000/api/v1/health
-curl http://localhost:8000/api/v1/predict/000001</code></pre>
+curl http://localhost:5070/api/v1/health
+curl http://localhost:5070/api/v1/predict/000001</code></pre>
 
 <p>预期：health 返回 <code>model_loaded: true</code>，预测返回基于模型的预测结果</p>
 
@@ -2028,11 +2028,11 @@ async def log_requests(request: Request, call_next):
 </div>
 
 <pre><code># 测试无效基金代码
-curl http://localhost:8000/api/v1/predict/abc
+curl http://localhost:5070/api/v1/predict/abc
 # 预期: {"code":-1,"message":"基金代码必须为6位数字","data":null}
 
 # 测试不存在的端点
-curl http://localhost:8000/api/v1/nonexistent
+curl http://localhost:5070/api/v1/nonexistent
 # 预期: 404</code></pre>
 
 <!-- ===== 任务 12 ===== -->
@@ -2059,7 +2059,7 @@ def main():
     uvicorn.run(
         "app.main:app",
         host="0.0.0.0",
-        port=8000,
+        port=5070,
         workers=1,  # SQLite 不支持多进程
         log_level=settings.log_level.lower(),
     )
@@ -2092,7 +2092,7 @@ if __name__ == "__main__":
 
     # API 反向代理
     location /api/ {
-        proxy_pass http://127.0.0.1:8000;
+        proxy_pass http://127.0.0.1:5070;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;

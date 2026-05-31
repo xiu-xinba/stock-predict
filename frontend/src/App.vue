@@ -2,24 +2,28 @@
   <div id="app" class="app-shell">
     <header class="topbar">
       <div>
-        <p class="topbar-kicker">Realtime Fund Analytics</p>
-        <h1 class="topbar-title">{{ currentTitle }}</h1>
+        <div class="topbar-kicker">Realtime Fund Analytics</div>
+        <div class="topbar-title">{{ currentTitle }}</div>
+      </div>
+      <div class="topbar-actions">
+        <button class="topbar-search-btn" type="button" title="搜索 (快捷键 /)" @click="searchOpen = true">
+          <svg viewBox="0 0 1024 1024" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="m795.904 750.72 124.992 124.928a32 32 0 0 1-45.248 45.248L750.656 795.904a416 416 0 1 1 45.248-45.248zM480 832a352 352 0 1 0 0-704 352 352 0 0 0 0 704"/></svg>
+        </button>
+        <button class="theme-fab" type="button" :title="themeTitle" @click="toggleTheme($event)">
+          <svg v-if="isDark" class="theme-fab-icon" viewBox="0 0 1024 1024" aria-hidden="true">
+            <path fill="currentColor" d="M512 64h64v192h-64zm0 576h64v192h-64zM160 480v-64h192v64zm576 0v-64h192v64zM249.856 199.04l45.248-45.184L430.848 289.6 385.6 334.848 249.856 199.104zM657.152 606.4l45.248-45.248 135.744 135.744-45.248 45.248zM114.048 923.2 68.8 877.952l316.8-316.8 45.248 45.248zM702.4 334.848 657.152 289.6l135.744-135.744 45.248 45.248z"/>
+          </svg>
+          <svg v-else class="theme-fab-icon" viewBox="0 0 1024 1024" aria-hidden="true">
+            <path fill="currentColor" d="M240.448 240.448a384 384 0 1 0 559.424 525.696 448 448 0 0 1-542.016-542.08 391 391 0 0 0-17.408 16.384m181.056 362.048a384 384 0 0 0 525.632 16.384A448 448 0 1 1 405.056 76.8a384 384 0 0 0 16.448 525.696"/>
+          </svg>
+        </button>
       </div>
     </header>
 
-    <button class="theme-fab" type="button" :title="themeTitle" @click="toggleTheme">
-      <svg v-if="isDark" class="theme-fab-icon" viewBox="0 0 1024 1024" aria-hidden="true">
-        <path fill="currentColor" d="M512 64h64v192h-64zm0 576h64v192h-64zM160 480v-64h192v64zm576 0v-64h192v64zM249.856 199.04l45.248-45.184L430.848 289.6 385.6 334.848 249.856 199.104zM657.152 606.4l45.248-45.248 135.744 135.744-45.248 45.248zM114.048 923.2 68.8 877.952l316.8-316.8 45.248 45.248zM702.4 334.848 657.152 289.6l135.744-135.744 45.248 45.248z"/>
-      </svg>
-      <svg v-else class="theme-fab-icon" viewBox="0 0 1024 1024" aria-hidden="true">
-        <path fill="currentColor" d="M240.448 240.448a384 384 0 1 0 559.424 525.696 448 448 0 0 1-542.016-542.08 391 391 0 0 0-17.408 16.384m181.056 362.048a384 384 0 0 0 525.632 16.384A448 448 0 1 1 405.056 76.8a384 384 0 0 0 16.448 525.696"/>
-      </svg>
-    </button>
-
     <main class="main-content">
-      <router-view v-slot="{ Component }">
-        <transition name="fade" mode="out-in">
-          <component :is="Component" />
+      <router-view v-slot="{ Component, route: currentRoute }">
+        <transition name="page" mode="out-in">
+          <component :is="Component" :key="currentRoute.path" />
         </transition>
       </router-view>
     </main>
@@ -71,15 +75,34 @@
         </router-link>
       </nav>
     </transition>
+
+    <RefreshFab position="bottom-right" :size="48" :opacity="0.92" />
+
+    <SearchOverlay :open="searchOpen" @close="searchOpen = false" />
+
+    <transition name="mkt-dock">
+      <MarketDock
+        v-if="showMarketDock"
+        :cn-indices="cnIndices"
+        :hk-indices="hkIndices"
+        :us-indices="usIndices"
+      />
+    </transition>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { MagicStick, Star, TrendCharts } from '@element-plus/icons-vue'
 import type { Component } from 'vue'
 import { useTheme } from '@/composables/useTheme'
+import { useMarketStore } from '@/stores/market'
+import RefreshFab from '@/components/RefreshFab.vue'
+import SearchOverlay from '@/components/SearchOverlay.vue'
+import MarketDock from '@/components/market/MarketDock.vue'
+
+defineOptions({ name: 'App' })
 
 interface NavItem {
   path: string
@@ -96,6 +119,13 @@ const navItems: NavItem[] = [
 
 const route = useRoute()
 const { isDark, toggleTheme } = useTheme()
+const marketStore = useMarketStore()
+
+const showMarketDock = computed(() => route.path === '/market')
+
+const cnIndices = computed(() => marketStore.indices.filter(i => i.market === 'cn'))
+const hkIndices = computed(() => marketStore.indices.filter(i => i.market === 'hk'))
+const usIndices = computed(() => marketStore.indices.filter(i => i.market === 'us'))
 
 const themeTitle = computed(() => isDark.value ? '切换到日间模式' : '切换到夜间模式')
 
@@ -112,6 +142,7 @@ const currentTitle = computed(() => {
 })
 
 const dockVisible = ref(false)
+const searchOpen = ref(false)
 let hideTimer: ReturnType<typeof setTimeout> | null = null
 let initialTimer: ReturnType<typeof setTimeout> | null = null
 
@@ -137,12 +168,26 @@ function scheduleHide() {
   }, 900)
 }
 
+function handleGlobalKeydown(e: KeyboardEvent) {
+  if (e.key === '/' && !e.ctrlKey && !e.metaKey) {
+    const active = document.activeElement
+    if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) return
+    e.preventDefault()
+    searchOpen.value = true
+  }
+  if (e.key === 'Escape') {
+    searchOpen.value = false
+  }
+}
+
 onMounted(() => {
+  window.addEventListener('keydown', handleGlobalKeydown)
   showDock()
   initialTimer = setTimeout(scheduleHide, 1800)
 })
 
 onUnmounted(() => {
+  window.removeEventListener('keydown', handleGlobalKeydown)
   if (hideTimer) clearTimeout(hideTimer)
   if (initialTimer) clearTimeout(initialTimer)
 })
@@ -150,13 +195,58 @@ onUnmounted(() => {
 
 <style>
 #app {
-  min-height: 100vh;
+  min-height: 100dvh;
 }
 
 .app-shell {
-  min-height: 100vh;
+  position: relative;
+  z-index: 1;
+  min-height: 100dvh;
   background: var(--color-bg-page);
   transition: background-color var(--transition-normal), color var(--transition-normal);
+}
+
+.page-enter-active,
+.page-leave-active {
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.page-enter-from {
+  opacity: 0;
+  transform: translateY(6px);
+}
+
+.page-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+
+.mkt-dock-enter-active {
+  transition: opacity 0.22s ease, transform 0.28s var(--ease-out-expo);
+}
+
+.mkt-dock-leave-active {
+  transition: opacity 0.14s ease, transform 0.14s ease;
+}
+
+.mkt-dock-enter-from {
+  opacity: 0;
+  transform: translateX(-50%) translateY(12px) scale(0.96);
+}
+
+.mkt-dock-leave-to {
+  opacity: 0;
+  transform: translateX(-50%) translateY(8px) scale(0.98);
+}
+
+@media (max-width: 768px) {
+  .mkt-dock-enter-from {
+    transform: translateY(12px) scale(0.96);
+  }
+
+  .mkt-dock-leave-to {
+    transform: translateY(8px) scale(0.98);
+  }
 }
 
 .topbar {
@@ -165,20 +255,25 @@ onUnmounted(() => {
   z-index: 30;
   display: flex;
   align-items: center;
+  justify-content: space-between;
   min-height: 64px;
   padding: 0 var(--sp-8);
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border-light);
   background: var(--color-bg-topbar);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
   box-sizing: border-box;
-  box-shadow: var(--shadow-sm);
-  transition: background-color var(--transition-normal), border-color var(--transition-normal), box-shadow var(--transition-normal);
+  transition: background-color var(--transition-normal), border-color var(--transition-normal);
 }
 
 .topbar-kicker {
   margin: 0 0 2px;
-  color: var(--color-text-secondary);
+  color: var(--color-brand);
   font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
   line-height: var(--lh-tight);
+  letter-spacing: var(--ls-widest);
+  text-transform: uppercase;
 }
 
 .topbar-title {
@@ -187,13 +282,16 @@ onUnmounted(() => {
   font-size: var(--fs-xl);
   font-weight: var(--fw-bold);
   line-height: var(--lh-snug);
+  letter-spacing: var(--ls-tight);
 }
 
-.theme-fab {
-  position: fixed;
-  top: 14px;
-  right: 24px;
-  z-index: 80;
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.topbar-search-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -201,7 +299,35 @@ onUnmounted(() => {
   height: 42px;
   padding: 0;
   border: 1px solid var(--color-border);
-  border-radius: 50%;
+  border-radius: var(--radius-full);
+  background: var(--color-bg-topbar);
+  color: var(--color-text-regular);
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: transform var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast), background-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.topbar-search-btn:hover {
+  color: var(--color-brand);
+  border-color: var(--color-brand-muted);
+  background: var(--color-bg-card);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+.topbar-search-btn:active {
+  transform: translateY(0) scale(0.96);
+}
+
+.theme-fab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
   background: var(--color-bg-topbar);
   color: var(--color-text-regular);
   cursor: pointer;
@@ -278,8 +404,10 @@ onUnmounted(() => {
   gap: var(--sp-2);
   padding: var(--sp-2);
   border: 1px solid var(--color-border);
-  border-radius: 18px;
+  border-radius: var(--radius-xl);
   background: var(--color-bg-topbar);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
   box-shadow: var(--shadow-lg);
   transform: translateX(-50%);
 }
@@ -289,21 +417,21 @@ onUnmounted(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 3px;
+  gap: var(--sp-0_5);
   width: 58px;
   min-height: 58px;
   padding: var(--sp-1);
   border: 1px solid transparent;
-  border-radius: 14px;
+  border-radius: var(--radius-lg);
   color: var(--color-text-regular);
   text-decoration: none;
-  transition: transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1), background-color var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+  transition: transform var(--transition-spring), background-color var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
 }
 
 .dock-item:hover {
   color: var(--color-text-primary);
   background: var(--color-bg-hover);
-  transform: translateY(-7px);
+  transform: translateY(-4px);
 }
 
 .dock-item.active {
@@ -323,6 +451,7 @@ onUnmounted(() => {
   font-size: var(--fs-xs);
   font-weight: var(--fw-semibold);
   line-height: var(--lh-tight);
+  letter-spacing: var(--ls-wide);
 }
 
 .dock-enter-active {
@@ -330,7 +459,7 @@ onUnmounted(() => {
 }
 
 .dock-leave-active {
-  transition: opacity 0.16s ease, transform 0.18s ease;
+  transition: opacity var(--transition-fast), transform var(--transition-fast);
 }
 
 .dock-enter-from {
@@ -345,7 +474,7 @@ onUnmounted(() => {
 
 .pill-enter-active,
 .pill-leave-active {
-  transition: opacity 0.18s ease, transform 0.18s ease;
+  transition: opacity var(--transition-fast), transform var(--transition-fast);
 }
 
 .pill-enter-from,
@@ -354,17 +483,7 @@ onUnmounted(() => {
   transform: translateX(-50%) translateY(8px);
 }
 
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.12s ease;
-}
-
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
-}
-
-@media (max-width: 900px) {
+@media (max-width: 768px) {
   .topbar {
     min-height: 60px;
     padding: 0 var(--sp-4);
@@ -378,9 +497,8 @@ onUnmounted(() => {
     font-size: var(--fs-lg);
   }
 
+  .topbar-search-btn,
   .theme-fab {
-    top: 10px;
-    right: 14px;
     width: 38px;
     height: 38px;
   }
@@ -418,8 +536,21 @@ onUnmounted(() => {
   .pill-enter-active,
   .pill-leave-active,
   .fade-enter-active,
-  .fade-leave-active {
+  .fade-leave-active,
+  .page-enter-active,
+  .page-leave-active,
+  .mkt-dock-enter-active,
+  .mkt-dock-leave-active {
     transition-duration: 0.01ms !important;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .topbar,
+  .dock {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: var(--color-bg-card);
   }
 }
 </style>

@@ -3,7 +3,6 @@ import { ref, computed, watch } from 'vue'
 import type { WatchlistItem } from '@/types'
 import { fetchWatchlistQuotes } from '@/api/watchlist'
 import { CancelError } from '@/api/index'
-import { ElMessage } from 'element-plus'
 
 const STORAGE_KEY = 'fund-watchlist'
 const MAX_WATCHLIST_ITEMS = 50
@@ -23,19 +22,21 @@ function saveToStorage(items: WatchlistItem[]) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(items))
   } catch {
-    // 隐私模式、存储配额已满或用户禁用本地存储时静默忽略
   }
 }
 
-export const useWatchlistStore = defineStore('watchlist', () => {
+export const useFundWatchlistStore = defineStore('fundWatchlist', () => {
   const items = ref<WatchlistItem[]>(loadFromStorage())
   const loading = ref(false)
+  const error = ref<string | null>(null)
   const lastRefresh = ref<string | null>(null)
+  const lastQuoteRefresh = ref(0)
   const sortBy = ref<'change_pct' | 'estimated_nav' | 'fund_name' | 'added_at'>('added_at')
   const sortOrder = ref<'asc' | 'desc'>('desc')
 
   let saveTimer: ReturnType<typeof setTimeout> | null = null
   let refreshSeq = 0
+
   watch(items, (newItems) => {
     if (saveTimer) clearTimeout(saveTimer)
     saveTimer = setTimeout(() => saveToStorage(newItems), 300)
@@ -89,8 +90,7 @@ export const useWatchlistStore = defineStore('watchlist', () => {
       quote_source: '',
     }
     items.value.push(item)
-    // Immediately fetch real-time data for the newly added fund
-    refreshQuotes()
+    refreshSingleQuote(fund.fund_code)
     return 'added'
   }
 
@@ -116,15 +116,36 @@ export const useWatchlistStore = defineStore('watchlist', () => {
     }
   }
 
+  async function refreshSingleQuote(fundCode: string) {
+    try {
+      const res = await fetchWatchlistQuotes([fundCode])
+      if (res.code === 0 && res.data && res.data.length > 0) {
+        const quote = res.data[0]
+        const item = items.value.find((i) => i.fund_code === fundCode)
+        if (item) {
+          item.estimated_nav = quote.estimated_nav
+          item.change_pct = quote.change_pct
+          item.direction = quote.direction
+          item.quote_date = quote.quote_date
+          item.quote_source = quote.quote_source
+        }
+      }
+    } catch (e: unknown) {
+      if (e instanceof CancelError) return
+    }
+  }
+
   async function refreshQuotes() {
+    if (lastQuoteRefresh.value > 0 && Date.now() - lastQuoteRefresh.value < 5000) return
+    lastQuoteRefresh.value = Date.now()
     if (items.value.length === 0) return
-    // Use sequence number to prevent stale results instead of blocking
     const seq = ++refreshSeq
     const codes = items.value.map((i) => i.fund_code)
     try {
       loading.value = true
+      error.value = null
       const res = await fetchWatchlistQuotes(codes)
-      if (seq !== refreshSeq) return // Stale result, discard
+      if (seq !== refreshSeq) return
       if (res.code === 0 && res.data) {
         const quoteMap = new Map(res.data.map((q) => [q.fund_code, q]))
         for (const item of items.value) {
@@ -141,13 +162,10 @@ export const useWatchlistStore = defineStore('watchlist', () => {
       }
     } catch (e: unknown) {
       if (e instanceof CancelError) {
-        // Cancelled by a newer request — loading will be managed by the newer request
         return
       }
-      ElMessage.error('自选基金数据刷新失败，请稍后重试')
+      error.value = '自选基金数据刷新失败，请稍后重试'
     } finally {
-      // Only reset loading if this is the latest request
-      // If a newer request superseded this one, it owns the loading state
       if (seq === refreshSeq) {
         loading.value = false
       }
@@ -156,16 +174,18 @@ export const useWatchlistStore = defineStore('watchlist', () => {
 
   return {
     items,
-    sortedItems,
-    directionCounts,
     loading,
+    error,
     lastRefresh,
     sortBy,
     sortOrder,
+    sortedItems,
+    directionCounts,
     addItem,
     removeItem,
     isInWatchlist,
     setSort,
+    refreshSingleQuote,
     refreshQuotes,
   }
 })

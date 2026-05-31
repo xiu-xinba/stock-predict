@@ -3,12 +3,14 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"math"
 	"time"
 
 	"stock-predict-go/internal/config"
 	"stock-predict-go/internal/dto"
+	"stock-predict-go/internal/util"
 )
 
 var (
@@ -16,9 +18,14 @@ var (
 	ErrFundNotFound    = errors.New("fund not found")
 )
 
+type stockFinder interface {
+	FindStock(code string) (dto.StockItem, error)
+}
+
 type PredictionService struct {
 	store               FundRepository
 	market              *MarketService
+	stocks              stockFinder
 	cfg                 config.Config
 	logger              *slog.Logger
 	modelClient         *ModelClient
@@ -27,7 +34,7 @@ type PredictionService struct {
 	quoteProvider       fundQuoteProvider
 }
 
-func NewPredictionService(store FundRepository, market *MarketService, cfg config.Config, logger *slog.Logger) *PredictionService {
+func NewPredictionService(store FundRepository, market *MarketService, stocks stockFinder, cfg config.Config, logger *slog.Logger) *PredictionService {
 	if logger == nil {
 		logger = slog.Default()
 	}
@@ -45,11 +52,12 @@ func NewPredictionService(store FundRepository, market *MarketService, cfg confi
 	}
 	var quoteProvider fundQuoteProvider
 	if cfg.FundRealtimeQuotesEnabled {
-		quoteProvider = NewFundQuoteClient(cfg.ReadTimeout)
+		quoteProvider = NewFundQuoteClient(cfg.ReadTimeout, logger)
 	}
 	return &PredictionService{
 		store:               store,
 		market:              market,
+		stocks:              stocks,
 		cfg:                 cfg,
 		logger:              logger,
 		modelClient:         modelClient,
@@ -63,21 +71,25 @@ func (s *PredictionService) ModelLoaded() bool {
 	return s.modelClient != nil || s.weeklyModelClient != nil || s.intradayModelClient != nil
 }
 
-func (s *PredictionService) PredictByFundCode(code string) (dto.PredictionData, error) {
-	if len(code) != 6 || !allDigits(code) {
+func (s *PredictionService) PredictByFundCode(ctx context.Context, code string) (dto.PredictionData, error) {
+	if len(code) != 6 || !util.IsAllDigits(code) {
 		return dto.PredictionData{}, ErrInvalidFundCode
 	}
 	fund, ok := s.store.FindFund(code)
 	if !ok {
-		return dto.PredictionData{}, ErrFundNotFound
+		return s.PredictUnknownFund(code), nil
 	}
-	return s.Predict(fund), nil
+	return s.Predict(ctx, fund), nil
 }
 
-func (s *PredictionService) Predict(fund dto.FundItem) dto.PredictionData {
+func (s *PredictionService) PredictUnknownFund(fundCode string) dto.PredictionData {
+	return s.baselinePredictionForUnknown(fundCode, "", "", dto.ModelCoverageUnsupportedFund)
+}
+
+func (s *PredictionService) Predict(ctx context.Context, fund dto.FundItem) dto.PredictionData {
 	data := s.baselinePrediction(fund)
 	if s.modelClient != nil {
-		if modelResult, err := s.modelClient.Predict(context.Background(), fund.FundCode); err != nil {
+		if modelResult, err := s.modelClient.Predict(ctx, fund.FundCode); err != nil {
 			s.logger.Warn("daily model prediction failed; keeping Go baseline", "fund_code", fund.FundCode, "error", err)
 			data = withModelFallback(data, "next_day", err)
 		} else {
@@ -85,7 +97,7 @@ func (s *PredictionService) Predict(fund dto.FundItem) dto.PredictionData {
 		}
 	}
 	if s.weeklyModelClient != nil {
-		if modelResult, err := s.weeklyModelClient.Predict(context.Background(), fund.FundCode); err != nil {
+		if modelResult, err := s.weeklyModelClient.Predict(ctx, fund.FundCode); err != nil {
 			s.logger.Warn("weekly model prediction failed; keeping Go baseline", "fund_code", fund.FundCode, "error", err)
 			data = withModelFallback(data, "next_week", err)
 		} else {
@@ -93,7 +105,7 @@ func (s *PredictionService) Predict(fund dto.FundItem) dto.PredictionData {
 		}
 	}
 	if s.intradayModelClient != nil {
-		if modelResult, err := s.intradayModelClient.Predict(context.Background(), fund.FundCode); err != nil {
+		if modelResult, err := s.intradayModelClient.Predict(ctx, fund.FundCode); err != nil {
 			s.logger.Warn("intraday model prediction failed; keeping Go baseline", "fund_code", fund.FundCode, "error", err)
 			data = withModelFallback(data, "intraday_5m", err)
 		} else {
@@ -105,12 +117,12 @@ func (s *PredictionService) Predict(fund dto.FundItem) dto.PredictionData {
 
 func (s *PredictionService) baselinePrediction(fund dto.FundItem) dto.PredictionData {
 	marketMean := s.market.AverageCNChange()
-	nextPct := clamp(fund.Return1M*0.08+fund.Return3M*0.03+fund.Return1Y*0.01+marketMean*0.22+fund.ChangePct*0.10, -5, 5)
-	nextConfidence := clamp(0.50+math.Min(math.Abs(nextPct)/3, 0.25), 0.35, 0.82)
-	weeklyPct := clamp(fund.Return1M*0.18+fund.Return3M*0.08+fund.Return1Y*0.02+marketMean*0.35+fund.ChangePct*0.12, -12, 12)
-	weeklyConfidence := clamp(0.48+math.Min(math.Abs(weeklyPct)/7, 0.24), 0.32, 0.80)
-	intraPct := clamp(fund.ChangePct*0.10+marketMean*0.05, -0.8, 0.8)
-	intraConfidence := clamp(0.42+math.Min(math.Abs(intraPct)/0.5, 0.22), 0.30, 0.76)
+	nextPct := util.Clamp(fund.Return1M*0.08+fund.Return3M*0.03+fund.Return1Y*0.01+marketMean*0.22+fund.ChangePct*0.10, -5, 5)
+	nextConfidence := util.Clamp(0.50+math.Min(math.Abs(nextPct)/3, 0.25), 0.35, 0.82)
+	weeklyPct := util.Clamp(fund.Return1M*0.18+fund.Return3M*0.08+fund.Return1Y*0.02+marketMean*0.35+fund.ChangePct*0.12, -12, 12)
+	weeklyConfidence := util.Clamp(0.48+math.Min(math.Abs(weeklyPct)/7, 0.24), 0.32, 0.80)
+	intraPct := util.Clamp(fund.ChangePct*0.10+marketMean*0.05, -0.8, 0.8)
+	intraConfidence := util.Clamp(0.42+math.Min(math.Abs(intraPct)/0.5, 0.22), 0.30, 0.76)
 
 	factors := []dto.FactorItem{
 		{Name: "momentum_5d", Importance: 0.24, Description: "短期净值/估值动量"},
@@ -151,6 +163,21 @@ func (s *PredictionService) baselinePrediction(fund dto.FundItem) dto.Prediction
 	}
 }
 
+func (s *PredictionService) baselinePredictionForUnknown(fundCode, fundName, fundType string, coverageStatus dto.ModelCoverageStatus) dto.PredictionData {
+	fund := dto.FundItem{FundCode: fundCode, FundName: fundName, FundType: fundType}
+	data := s.baselinePrediction(fund)
+	note := "基金不在库中，无法提供模型预测。"
+	setCoverage := func(r *dto.PredictionResult) {
+		r.ModelCoverageStatus = coverageStatus
+		r.ModelCoverageNote = note
+	}
+	setCoverage(&data.Prediction)
+	setCoverage(&data.NextDayPrediction)
+	setCoverage(&data.WeeklyPrediction)
+	setCoverage(&data.IntradayPrediction)
+	return data
+}
+
 func withModelPrediction(data dto.PredictionData, modelResult modelPredictionResponse) dto.PredictionData {
 	direction := normalizeDirection(modelResult.Prediction.Direction)
 	signalStatus := normalizeSignalStatus(modelResult.Prediction.SignalStatus, direction, modelResult.Prediction.IsActionable)
@@ -164,11 +191,11 @@ func withModelPrediction(data dto.PredictionData, modelResult modelPredictionRes
 		ModelCoverageStatus: dto.ModelCoverageSupported,
 		ModelCoverageNote:   "当前周期使用 Python 模型服务和已处理样本推理。",
 		Direction:           direction,
-		DirectionConfidence: round(modelResult.Prediction.DirectionConfidence, 4),
-		PredictedChangePct:  round(modelResult.Prediction.PredictedChangePct, 4),
+		DirectionConfidence: util.RoundVal(modelResult.Prediction.DirectionConfidence, 4),
+		PredictedChangePct:  util.RoundVal(modelResult.Prediction.PredictedChangePct, 4),
 		ChangeRange: dto.ChangeRange{
-			Low:  round(modelResult.Prediction.ChangeRange.Low, 4),
-			High: round(modelResult.Prediction.ChangeRange.High, 4),
+			Low:  util.RoundVal(modelResult.Prediction.ChangeRange.Low, 4),
+			High: util.RoundVal(modelResult.Prediction.ChangeRange.High, 4),
 		},
 		PredictionInterval:  roundPredictionInterval(modelResult.Prediction.PredictionInterval),
 		ReturnDecomposition: roundReturnDecomposition(modelResult.Prediction.ReturnDecomposition),
@@ -233,7 +260,7 @@ func modelFactors(factors []modelFactor, fallback []dto.FactorItem) []dto.Factor
 	for _, factor := range factors {
 		out = append(out, dto.FactorItem{
 			Name:        factor.Name,
-			Importance:  round(factor.Importance, 4),
+			Importance:  util.RoundVal(factor.Importance, 4),
 			Description: factor.Description,
 		})
 	}
@@ -261,8 +288,8 @@ func roundPredictionInterval(raw *dto.PredictionInterval) *dto.PredictionInterva
 		return nil
 	}
 	return &dto.PredictionInterval{
-		Low:               round(raw.Low, 4),
-		High:              round(raw.High, 4),
+		Low:               util.RoundVal(raw.Low, 4),
+		High:              util.RoundVal(raw.High, 4),
 		Method:            raw.Method,
 		Level:             roundFloatPointer(raw.Level),
 		EmpiricalCoverage: roundFloatPointer(raw.EmpiricalCoverage),
@@ -289,7 +316,7 @@ func roundFloatPointer(value *float64) *float64 {
 	if value == nil {
 		return nil
 	}
-	rounded := round(*value, 4)
+	rounded := util.RoundVal(*value, 4)
 	return &rounded
 }
 
@@ -319,7 +346,7 @@ func modelQuality(quality modelDataQuality) dto.PredictionDataQuality {
 		HasHoldingsData:            false,
 		HasIntradayConstituentData: false,
 		HasEtfFlowData:             false,
-		CoverageScore:              round(clamp(coverage, 0.0, 0.85), 2),
+		CoverageScore:              util.RoundVal(util.Clamp(coverage, 0.0, 0.85), 2),
 		MissingSources:             missing,
 		Note:                       stringOr(quality.Note, "模型服务已提供日级特征推理；分钟级数据仍待接入。"),
 	}
@@ -391,11 +418,11 @@ func predictionResult(horizon, target string, expectedPct, confidence float64, f
 		ModelCoverageStatus: dto.ModelCoverageBaselineOnly,
 		ModelCoverageNote:   "当前预测周期未配置 Python 模型服务，使用 Go 基线。",
 		Direction:           direction,
-		DirectionConfidence: round(expectedPct*0+confidence, 4),
-		PredictedChangePct:  round(expectedPct, 4),
+		DirectionConfidence: util.RoundVal(expectedPct*0+confidence, 4),
+		PredictedChangePct:  util.RoundVal(expectedPct, 4),
 		ChangeRange: dto.ChangeRange{
-			Low:  round(expectedPct-spread, 4),
-			High: round(expectedPct+spread, 4),
+			Low:  util.RoundVal(expectedPct-spread, 4),
+			High: util.RoundVal(expectedPct+spread, 4),
 		},
 		TopFactors:          factors,
 		Reliability:         reliability,
@@ -466,18 +493,112 @@ func threshold(horizon string) float64 {
 	return 0.05
 }
 
-func clamp(v, min, max float64) float64 {
-	if math.IsNaN(v) || math.IsInf(v, 0) {
-		return 0
+func (s *PredictionService) PredictStock(code string) (dto.StockPredictionData, error) {
+	if len(code) != 6 || !util.IsAllDigits(code) {
+		return dto.StockPredictionData{}, ErrInvalidStockCode
 	}
-	return math.Min(math.Max(v, min), max)
-}
+	stock, err := s.stocks.FindStock(code)
+	if err != nil {
+		return dto.StockPredictionData{}, fmt.Errorf("find stock: %w", err)
+	}
+	marketMean := s.market.AverageCNChange()
 
-func allDigits(value string) bool {
-	for _, ch := range value {
-		if ch < '0' || ch > '9' {
-			return false
-		}
+	nextPct := util.Clamp(stock.ChangePct*0.10+marketMean*0.22, -5, 5)
+	nextConfidence := util.Clamp(0.50+math.Min(math.Abs(nextPct)/3, 0.25), 0.35, 0.82)
+	weeklyPct := util.Clamp(stock.ChangePct*0.12+marketMean*0.35, -12, 12)
+	weeklyConfidence := util.Clamp(0.48+math.Min(math.Abs(weeklyPct)/7, 0.24), 0.32, 0.80)
+	intraPct := util.Clamp(stock.ChangePct*0.10+marketMean*0.05, -0.8, 0.8)
+	intraConfidence := util.Clamp(0.42+math.Min(math.Abs(intraPct)/0.5, 0.22), 0.30, 0.76)
+
+	factors := []dto.FactorItem{
+		{Name: "momentum_5d", Importance: 0.24, Description: "短期价格动量"},
+		{Name: "market_beta", Importance: 0.21, Description: "市场指数联动"},
+		{Name: "sector_momentum", Importance: 0.18, Description: "行业趋势"},
+		{Name: "capital_flow", Importance: 0.16, Description: "资金流信号"},
+		{Name: "mean_reversion", Importance: 0.12, Description: "均值回归风险"},
 	}
-	return true
+
+	nextSpread := 0.35 + (1-nextConfidence)*1.1
+	weeklySpread := 0.35 + (1-weeklyConfidence)*1.1
+	intraSpread := 0.05 + (1-intraConfidence)*0.35
+
+	nextDirection := direction(nextPct, 0.05)
+	weeklyDirection := direction(weeklyPct, 0.15)
+	intraDirection := direction(intraPct, 0.01)
+
+	nextDay := &dto.PredictionResult{
+		Horizon:             "next_day",
+		TargetWindow:        "下一个交易日",
+		ModelSource:         "go_baseline",
+		ModelCoverageStatus: dto.ModelCoverageBaselineOnly,
+		ModelCoverageNote:   "股票预测使用 Go 基线逻辑",
+		Direction:           nextDirection,
+		DirectionConfidence: util.RoundVal(nextConfidence, 4),
+		PredictedChangePct:  util.RoundVal(nextPct, 4),
+		ChangeRange:         dto.ChangeRange{Low: util.RoundVal(nextPct-nextSpread, 4), High: util.RoundVal(nextPct+nextSpread, 4)},
+		TopFactors:          factors,
+		Reliability:         "baseline",
+		ReliabilityNote:     "Go 后端基线预测；等待接入训练模型",
+		AccuracyTarget:      0.98,
+		MeetsAccuracyTarget: false,
+		SignalStatus:        dto.SignalStatusLowConfidence,
+		IsActionable:        false,
+		CalibrationNote:     "未通过回测验证，不能作为交易信号",
+	}
+	weekly := &dto.PredictionResult{
+		Horizon:             "next_week",
+		TargetWindow:        "未来一周",
+		ModelSource:         "go_baseline",
+		ModelCoverageStatus: dto.ModelCoverageBaselineOnly,
+		ModelCoverageNote:   "股票周频预测使用 Go 基线逻辑",
+		Direction:           weeklyDirection,
+		DirectionConfidence: util.RoundVal(weeklyConfidence, 4),
+		PredictedChangePct:  util.RoundVal(weeklyPct, 4),
+		ChangeRange:         dto.ChangeRange{Low: util.RoundVal(weeklyPct-weeklySpread, 4), High: util.RoundVal(weeklyPct+weeklySpread, 4)},
+		TopFactors:          factors,
+		Reliability:         "baseline",
+		ReliabilityNote:     "Go 后端周频基线预测",
+		AccuracyTarget:      0.98,
+		MeetsAccuracyTarget: false,
+		SignalStatus:        dto.SignalStatusLowConfidence,
+		IsActionable:        false,
+		CalibrationNote:     "未通过回测验证，不能作为交易信号",
+	}
+	intraday := &dto.PredictionResult{
+		Horizon:             "intraday_5m",
+		TargetWindow:        "未来5分钟",
+		ModelSource:         "go_baseline",
+		ModelCoverageStatus: dto.ModelCoverageBaselineOnly,
+		ModelCoverageNote:   "股票盘中预测使用 Go 基线逻辑",
+		Direction:           intraDirection,
+		DirectionConfidence: util.RoundVal(intraConfidence, 4),
+		PredictedChangePct:  util.RoundVal(intraPct, 4),
+		ChangeRange:         dto.ChangeRange{Low: util.RoundVal(intraPct-intraSpread, 4), High: util.RoundVal(intraPct+intraSpread, 4)},
+		TopFactors:          factors[:4],
+		Reliability:         "baseline_no_realtime",
+		ReliabilityNote:     "Go 后端盘中代理信号",
+		AccuracyTarget:      0.98,
+		MeetsAccuracyTarget: false,
+		SignalStatus:        dto.SignalStatusLowConfidence,
+		IsActionable:        false,
+		CalibrationNote:     "未通过回测验证，不能作为交易信号",
+	}
+
+	quality := &dto.PredictionDataQuality{
+		HasRealtimeQuote: true,
+		HasMarketIndices: true,
+		CoverageScore:    0.30,
+		MissingSources:   []string{"分钟级行情数据", "Level-2盘口数据", "融资融券数据"},
+		Note:             "股票预测为基线逻辑，接入模型后再声明准确率",
+	}
+
+	data := dto.StockPredictionData{
+		StockCode:          code,
+		StockName:          stock.StockName,
+		NextDayPrediction:  nextDay,
+		WeeklyPrediction:   weekly,
+		IntradayPrediction: intraday,
+		DataQuality:        quality,
+	}
+	return data, nil
 }

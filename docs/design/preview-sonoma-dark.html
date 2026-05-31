@@ -1,0 +1,1376 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FundLens - Sonoma Dark Design Preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ============================================
+   DESIGN TOKENS
+   ============================================ */
+:root {
+  --c-page-bg: #1a1a1f;
+  --c-card-bg: #242429;
+  --c-elevated-bg: #2e2e35;
+  --c-hover-bg: #36363e;
+  --c-brand: #5e9eff;
+  --c-brand-hover: #7ab5ff;
+  --c-brand-contrast: #0a0e1a;
+  --c-brand-soft: rgba(94,158,255,0.10);
+  --c-brand-light: rgba(94,158,255,0.18);
+  --c-up: #e8605a;
+  --c-down: #3dbe7a;
+  --c-flat: #8e8ea0;
+  --c-up-bg: rgba(232,96,90,0.12);
+  --c-down-bg: rgba(61,190,122,0.12);
+  --c-warning: #f0a050;
+  --c-text-primary: #f0f0f5;
+  --c-text-regular: #c0c0cc;
+  --c-text-secondary: #8e8ea0;
+  --c-text-disabled: #5a5a6e;
+  --c-border: rgba(255,255,255,0.08);
+  --c-border-strong: rgba(255,255,255,0.14);
+  --c-topbar-bg: rgba(26,26,31,0.78);
+  --c-dock-bg: rgba(36,36,41,0.85);
+
+  --fs-xs: 12px;
+  --fs-sm: 13px;
+  --fs-base: 15px;
+  --fs-md: 17px;
+  --fs-lg: 20px;
+  --fs-xl: 24px;
+  --fs-2xl: 32px;
+  --fs-3xl: 40px;
+  --fs-4xl: 48px;
+
+  --lh-tight: 1.2;
+  --lh-snug: 1.35;
+  --lh-normal: 1.5;
+  --lh-relaxed: 1.65;
+
+  --ls-tight: -0.01em;
+  --ls-normal: 0;
+  --ls-wide: 0.02em;
+  --ls-wider: 0.04em;
+
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700;
+  --fw-extrabold: 800;
+
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 14px;
+  --r-xl: 18px;
+  --r-full: 9999px;
+
+  --shadow-card: inset 0 0.5px 0 rgba(255,255,255,0.06), 0 1px 2px rgba(0,0,0,0.2), 0 4px 12px rgba(0,0,0,0.15);
+  --shadow-elevated: inset 0 0.5px 0 rgba(255,255,255,0.08), 0 2px 4px rgba(0,0,0,0.25), 0 12px 32px rgba(0,0,0,0.3);
+
+  --motion-fast: 0.15s ease;
+  --motion-normal: 0.25s ease;
+  --motion-spring: 0.4s cubic-bezier(0.16,1,0.3,1);
+
+  --topbar-h: 56px;
+  --dock-h: 64px;
+  --font-sans: 'Inter', 'PingFang SC', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', 'Menlo', monospace;
+}
+
+/* ============================================
+   REDUCED MOTION
+   ============================================ */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-fast: 0.01ms;
+    --motion-normal: 0.01ms;
+    --motion-spring: 0.01ms;
+  }
+}
+
+/* ============================================
+   REDUCED TRANSPARENCY
+   ============================================ */
+@media (prefers-reduced-transparency: reduce) {
+  :root {
+    --c-topbar-bg: #1a1a1f;
+    --c-dock-bg: #242429;
+    --c-brand-soft: rgba(94,158,255,0.18);
+    --c-brand-light: rgba(94,158,255,0.28);
+    --c-up-bg: rgba(232,96,90,0.22);
+    --c-down-bg: rgba(61,190,122,0.22);
+    --c-border: rgba(255,255,255,0.14);
+    --c-border-strong: rgba(255,255,255,0.22);
+  }
+}
+
+/* ============================================
+   RESET & BASE
+   ============================================ */
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: var(--fs-base);
+  line-height: var(--lh-normal);
+  color: var(--c-text-regular);
+  background: var(--c-page-bg);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ============================================
+   TOPBAR
+   ============================================ */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  height: var(--topbar-h);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--sp-5);
+  background: var(--c-topbar-bg);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-bottom: 1px solid var(--c-border);
+}
+
+.topbar-brand {
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-bold);
+  color: var(--c-text-primary);
+  letter-spacing: var(--ls-tight);
+}
+
+.topbar-brand span {
+  color: var(--c-brand);
+}
+
+.topbar-actions {
+  display: flex;
+  gap: var(--sp-2);
+}
+
+.topbar-btn {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  border-radius: var(--r-md);
+  color: var(--c-text-secondary);
+  cursor: pointer;
+  transition: background var(--motion-fast), color var(--motion-fast);
+}
+
+.topbar-btn:hover {
+  background: var(--c-brand-soft);
+  color: var(--c-brand);
+}
+
+.topbar-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* ============================================
+   MAIN LAYOUT
+   ============================================ */
+.main-content {
+  padding: var(--sp-5) var(--sp-5) calc(var(--dock-h) + var(--sp-8) + var(--sp-5));
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+.section-label {
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  color: var(--c-text-disabled);
+  letter-spacing: var(--ls-wider);
+  text-transform: uppercase;
+  margin-bottom: var(--sp-3);
+}
+
+.section-gap {
+  margin-top: var(--sp-8);
+}
+
+/* ============================================
+   METRICS STRIP
+   ============================================ */
+.metrics-strip {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--sp-3);
+}
+
+.metric-cell {
+  background: var(--c-card-bg);
+  border-radius: var(--r-md);
+  padding: var(--sp-3) var(--sp-4);
+  box-shadow: var(--shadow-card);
+  border: 1px solid var(--c-border);
+  transition: background var(--motion-fast);
+}
+
+.metric-cell:hover {
+  background: var(--c-hover-bg);
+}
+
+.metric-cell-label {
+  font-size: var(--fs-xs);
+  color: var(--c-text-secondary);
+  margin-bottom: var(--sp-1);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+}
+
+.metric-cell-value {
+  font-size: var(--fs-2xl);
+  font-weight: var(--fw-extrabold);
+  font-family: var(--font-mono);
+  color: var(--c-text-primary);
+  line-height: var(--lh-tight);
+}
+
+.metric-cell-label .up-arrow {
+  color: var(--c-up);
+  font-size: var(--fs-xs);
+}
+
+.metric-cell-label .down-arrow {
+  color: var(--c-down);
+  font-size: var(--fs-xs);
+}
+
+.metric-cell-label .flat-arrow {
+  color: var(--c-flat);
+  font-size: var(--fs-xs);
+}
+
+/* ============================================
+   FUND TABLE
+   ============================================ */
+.fund-table-card {
+  background: var(--c-card-bg);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-card);
+  border: 1px solid var(--c-border);
+  overflow: hidden;
+}
+
+.fund-table-header {
+  display: grid;
+  grid-template-columns: 3px 1fr auto auto;
+  gap: var(--sp-4);
+  padding: var(--sp-3) var(--sp-4);
+  font-size: var(--fs-xs);
+  color: var(--c-text-disabled);
+  font-weight: var(--fw-medium);
+  letter-spacing: var(--ls-wide);
+  border-bottom: 1px solid var(--c-border);
+}
+
+.fund-table-header span:first-child {
+  grid-column: 1;
+}
+
+.fund-row {
+  display: grid;
+  grid-template-columns: 3px 1fr auto auto;
+  gap: var(--sp-4);
+  padding: var(--sp-3) var(--sp-4);
+  align-items: center;
+  cursor: pointer;
+  transition: background var(--motion-fast);
+  position: relative;
+}
+
+.fund-row:not(:last-child) {
+  border-bottom: 1px solid var(--c-border);
+}
+
+.fund-row:hover {
+  background: var(--c-hover-bg);
+}
+
+.fund-row:hover::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--c-brand);
+  border-radius: 0 2px 2px 0;
+}
+
+.fund-row-indicator {
+  width: 3px;
+  height: 24px;
+  border-radius: 2px;
+  align-self: center;
+}
+
+.fund-row-indicator.up {
+  background: var(--c-up);
+}
+
+.fund-row-indicator.down {
+  background: var(--c-down);
+}
+
+.fund-row-indicator.flat {
+  background: var(--c-flat);
+}
+
+.fund-row-info {
+  min-width: 0;
+}
+
+.fund-row-name {
+  font-size: var(--fs-base);
+  font-weight: var(--fw-medium);
+  color: var(--c-text-primary);
+  line-height: var(--lh-snug);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fund-row-code {
+  font-size: var(--fs-xs);
+  font-family: var(--font-mono);
+  color: var(--c-text-secondary);
+  margin-top: 1px;
+}
+
+.fund-row-est {
+  font-size: var(--fs-xs);
+  color: var(--c-text-disabled);
+  background: var(--c-elevated-bg);
+  padding: 2px 6px;
+  border-radius: var(--r-sm);
+  margin-right: var(--sp-1);
+  white-space: nowrap;
+}
+
+.fund-row-nav {
+  font-family: var(--font-mono);
+  font-size: var(--fs-base);
+  font-weight: var(--fw-semibold);
+  color: var(--c-text-primary);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.fund-row-change {
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  text-align: right;
+  min-width: 72px;
+  white-space: nowrap;
+}
+
+.fund-row-change.up {
+  color: var(--c-up);
+}
+
+.fund-row-change.down {
+  color: var(--c-down);
+}
+
+.fund-row-change.flat {
+  color: var(--c-flat);
+}
+
+/* ============================================
+   PREDICTION CARD
+   ============================================ */
+.prediction-card {
+  background: var(--c-card-bg);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-elevated);
+  border: 1px solid var(--c-border-strong);
+  padding: var(--sp-6);
+}
+
+.prediction-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--sp-5);
+}
+
+.prediction-fund-name {
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
+  color: var(--c-text-primary);
+}
+
+.prediction-fund-code {
+  font-size: var(--fs-sm);
+  font-family: var(--font-mono);
+  color: var(--c-text-secondary);
+  margin-left: var(--sp-2);
+}
+
+.prediction-body {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-6);
+  margin-bottom: var(--sp-6);
+}
+
+.prediction-pct-block {
+  flex-shrink: 0;
+}
+
+.prediction-pct {
+  font-family: var(--font-mono);
+  font-size: var(--fs-4xl);
+  font-weight: var(--fw-extrabold);
+  line-height: var(--lh-tight);
+  letter-spacing: var(--ls-tight);
+}
+
+.prediction-pct.up {
+  color: var(--c-up);
+}
+
+.prediction-pct.down {
+  color: var(--c-down);
+}
+
+.prediction-direction-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  margin-top: var(--sp-2);
+  padding: 3px 10px;
+  border-radius: var(--r-full);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+}
+
+.prediction-direction-badge.up {
+  background: var(--c-up-bg);
+  color: var(--c-up);
+}
+
+.prediction-direction-badge.down {
+  background: var(--c-down-bg);
+  color: var(--c-down);
+}
+
+.prediction-pills {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.prediction-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  padding: 4px 12px;
+  border-radius: var(--r-full);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  width: fit-content;
+}
+
+.prediction-pill.signal {
+  background: rgba(240,160,80,0.12);
+  color: var(--c-warning);
+}
+
+.prediction-pill.model {
+  background: var(--c-brand-soft);
+  color: var(--c-brand);
+}
+
+.prediction-pill-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.prediction-pill-dot.warning {
+  background: var(--c-warning);
+}
+
+.prediction-pill-dot.brand {
+  background: var(--c-brand);
+}
+
+.prediction-confidence {
+  margin-bottom: var(--sp-5);
+}
+
+.prediction-confidence-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--sp-2);
+  font-size: var(--fs-sm);
+  color: var(--c-text-secondary);
+}
+
+.prediction-confidence-value {
+  font-family: var(--font-mono);
+  font-weight: var(--fw-semibold);
+  color: var(--c-brand);
+}
+
+.prediction-confidence-bar {
+  height: 6px;
+  background: var(--c-elevated-bg);
+  border-radius: var(--r-full);
+  overflow: hidden;
+}
+
+.prediction-confidence-fill {
+  height: 100%;
+  border-radius: var(--r-full);
+  background: var(--c-brand);
+  width: 0%;
+  transition: width 1s cubic-bezier(0.16,1,0.3,1);
+}
+
+.prediction-confidence-fill.animated {
+  width: 78%;
+}
+
+.prediction-factors {
+  display: grid;
+  gap: var(--sp-3);
+}
+
+.prediction-factor {
+  display: grid;
+  grid-template-columns: 80px 1fr auto;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.prediction-factor-name {
+  font-size: var(--fs-sm);
+  color: var(--c-text-secondary);
+  white-space: nowrap;
+}
+
+.prediction-factor-bar {
+  height: 4px;
+  background: var(--c-elevated-bg);
+  border-radius: var(--r-full);
+  overflow: hidden;
+}
+
+.prediction-factor-fill {
+  height: 100%;
+  border-radius: var(--r-full);
+  transition: width 0.8s cubic-bezier(0.16,1,0.3,1);
+}
+
+.prediction-factor-fill.brand {
+  background: var(--c-brand);
+}
+
+.prediction-factor-fill.up {
+  background: var(--c-up);
+}
+
+.prediction-factor-fill.down {
+  background: var(--c-down);
+}
+
+.prediction-factor-fill.warning {
+  background: var(--c-warning);
+}
+
+.prediction-factor-value {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  color: var(--c-text-secondary);
+  min-width: 36px;
+  text-align: right;
+}
+
+/* ============================================
+   RANKING LIST
+   ============================================ */
+.ranking-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-4);
+}
+
+.ranking-card {
+  background: var(--c-card-bg);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-card);
+  border: 1px solid var(--c-border);
+  overflow: hidden;
+}
+
+.ranking-card-title {
+  padding: var(--sp-3) var(--sp-4);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--c-text-secondary);
+  border-bottom: 1px solid var(--c-border);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.ranking-card-title .up-arrow {
+  color: var(--c-up);
+}
+
+.ranking-card-title .down-arrow {
+  color: var(--c-down);
+}
+
+.ranking-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-4);
+  transition: background var(--motion-fast);
+}
+
+.ranking-item:not(:last-child) {
+  border-bottom: 1px solid var(--c-border);
+}
+
+.ranking-item:hover {
+  background: var(--c-hover-bg);
+}
+
+.ranking-rank {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
+  font-family: var(--font-mono);
+  flex-shrink: 0;
+}
+
+.ranking-rank.top {
+  background: var(--c-brand-soft);
+  color: var(--c-brand);
+}
+
+.ranking-rank.normal {
+  background: var(--c-elevated-bg);
+  color: var(--c-text-disabled);
+}
+
+.ranking-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.ranking-name {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  color: var(--c-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ranking-code {
+  font-size: var(--fs-xs);
+  font-family: var(--font-mono);
+  color: var(--c-text-disabled);
+}
+
+.ranking-change {
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  flex-shrink: 0;
+}
+
+.ranking-change.up {
+  color: var(--c-up);
+}
+
+.ranking-change.down {
+  color: var(--c-down);
+}
+
+/* ============================================
+   COLLAPSIBLE CARD
+   ============================================ */
+.collapsible-card {
+  background: var(--c-card-bg);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-card);
+  border: 1px solid var(--c-border);
+  overflow: hidden;
+}
+
+.collapsible-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--sp-4) var(--sp-5);
+  cursor: pointer;
+  user-select: none;
+  transition: background var(--motion-fast);
+}
+
+.collapsible-header:hover {
+  background: var(--c-hover-bg);
+}
+
+.collapsible-header-text {
+  font-size: var(--fs-base);
+  font-weight: var(--fw-semibold);
+  color: var(--c-text-primary);
+}
+
+.collapsible-chevron {
+  width: 20px;
+  height: 20px;
+  color: var(--c-text-secondary);
+  transition: transform var(--motion-spring);
+}
+
+.collapsible-card.open .collapsible-chevron {
+  transform: rotate(180deg);
+}
+
+.collapsible-body {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height var(--motion-spring), padding var(--motion-spring);
+}
+
+.collapsible-card.open .collapsible-body {
+  max-height: 300px;
+  padding: 0 var(--sp-5) var(--sp-5);
+}
+
+.collapsible-body p {
+  font-size: var(--fs-sm);
+  color: var(--c-text-secondary);
+  line-height: var(--lh-relaxed);
+}
+
+/* ============================================
+   EMPTY STATE
+   ============================================ */
+.empty-state {
+  background: var(--c-card-bg);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-card);
+  border: 1px solid var(--c-border);
+  padding: var(--sp-8) var(--sp-6);
+  text-align: center;
+}
+
+.empty-state-illustration {
+  width: 120px;
+  height: 120px;
+  margin: 0 auto var(--sp-5);
+  background: var(--c-elevated-bg);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.empty-state-illustration svg {
+  width: 48px;
+  height: 48px;
+  color: var(--c-text-disabled);
+}
+
+.empty-state-title {
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-semibold);
+  color: var(--c-text-primary);
+  margin-bottom: var(--sp-2);
+}
+
+.empty-state-hint {
+  font-size: var(--fs-sm);
+  color: var(--c-text-secondary);
+  margin-bottom: var(--sp-5);
+  line-height: var(--lh-relaxed);
+}
+
+.empty-state-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-3) var(--sp-6);
+  background: var(--c-brand);
+  color: var(--c-brand-contrast);
+  border: none;
+  border-radius: var(--r-md);
+  font-size: var(--fs-base);
+  font-weight: var(--fw-semibold);
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: background var(--motion-fast), transform var(--motion-fast);
+}
+
+.empty-state-cta:hover {
+  background: var(--c-brand-hover);
+  transform: scale(1.02);
+}
+
+.empty-state-cta:active {
+  transform: scale(0.98);
+}
+
+/* ============================================
+   BOTTOM DOCK
+   ============================================ */
+.dock {
+  position: fixed;
+  bottom: var(--sp-4);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--c-dock-bg);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-radius: 20px;
+  box-shadow: var(--shadow-elevated);
+  border: 1px solid var(--c-border-strong);
+}
+
+.dock-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: var(--sp-2) var(--sp-4);
+  border-radius: var(--r-md);
+  cursor: pointer;
+  transition: transform var(--motion-fast), background var(--motion-fast);
+  position: relative;
+  border: none;
+  background: transparent;
+  font-family: var(--font-sans);
+}
+
+.dock-item:hover {
+  transform: scale(1.08);
+  background: var(--c-brand-soft);
+}
+
+.dock-item-icon {
+  width: 22px;
+  height: 22px;
+  color: var(--c-text-secondary);
+  transition: color var(--motion-fast);
+}
+
+.dock-item.active .dock-item-icon {
+  color: var(--c-brand);
+}
+
+.dock-item-label {
+  font-size: 10px;
+  font-weight: var(--fw-medium);
+  color: var(--c-text-disabled);
+  transition: color var(--motion-fast);
+}
+
+.dock-item.active .dock-item-label {
+  color: var(--c-brand);
+}
+
+.dock-item-dot {
+  position: absolute;
+  bottom: -1px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--c-brand);
+  opacity: 0;
+  transition: opacity var(--motion-fast);
+}
+
+.dock-item.active .dock-item-dot {
+  opacity: 1;
+}
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+@media (max-width: 640px) {
+  .metrics-strip {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .prediction-body {
+    flex-direction: column;
+  }
+
+  .prediction-pct {
+    font-size: var(--fs-3xl);
+  }
+
+  .ranking-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .prediction-factor {
+    grid-template-columns: 64px 1fr auto;
+  }
+
+  .main-content {
+    padding-left: var(--sp-4);
+    padding-right: var(--sp-4);
+  }
+}
+
+@media (min-width: 1024px) {
+  .main-content {
+    max-width: 1080px;
+  }
+}
+</style>
+</head>
+<body>
+
+<!-- ============================================
+     TOPBAR
+     ============================================ -->
+<header class="topbar">
+  <div class="topbar-brand">Fund<span>Lens</span></div>
+  <div class="topbar-actions">
+    <button class="topbar-btn" aria-label="搜索">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="8"/>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+    </button>
+    <button class="topbar-btn" aria-label="切换主题">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="5"/>
+        <line x1="12" y1="1" x2="12" y2="3"/>
+        <line x1="12" y1="21" x2="12" y2="23"/>
+        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+        <line x1="1" y1="12" x2="3" y2="12"/>
+        <line x1="21" y1="12" x2="23" y2="12"/>
+        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+      </svg>
+    </button>
+  </div>
+</header>
+
+<!-- ============================================
+     MAIN CONTENT
+     ============================================ -->
+<main class="main-content">
+
+  <!-- METRICS STRIP -->
+  <section aria-label="自选统计">
+    <div class="section-label">自选概览</div>
+    <div class="metrics-strip">
+      <div class="metric-cell">
+        <div class="metric-cell-label">合计</div>
+        <div class="metric-cell-value">8</div>
+      </div>
+      <div class="metric-cell">
+        <div class="metric-cell-label"><span class="up-arrow">▲</span> 上涨</div>
+        <div class="metric-cell-value" style="color:var(--c-up)">3</div>
+      </div>
+      <div class="metric-cell">
+        <div class="metric-cell-label"><span class="down-arrow">▼</span> 下跌</div>
+        <div class="metric-cell-value" style="color:var(--c-down)">4</div>
+      </div>
+      <div class="metric-cell">
+        <div class="metric-cell-label"><span class="flat-arrow">→</span> 持平</div>
+        <div class="metric-cell-value" style="color:var(--c-flat)">1</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FUND TABLE -->
+  <section class="section-gap" aria-label="自选基金列表">
+    <div class="section-label">自选基金</div>
+    <div class="fund-table-card">
+      <div class="fund-table-header">
+        <span></span>
+        <span>基金</span>
+        <span>估值/净值</span>
+        <span style="text-align:right">涨跌幅</span>
+      </div>
+      <div class="fund-row">
+        <div class="fund-row-indicator up"></div>
+        <div class="fund-row-info">
+          <div class="fund-row-name">易方达蓝筹精选</div>
+          <div class="fund-row-code">005827</div>
+        </div>
+        <div style="display:flex;align-items:center">
+          <span class="fund-row-est">估值</span>
+          <span class="fund-row-nav">1.2345</span>
+        </div>
+        <div class="fund-row-change up">+0.82%</div>
+      </div>
+      <div class="fund-row">
+        <div class="fund-row-indicator down"></div>
+        <div class="fund-row-info">
+          <div class="fund-row-name">中欧医疗健康</div>
+          <div class="fund-row-code">003095</div>
+        </div>
+        <div style="display:flex;align-items:center">
+          <span class="fund-row-nav">1.5678</span>
+        </div>
+        <div class="fund-row-change down">-1.23%</div>
+      </div>
+      <div class="fund-row">
+        <div class="fund-row-indicator up"></div>
+        <div class="fund-row-info">
+          <div class="fund-row-name">招商中证白酒</div>
+          <div class="fund-row-code">161725</div>
+        </div>
+        <div style="display:flex;align-items:center">
+          <span class="fund-row-est">估值</span>
+          <span class="fund-row-nav">2.3456</span>
+        </div>
+        <div class="fund-row-change up">+0.15%</div>
+      </div>
+      <div class="fund-row">
+        <div class="fund-row-indicator down"></div>
+        <div class="fund-row-info">
+          <div class="fund-row-name">天弘沪深300</div>
+          <div class="fund-row-code">000961</div>
+        </div>
+        <div style="display:flex;align-items:center">
+          <span class="fund-row-nav">1.8901</span>
+        </div>
+        <div class="fund-row-change down">-0.45%</div>
+      </div>
+      <div class="fund-row">
+        <div class="fund-row-indicator up"></div>
+        <div class="fund-row-info">
+          <div class="fund-row-name">广发科技先锋</div>
+          <div class="fund-row-code">008903</div>
+        </div>
+        <div style="display:flex;align-items:center">
+          <span class="fund-row-est">估值</span>
+          <span class="fund-row-nav">0.9876</span>
+        </div>
+        <div class="fund-row-change up">+2.10%</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PREDICTION CARD -->
+  <section class="section-gap" aria-label="预测卡片">
+    <div class="section-label">智能预测</div>
+    <div class="prediction-card">
+      <div class="prediction-header">
+        <div>
+          <span class="prediction-fund-name">广发科技先锋</span>
+          <span class="prediction-fund-code">008903</span>
+        </div>
+      </div>
+      <div class="prediction-body">
+        <div class="prediction-pct-block">
+          <div class="prediction-pct up">+2.4%</div>
+          <div class="prediction-direction-badge up">
+            ▲ 上涨
+          </div>
+        </div>
+        <div class="prediction-pills">
+          <div class="prediction-pill signal">
+            <span class="prediction-pill-dot warning"></span>
+            可行动信号
+          </div>
+          <div class="prediction-pill model">
+            <span class="prediction-pill-dot brand"></span>
+            Python模型
+          </div>
+        </div>
+      </div>
+      <div class="prediction-confidence">
+        <div class="prediction-confidence-label">
+          <span>模型置信度</span>
+          <span class="prediction-confidence-value">78%</span>
+        </div>
+        <div class="prediction-confidence-bar">
+          <div class="prediction-confidence-fill" id="confidenceFill"></div>
+        </div>
+      </div>
+      <div class="prediction-factors">
+        <div class="prediction-factor">
+          <span class="prediction-factor-name">动量因子</span>
+          <div class="prediction-factor-bar">
+            <div class="prediction-factor-fill brand" style="width:72%"></div>
+          </div>
+          <span class="prediction-factor-value">0.72</span>
+        </div>
+        <div class="prediction-factor">
+          <span class="prediction-factor-name">情绪因子</span>
+          <div class="prediction-factor-bar">
+            <div class="prediction-factor-fill up" style="width:85%"></div>
+          </div>
+          <span class="prediction-factor-value">0.85</span>
+        </div>
+        <div class="prediction-factor">
+          <span class="prediction-factor-name">估值因子</span>
+          <div class="prediction-factor-bar">
+            <div class="prediction-factor-fill warning" style="width:48%"></div>
+          </div>
+          <span class="prediction-factor-value">0.48</span>
+        </div>
+        <div class="prediction-factor">
+          <span class="prediction-factor-name">资金因子</span>
+          <div class="prediction-factor-bar">
+            <div class="prediction-factor-fill down" style="width:61%"></div>
+          </div>
+          <span class="prediction-factor-value">0.61</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- RANKING LIST -->
+  <section class="section-gap" aria-label="涨跌排行">
+    <div class="section-label">涨跌排行</div>
+    <div class="ranking-grid">
+      <div class="ranking-card">
+        <div class="ranking-card-title">
+          <span class="up-arrow">▲</span> 领涨排行
+        </div>
+        <div class="ranking-item">
+          <div class="ranking-rank top">1</div>
+          <div class="ranking-info">
+            <div class="ranking-name">广发科技先锋</div>
+            <div class="ranking-code">008903</div>
+          </div>
+          <div class="ranking-change up">+2.10%</div>
+        </div>
+        <div class="ranking-item">
+          <div class="ranking-rank top">2</div>
+          <div class="ranking-info">
+            <div class="ranking-name">易方达蓝筹精选</div>
+            <div class="ranking-code">005827</div>
+          </div>
+          <div class="ranking-change up">+0.82%</div>
+        </div>
+        <div class="ranking-item">
+          <div class="ranking-rank top">3</div>
+          <div class="ranking-info">
+            <div class="ranking-name">招商中证白酒</div>
+            <div class="ranking-code">161725</div>
+          </div>
+          <div class="ranking-change up">+0.15%</div>
+        </div>
+        <div class="ranking-item">
+          <div class="ranking-rank normal">4</div>
+          <div class="ranking-info">
+            <div class="ranking-name">华夏能源革新</div>
+            <div class="ranking-code">003834</div>
+          </div>
+          <div class="ranking-change up">+0.08%</div>
+        </div>
+        <div class="ranking-item">
+          <div class="ranking-rank normal">5</div>
+          <div class="ranking-info">
+            <div class="ranking-name">富国天惠成长</div>
+            <div class="ranking-code">161005</div>
+          </div>
+          <div class="ranking-change up">+0.03%</div>
+        </div>
+      </div>
+      <div class="ranking-card">
+        <div class="ranking-card-title">
+          <span class="down-arrow">▼</span> 领跌排行
+        </div>
+        <div class="ranking-item">
+          <div class="ranking-rank top">1</div>
+          <div class="ranking-info">
+            <div class="ranking-name">中欧医疗健康</div>
+            <div class="ranking-code">003095</div>
+          </div>
+          <div class="ranking-change down">-1.23%</div>
+        </div>
+        <div class="ranking-item">
+          <div class="ranking-rank top">2</div>
+          <div class="ranking-info">
+            <div class="ranking-name">天弘沪深300</div>
+            <div class="ranking-code">000961</div>
+          </div>
+          <div class="ranking-change down">-0.45%</div>
+        </div>
+        <div class="ranking-item">
+          <div class="ranking-rank top">3</div>
+          <div class="ranking-info">
+            <div class="ranking-name">诺安成长混合</div>
+            <div class="ranking-code">320007</div>
+          </div>
+          <div class="ranking-change down">-0.38%</div>
+        </div>
+        <div class="ranking-item">
+          <div class="ranking-rank normal">4</div>
+          <div class="ranking-info">
+            <div class="ranking-name">景顺长城新兴</div>
+            <div class="ranking-code">260108</div>
+          </div>
+          <div class="ranking-change down">-0.22%</div>
+        </div>
+        <div class="ranking-item">
+          <div class="ranking-rank normal">5</div>
+          <div class="ranking-info">
+            <div class="ranking-name">兴全合润混合</div>
+            <div class="ranking-code">163406</div>
+          </div>
+          <div class="ranking-change down">-0.11%</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- COLLAPSIBLE CARD -->
+  <section class="section-gap" aria-label="可折叠卡片">
+    <div class="section-label">交互组件</div>
+    <div class="collapsible-card open" id="collapsibleCard">
+      <div class="collapsible-header" id="collapsibleHeader">
+        <span class="collapsible-header-text">模型说明与风险提示</span>
+        <svg class="collapsible-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </div>
+      <div class="collapsible-body">
+        <p>本预测基于历史数据与多因子模型生成，仅供参考，不构成投资建议。模型置信度反映的是历史回测中的预测准确率，不代表未来收益保证。市场有风险，投资需谨慎。请结合自身风险承受能力做出独立判断。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- EMPTY STATE -->
+  <section class="section-gap" aria-label="空状态">
+    <div class="section-label">空状态</div>
+    <div class="empty-state">
+      <div class="empty-state-illustration">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+        </svg>
+      </div>
+      <div class="empty-state-title">暂无自选</div>
+      <div class="empty-state-hint">搜索并添加您关注的基金，即可在此查看实时估值与预测</div>
+      <button class="empty-state-cta">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="12" y1="5" x2="12" y2="19"/>
+          <line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+        添加自选基金
+      </button>
+    </div>
+  </section>
+
+</main>
+
+<!-- ============================================
+     BOTTOM DOCK
+     ============================================ -->
+<nav class="dock" aria-label="主导航">
+  <button class="dock-item active" data-tab="watchlist">
+    <svg class="dock-item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+    </svg>
+    <span class="dock-item-label">自选</span>
+    <span class="dock-item-dot"></span>
+  </button>
+  <button class="dock-item" data-tab="market">
+    <svg class="dock-item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="18" y1="20" x2="18" y2="10"/>
+      <line x1="12" y1="20" x2="12" y2="4"/>
+      <line x1="6" y1="20" x2="6" y2="14"/>
+    </svg>
+    <span class="dock-item-label">行情</span>
+    <span class="dock-item-dot"></span>
+  </button>
+  <button class="dock-item" data-tab="predict">
+    <svg class="dock-item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+    </svg>
+    <span class="dock-item-label">预测</span>
+    <span class="dock-item-dot"></span>
+  </button>
+</nav>
+
+<!-- ============================================
+     JAVASCRIPT
+     ============================================ -->
+<script>
+(function() {
+  var confidenceFill = document.getElementById('confidenceFill');
+  if (confidenceFill) {
+    setTimeout(function() {
+      confidenceFill.classList.add('animated');
+    }, 300);
+  }
+
+  var collapsibleCard = document.getElementById('collapsibleCard');
+  var collapsibleHeader = document.getElementById('collapsibleHeader');
+  if (collapsibleHeader && collapsibleCard) {
+    collapsibleHeader.addEventListener('click', function() {
+      collapsibleCard.classList.toggle('open');
+    });
+  }
+
+  var dockItems = document.querySelectorAll('.dock-item');
+  dockItems.forEach(function(item) {
+    item.addEventListener('click', function() {
+      dockItems.forEach(function(d) { d.classList.remove('active'); });
+      item.classList.add('active');
+    });
+  });
+})();
+</script>
+
+</body>
+</html>

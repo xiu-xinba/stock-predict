@@ -40,7 +40,43 @@ export function colorWithAlpha(color: string, alpha: number): string {
   return color
 }
 
-export function cssVar(name: string, fallback: string): string {
+const cssVarCache = new Map<string, string>()
+let cssVarCacheTheme: boolean | null = null
+
+export function cssVar(name: string, fallback: string = ''): string {
   if (typeof document === 'undefined') return fallback
-  return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback
+  const isDark = document.documentElement.classList.contains('dark')
+  if (cssVarCacheTheme !== isDark) {
+    cssVarCache.clear()
+    cssVarCacheTheme = isDark
+  }
+  const cached = cssVarCache.get(name)
+  if (cached !== undefined) return cached
+  const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback
+  cssVarCache.set(name, value)
+  return value
+}
+
+export function invalidateCssVarCache() {
+  cssVarCache.clear()
+  cssVarCacheTheme = null
+}
+
+export function getDirection(val: number | null | undefined): 'text-up' | 'text-down' | 'text-flat' {
+  if (val == null) return 'text-flat'
+  if (val > 0) return 'text-up'
+  if (val < 0) return 'text-down'
+  return 'text-flat'
+}
+
+export function dirClass(dir: string | null | undefined): 'text-up' | 'text-down' | 'text-flat' {
+  if (dir === 'up') return 'text-up'
+  if (dir === 'down') return 'text-down'
+  return 'text-flat'
+}
+
+export function formatSignedPct(val: number | null | undefined, digits: number = 4): string {
+  if (val == null) return '--%'
+  const sign = val >= 0 ? '+' : ''
+  return `${sign}${Number(val).toFixed(digits)}%`
 }

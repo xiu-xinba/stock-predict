@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"encoding/json"
 	"log/slog"
 	"net/http"
@@ -81,11 +82,12 @@ func TestPredictionServiceUsesConfiguredModelService(t *testing.T) {
 	service := NewPredictionService(
 		fakeFundRepository{funds: []dto.FundItem{{FundCode: "510300", FundName: "沪深300ETF"}}},
 		NewMarketService(logger),
+		fakeStockFinder{},
 		config.Config{ModelServiceURL: modelServer.URL, ReadTimeout: time.Second},
 		logger,
 	)
 
-	got, err := service.PredictByFundCode("510300")
+	got, err := service.PredictByFundCode(context.Background(), "510300")
 	if err != nil {
 		t.Fatalf("predict failed: %v", err)
 	}
@@ -172,11 +174,12 @@ func TestPredictionServiceDerivesLowConfidenceSignalStatus(t *testing.T) {
 	service := NewPredictionService(
 		fakeFundRepository{funds: []dto.FundItem{{FundCode: "510300", FundName: "沪深300ETF"}}},
 		NewMarketService(logger),
+		fakeStockFinder{},
 		config.Config{ModelServiceURL: modelServer.URL, ReadTimeout: time.Second},
 		logger,
 	)
 
-	got, err := service.PredictByFundCode("510300")
+	got, err := service.PredictByFundCode(context.Background(), "510300")
 	if err != nil {
 		t.Fatalf("predict failed: %v", err)
 	}
@@ -198,11 +201,12 @@ func TestPredictionServiceFallsBackWhenModelServiceFails(t *testing.T) {
 	service := NewPredictionService(
 		fakeFundRepository{funds: []dto.FundItem{{FundCode: "510300", FundName: "沪深300ETF"}}},
 		NewMarketService(logger),
+		fakeStockFinder{},
 		config.Config{ModelServiceURL: modelServer.URL, ReadTimeout: time.Second},
 		logger,
 	)
 
-	got, err := service.PredictByFundCode("510300")
+	got, err := service.PredictByFundCode(context.Background(), "510300")
 	if err != nil {
 		t.Fatalf("predict failed: %v", err)
 	}
@@ -233,11 +237,12 @@ func TestPredictionServiceMarksUnsupportedFundWhenModelHasNoSample(t *testing.T)
 	service := NewPredictionService(
 		fakeFundRepository{funds: []dto.FundItem{{FundCode: "000001", FundName: "华夏成长混合"}}},
 		NewMarketService(logger),
+		fakeStockFinder{},
 		config.Config{ModelServiceURL: modelServer.URL, ReadTimeout: time.Second},
 		logger,
 	)
 
-	got, err := service.PredictByFundCode("000001")
+	got, err := service.PredictByFundCode(context.Background(), "000001")
 	if err != nil {
 		t.Fatalf("predict failed: %v", err)
 	}
@@ -257,11 +262,12 @@ func TestPredictionServiceMarksBaselineOnlyWhenNoModelServiceConfigured(t *testi
 	service := NewPredictionService(
 		fakeFundRepository{funds: []dto.FundItem{{FundCode: "000001", FundName: "华夏成长混合"}}},
 		NewMarketService(logger),
+		fakeStockFinder{},
 		config.Config{ReadTimeout: time.Second},
 		logger,
 	)
 
-	got, err := service.PredictByFundCode("000001")
+	got, err := service.PredictByFundCode(context.Background(), "000001")
 	if err != nil {
 		t.Fatalf("predict failed: %v", err)
 	}
@@ -301,11 +307,12 @@ func TestPredictionServiceCanUseSeparateIntradayModelService(t *testing.T) {
 	service := NewPredictionService(
 		fakeFundRepository{funds: []dto.FundItem{{FundCode: "510300", FundName: "沪深300ETF"}}},
 		NewMarketService(logger),
+		fakeStockFinder{},
 		config.Config{IntradayModelServiceURL: modelServer.URL, ReadTimeout: time.Second},
 		logger,
 	)
 
-	got, err := service.PredictByFundCode("510300")
+	got, err := service.PredictByFundCode(context.Background(), "510300")
 	if err != nil {
 		t.Fatalf("predict failed: %v", err)
 	}
@@ -351,11 +358,12 @@ func TestPredictionServiceCanUseSeparateWeeklyModelService(t *testing.T) {
 	service := NewPredictionService(
 		fakeFundRepository{funds: []dto.FundItem{{FundCode: "510300", FundName: "沪深300ETF"}}},
 		NewMarketService(logger),
+		fakeStockFinder{},
 		config.Config{WeeklyModelServiceURL: modelServer.URL, ReadTimeout: time.Second},
 		logger,
 	)
 
-	got, err := service.PredictByFundCode("510300")
+	got, err := service.PredictByFundCode(context.Background(), "510300")
 	if err != nil {
 		t.Fatalf("predict failed: %v", err)
 	}

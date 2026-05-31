@@ -47,6 +47,12 @@ func TestParseTencentFundQuotes(t *testing.T) {
 	}
 }
 
+type fakeStockFinder struct{}
+
+func (f fakeStockFinder) FindStock(code string) (dto.StockItem, error) {
+	return dto.StockItem{}, nil
+}
+
 type fakeQuoteProvider struct {
 	quotes map[string]dto.FundItem
 }
@@ -67,6 +73,7 @@ func TestWatchlistQuotesUsesRealtimeProvider(t *testing.T) {
 			QuoteSource:  "eastmoney_rank",
 		}}},
 		NewMarketService(nil),
+		fakeStockFinder{},
 		config.Config{ReadTimeout: 1},
 		nil,
 	)

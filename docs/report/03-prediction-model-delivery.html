@@ -74,7 +74,7 @@
   <pre><code>powershell -NoProfile -ExecutionPolicy Bypass -File scripts\prediction-model-delivery-check.ps1 -RunTraining -RunSmoke</code></pre>
   <p>启动完整本地验收服务：</p>
   <pre><code>powershell -NoProfile -ExecutionPolicy Bypass -File scripts\start-acceptance-services.ps1</code></pre>
-  <p>多基金 API 验收脚本会检查 <code>signal_status</code>、<code>is_actionable</code>、<code>return_decomposition</code> 与 <code>prediction_interval</code>，结果写入 <code>docs/report/prediction-api-acceptance-results.json</code>：</p>
+  <p>多基金 API 验收脚本会检查 <code>signal_status</code>、<code>is_actionable</code>、<code>return_decomposition</code> 与 <code>prediction_interval</code>，结果写入 <code>docs/report/08-prediction-api-acceptance-results.json</code>：</p>
   <pre><code>powershell -NoProfile -ExecutionPolicy Bypass -File scripts\prediction-api-acceptance.ps1</code></pre>
   <p>当前验收服务地址：</p>
   <ul>

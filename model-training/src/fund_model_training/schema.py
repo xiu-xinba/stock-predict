@@ -71,11 +71,21 @@ INDEX_FUND_INTRADAY_V1_FEATURES: Final[list[str]] = [
     "panic_limit_component",
 ]
 
+ALL_FUND_NAV_DAILY_V1_FEATURES: Final[list[str]] = [
+    "fund_return_1d",
+    "fund_return_5d",
+    "fund_return_20d",
+    "fund_volatility_20d",
+    "fund_drawdown_20d",
+    "mean_reversion",
+]
+
 FEATURE_SETS: Final[dict[str, list[str]]] = {
     "backend_v1": BACKEND_V1_FEATURES,
     "extended_v1": EXTENDED_V1_FEATURES,
     "index_fund_daily_v1": INDEX_FUND_DAILY_V1_FEATURES,
     "index_fund_intraday_v1": INDEX_FUND_INTRADAY_V1_FEATURES,
+    "all_fund_nav_daily_v1": ALL_FUND_NAV_DAILY_V1_FEATURES,
 }
 
 REQUIRED_COLUMNS: Final[list[str]] = ["fund_code", "asof_time"]

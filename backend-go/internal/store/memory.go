@@ -3,6 +3,7 @@ package store
 import (
 	"sort"
 	"sync"
+	"time"
 
 	"stock-predict-go/internal/dto"
 )
@@ -62,6 +63,68 @@ func (s *MemoryStore) FindFund(code string) (dto.FundItem, bool) {
 	defer s.mu.RUnlock()
 	fund, ok := s.funds[code]
 	return fund, ok
+}
+
+func (s *MemoryStore) LoadFunds() []dto.FundItem {
+	return s.ListFunds()
+}
+
+func (s *MemoryStore) SaveFunds(funds []dto.FundItem) error {
+	return s.ReplaceFunds(funds)
+}
+
+func (s *MemoryStore) GetFunds(codes []string) []dto.FundItem {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	items := make([]dto.FundItem, 0, len(codes))
+	for _, code := range codes {
+		if fund, ok := s.funds[code]; ok {
+			items = append(items, fund)
+		}
+	}
+	return items
+}
+
+func (s *MemoryStore) AddFund(fund dto.FundItem) error {
+	return s.MergeFunds([]dto.FundItem{fund})
+}
+
+func (s *MemoryStore) RemoveFund(code string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	delete(s.funds, code)
+	return s.saveLocked()
+}
+
+func (s *MemoryStore) IsFundInWatchlist(code string) bool {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	_, ok := s.funds[code]
+	return ok
+}
+
+func (s *MemoryStore) CoverageReport() *dto.CoverageReport {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	report := &dto.CoverageReport{
+		TotalFunds:          len(s.funds),
+		CountsByFundType:    make(map[string]int),
+		CountsByQuoteSource: make(map[string]int),
+		SampleCutoffTime:    time.Now().Format(time.RFC3339),
+	}
+	for _, fund := range s.funds {
+		if fund.QuoteSource != "" {
+			report.FundsWithQuote++
+		}
+		if fund.FundType != "" {
+			report.CountsByFundType[fund.FundType]++
+		}
+		if fund.QuoteSource != "" {
+			report.CountsByQuoteSource[fund.QuoteSource]++
+		}
+	}
+	return report
 }
 
 func seedFunds() []dto.FundItem {

@@ -1,7 +1,30 @@
+<#
+.SYNOPSIS
+    预测 API 验收测试脚本
+
+.DESCRIPTION
+    对后端 /api/v1/predict/{fundCode} 接口执行验收测试，验证信号状态、可操作性门控、
+    收益分解和预测区间等字段是否正确返回，并将结果写入 JSON 报告文件。
+
+.EXAMPLE
+    .\scripts\prediction-api-acceptance.ps1
+    .\scripts\prediction-api-acceptance.ps1 -BackendUrl "http://127.0.0.1:5070" -FundCodes @("510300","510050")
+    .\scripts\prediction-api-acceptance.ps1 -SkipSync
+
+.PREREQUISITES
+    - 后端服务已启动（默认 http://127.0.0.1:5070）
+    - 模型服务已启动并可通过后端访问
+    - PowerShell 5.1+ 或 PowerShell 7+
+
+.NOTES
+    默认测试基金代码：510300、510050、510500、159915
+    输出文件：docs/report/08-prediction-api-acceptance-results.json
+    使用 -SkipSync 跳过基金数据同步（适用于已同步过的场景）
+#>
 param(
   [string]$BackendUrl = "http://127.0.0.1:5070",
   [string[]]$FundCodes = @("510300", "510050", "510500", "159915"),
-  [string]$OutputPath = "docs/report/prediction-api-acceptance-results.json",
+  [string]$OutputPath = "docs/report/08-prediction-api-acceptance-results.json",
   [switch]$SkipSync
 )
 

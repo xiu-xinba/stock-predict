@@ -478,3 +478,241 @@ realistic production pattern is:
 - emit predictions only for high-confidence samples;
 - mark the rest as `flat` or `no_signal`;
 - track coverage separately from accuracy.
+
+## 模块功能概述
+
+model-training 是股票预测项目的模型训练与推理服务模块，负责：
+
+- **数据采集**：通过 AkShare 等数据源采集 ETF 行情、指数行情、期货数据、恐慌因子等，输出标准化 CSV
+- **样本构建**：将原始数据转换为包含特征和标签的训练样本，支持日线/周线和日内 3/5 分钟两种时间维度
+- **模型训练**：支持多种表格模型候选（HistGBDT、RandomForest、ExtraTrees、GradientBoosting、LogisticRidge）的锦标赛训练，包含消融实验和滚动回测
+- **模型服务**：通过 HTTP 服务对外提供预测接口，供 backend-go 调用
+- **模型运维**：支持模型晋升（promote）、影子评估（shadow evaluation）、回滚（rollback）、漂移监控（drift report）和持续学习（retraining cycle）
+
+## 与 backend-go 的集成方式
+
+model-training 模块通过 HTTP 模型服务与 Go 后端集成，架构如下：
+
+```text
+┌─────────────────┐     HTTP GET      ┌──────────────────────┐
+│   backend-go    │ ────────────────── │  model-training      │
+│   (Go API)      │  /predict/{code}  │  serve_model.py       │
+│                 │ ◄────────────────── │  (Python HTTP 服务)   │
+└─────────────────┘   JSON 响应        └──────────────────────┘
+```
+
+集成要点：
+
+1. **服务发现**：backend-go 通过环境变量 `MODEL_SERVICE_URL`、`WEEKLY_MODEL_SERVICE_URL`、`INTRADAY_MODEL_SERVICE_URL` 发现模型服务地址
+2. **熔断机制**：backend-go 内置断路器（circuit breaker），连续 3 次失败后进入熔断状态，30 秒后进入半开状态尝试恢复
+3. **优雅降级**：当模型服务不可用时，backend-go 回退到 Go 内置基线预测
+4. **多模型支持**：日线、周线、日内三个模型服务可独立部署在不同端口
+
+## API 接口说明
+
+### 健康检查
+
+```text
+GET /health
+GET /api/v1/health
+```
+
+响应示例：
+
+```json
+{
+  "status": "ok",
+  "runtime": "python",
+  "model_path": "artifacts/public_mvp_index_fund_tournament_champion.joblib",
+  "samples_path": "data/processed/public_mvp_daily_weekly_index_fund_samples.csv",
+  "registry_current_path": null,
+  "prediction_log_path": null,
+  "loaded_at": "2025-05-30T10:00:00",
+  "feature_set": "index_fund_daily_v1",
+  "feature_count": 8
+}
+```
+
+### 预测请求
+
+```text
+GET /predict/{fund_code}
+GET /api/v1/predict/{fund_code}?asof_time=2025-05-30T15:00:00
+```
+
+路径参数：
+
+| 参数 | 类型 | 说明 |
+|------|------|------|
+| `fund_code` | string | 基金代码，如 `510300` |
+
+查询参数：
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `asof_time` | string | 否 | 指定预测时点，ISO 8601 格式。不传则使用最新数据 |
+
+### 预测响应
+
+```json
+{
+  "fund_code": "510300",
+  "fund_name": "沪深300ETF",
+  "asof_time": "2025-05-30",
+  "model": {
+    "candidate": "hist_gbdt",
+    "feature_set": "index_fund_daily_v1",
+    "model_path": "artifacts/public_mvp_index_fund_tournament_champion.joblib"
+  },
+  "prediction": {
+    "horizon": "next_day",
+    "target_window": "2025-05-31",
+    "direction": "up",
+    "direction_confidence": 0.72,
+    "predicted_change_pct": 0.35,
+    "change_range": { "low": -0.5, "high": 1.2 },
+    "prediction_interval": {
+      "low": -0.48,
+      "high": 1.18,
+      "method": "empirical_residual",
+      "level": 0.80,
+      "empirical_coverage": 0.82
+    },
+    "return_decomposition": {
+      "enabled": true,
+      "method": "index_plus_tracking_error",
+      "formula": "fund_return = tracking_index_return + tracking_error",
+      "index_return_pct": 0.38,
+      "tracking_error_pct": -0.03,
+      "direct_fund_return_pct": 0.35
+    },
+    "actionability_gate": {
+      "actionable": true,
+      "reason": "high_confidence_accuracy=0.55, coverage=0.12, ece=0.08",
+      "min_high_confidence_accuracy": 0.50,
+      "min_high_confidence_coverage": 0.05,
+      "max_calibration_ece": 0.12,
+      "high_confidence_accuracy": 0.55,
+      "high_confidence_coverage": 0.12,
+      "calibration_ece": 0.08
+    },
+    "class_probabilities": { "down": 0.12, "flat": 0.16, "up": 0.72 },
+    "top_factors": [
+      { "name": "index_return_5d", "importance": 0.25, "value": 1.2, "description": "5日指数收益率" }
+    ],
+    "signal_status": "actionable",
+    "is_actionable": true,
+    "reliability": "medium",
+    "reliability_note": "样本量有限，预测仅供参考"
+  },
+  "data_quality": {
+    "feature_count": 8,
+    "has_panic_factor": true,
+    "has_futures_features": true,
+    "note": ""
+  },
+  "created_at": "2025-05-30T10:00:00"
+}
+```
+
+### 错误响应
+
+| HTTP 状态码 | 场景 | 响应体 |
+|-------------|------|--------|
+| 400 | 基金代码在样本中不存在 | `{"error": "No sample row found for fund_code=999999"}` |
+| 500 | 预测过程内部错误 | `{"error": "<异常信息>"}` |
+
+### backend-go 调用链路
+
+backend-go 的 `ModelClient`（`internal/service/model_client.go`）调用模型服务的流程：
+
+1. 构造请求 URL：`{MODEL_SERVICE_URL}/predict/{fund_code}`
+2. 设置 `Accept: application/json` 请求头
+3. 发送 GET 请求，超时时间默认 3 秒
+4. 解析响应 JSON 到 `modelPredictionResponse` 结构体
+5. 映射到 `dto.PredictionResult` 返回给前端
+
+## 环境变量配置
+
+### backend-go 侧环境变量
+
+| 环境变量 | 默认值 | 说明 |
+|----------|--------|------|
+| `MODEL_SERVICE_URL` | 空（不启用） | 日线模型服务地址，如 `http://127.0.0.1:8090` |
+| `WEEKLY_MODEL_SERVICE_URL` | 空（不启用） | 周线模型服务地址，如 `http://127.0.0.1:8092` |
+| `INTRADAY_MODEL_SERVICE_URL` | 空（不启用） | 日内模型服务地址，如 `http://127.0.0.1:8091` |
+| `FUND_SYNC_CSV_PATH` | 空 | 模型训练产出的样本 CSV 路径，用于基金数据同步 |
+
+### model-training 侧启动参数
+
+| 参数 | 默认值 | 说明 |
+|------|--------|------|
+| `--model` | 无（必填） | 冠军模型 .joblib 文件路径 |
+| `--samples` | 无（必填） | 训练样本 CSV 路径 |
+| `--registry-current` | 无 | 模型注册表 current.json 路径（与 --model 二选一） |
+| `--prediction-log-output` | 无 | 预测日志 CSV 输出路径 |
+| `--host` | `127.0.0.1` | 监听地址 |
+| `--port` | `8090` | 监听端口 |
+| `--action-threshold` | `0.60` | 可操作性门控的置信度阈值 |
+
+## 启动和部署指南
+
+### 开发环境快速启动
+
+使用项目根目录的脚本一键启动所有服务：
+
+```powershell
+# 启动全部服务（模型 + 后端 + 前端）
+.\scripts\start-acceptance-services.ps1
+
+# 停止全部服务
+.\scripts\stop-acceptance-services.ps1
+```
+
+或手动分步启动：
+
+```powershell
+# 1. 启动日线模型服务
+cd model-training
+conda run --no-capture-output -n stock-predict-ml python -m fund_model_training.serve_model `
+  --model artifacts/public_mvp_index_fund_tournament_champion.joblib `
+  --samples data/processed/public_mvp_daily_weekly_index_fund_samples.csv `
+  --port 8090
+
+# 2. 启动周线模型服务（可选，需要已晋升的周线冠军）
+conda run --no-capture-output -n stock-predict-ml python -m fund_model_training.serve_model `
+  --registry-current model_registry/weekly_index_fund/current.json `
+  --port 8092
+
+# 3. 启动日内模型服务（可选）
+conda run --no-capture-output -n stock-predict-ml python -m fund_model_training.serve_model `
+  --model artifacts/public_mvp_index_fund_intraday_tournament_champion.joblib `
+  --samples data/processed/public_mvp_intraday_index_fund_samples.csv `
+  --port 8091
+
+# 4. 启动 Go 后端
+cd ..\backend-go
+$env:MODEL_SERVICE_URL = "http://127.0.0.1:8090"
+$env:WEEKLY_MODEL_SERVICE_URL = "http://127.0.0.1:8092"
+$env:INTRADAY_MODEL_SERVICE_URL = "http://127.0.0.1:8091"
+go run ./cmd/api
+```
+
+### 冒烟测试
+
+```powershell
+# 快速冒烟测试（启动模型+后端，执行一次预测，自动清理）
+.\scripts\dev-model-backend-smoke.ps1
+
+# 完整交付检查（测试 + 构建 + 可选训练 + 可选冒烟）
+.\scripts\prediction-model-delivery-check.ps1 -RunTraining -RunSmoke
+```
+
+### 生产部署建议
+
+1. **模型服务部署**：使用 `serve_model.py` 配合进程管理器（如 systemd、supervisord 或 Docker）运行
+2. **多模型实例**：日线、周线、日内模型分别部署在不同端口，通过 backend-go 环境变量配置
+3. **模型更新**：通过 `promote_model` 晋升新模型后，重启对应模型服务实例；或使用 `--registry-current` 参数自动加载最新模型
+4. **监控**：定期运行 `run_monitoring_cycle` 和 `drift_report` 监控模型漂移，配合 `shadow_evaluation` 评估挑战者模型
+5. **回滚**：使用 `rollback_model` 命令快速回退到上一版本模型
+6. **日志**：开启 `--prediction-log-output` 记录每次预测，用于后续评估和审计

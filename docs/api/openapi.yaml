@@ -1,0 +1,1980 @@
+openapi: 3.0.3
+
+info:
+  title: 股票/基金预测平台 API
+  description: 股票与基金预测平台后端服务接口文档，提供基金搜索、股票搜索、市场行情、预测分析等功能。
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:5070
+    description: 本地开发服务器
+
+tags:
+  - name: 系统
+    description: 系统健康检查
+  - name: 搜索
+    description: 统一搜索
+  - name: 基金
+    description: 基金相关接口
+  - name: 股票
+    description: 股票相关接口
+  - name: 市场
+    description: 市场行情接口
+  - name: 预测
+    description: 预测分析接口
+  - name: 自选股
+    description: 自选股行情接口
+
+security: []
+
+paths:
+  /api/v1/health:
+    get:
+      tags: [系统]
+      summary: 健康检查
+      description: 返回服务运行状态，包括模型加载情况、基金/股票数据加载情况
+      operationId: health
+      responses:
+        "200":
+          description: 服务健康状态
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/APIResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/HealthData"
+
+  /api/v1/search:
+    get:
+      tags: [搜索]
+      summary: 统一搜索
+      description: 同时搜索基金和股票，返回匹配结果
+      operationId: unifiedSearch
+      parameters:
+        - name: q
+          in: query
+          required: true
+          description: 搜索关键词
+          schema:
+            type: string
+            maxLength: 100
+        - name: types
+          in: query
+          required: false
+          description: 搜索类型，逗号分隔，可选值为 fund、stock，为空时搜索全部
+          schema:
+            type: string
+        - name: page
+          in: query
+          required: false
+          description: 页码，默认1
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: size
+          in: query
+          required: false
+          description: 每页数量，默认10，最大50
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 10
+      responses:
+        "200":
+          description: 搜索结果
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/APIResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/UnifiedSearchResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /api/v1/funds/search:
+    get:
+      tags: [基金]
+      summary: 基金搜索
+      description: 根据条件搜索基金列表，支持关键词、类型、公司等多维度筛选
+      operationId: searchFunds
+      parameters:
+        - name: keyword
+          in: query
+          required: false
+          description: 搜索关键词（基金代码或名称）
+          schema:
+            type: string
+        - name: type
+          in: query
+          required: false
+          description: 基金类型筛选
+          schema:
+            type: string
+        - name: company
+          in: query
+          required: false
+          description: 基金公司筛选
+          schema:
+            type: string
+        - name: risk_level
+          in: query
+          required: false
+          description: 风险等级筛选
+          schema:
+            type: string
+        - name: manager
+          in: query
+          required: false
+          description: 基金经理筛选
+          schema:
+            type: string
+        - name: return_min
+          in: query
+          required: false
+          description: 收益率下限
+          schema:
+            type: number
+            format: double
+        - name: return_max
+          in: query
+          required: false
+          description: 收益率上限
+          schema:
+            type: number
+            format: double
+        - name: sort_by
+          in: query
+          required: false
+          description: 排序字段
+          schema:
+            type: string
+        - name: sort_order
+          in: query
+          required: false
+          description: 排序方向（asc/desc）
+          schema:
+            type: string
+            enum: [asc, desc]
+        - name: page
+          in: query
+          required: false
+          description: 页码
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: size
+          in: query
+          required: false
+          description: 每页数量
+          schema:
+            type: integer
+            minimum: 1
+            default: 20
+      responses:
+        "200":
+          description: 基金搜索结果
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/APIResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/FundSearchData"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /api/v1/funds/filters:
+    get:
+      tags: [基金]
+      summary: 基金筛选选项
+      description: 获取基金可用的筛选维度，包括基金类型、基金公司、风险等级
+      operationId: fundFilters
+      responses:
+        "200":
+          description: 基金筛选选项
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/APIResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/FundFilters"
+
+  /api/v1/funds/coverage:
+    get:
+      tags: [基金]
+      summary: 基金覆盖率报告
+      description: 返回基金数据覆盖率统计，包括行情覆盖、历史数据覆盖、模型支持情况等
+      operationId: fundCoverage
+      responses:
+        "200":
+          description: 基金覆盖率报告
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/APIResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/CoverageReport"
+
+  /api/v1/funds/sync:
+    post:
+      tags: [基金]
+      summary: 同步基金数据
+      description: 从配置的数据源同步基金数据，需要管理员令牌认证
+      operationId: syncFunds
+      security:
+        - adminToken: []
+      responses:
+        "200":
+          description: 同步结果
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/APIResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/FundSyncResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /api/v1/market/indices:
+    get:
+      tags: [市场]
+      summary: 市场指数行情
+      description: 获取主要市场指数（上证、深证、创业板等）的实时行情数据
+      operationId: marketIndices
+      responses:
+        "200":
+          description: 市场指数列表
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/APIResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/MarketIndex"
+
+  /api/v1/market/ranking/{type}:
+    get:
+      tags: [市场]
+      summary: 基金排行榜
+      description: 获取基金涨幅或跌幅排行榜
+      operationId: marketRanking
+      parameters:
+        - name: type
+          in: path
+          required: true
+          description: 排行类型，gainers为涨幅榜，losers为跌幅榜
+          schema:
+            type: string
+            enum: [gainers, losers]
+        - name: size
+          in: query
+          required: false
+          description: 返回数量，默认10
+          schema:
+            type: integer
+            minimum: 1
+            default: 10
+      responses:
+        "200":
+          description: 基金排行列表
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/APIResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/FundRankingItem"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /api/v1/predict/{fundCode}:
+    get:
+      tags: [预测]
+      summary: 基金预测
+      description: 根据基金代码获取预测分析结果，包括日度、周度、日内预测及数据质量评估
+      operationId: predictFund
+      parameters:
+        - name: fundCode
+          in: path
+          required: true
+          description: 基金代码，6位数字
+          schema:
+            type: string
+            pattern: "^[0-9]{6}$"
+      responses:
+        "200":
+          description: 基金预测结果
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/APIResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/PredictionData"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /api/v1/watchlist/quotes:
+    post:
+      tags: [自选股]
+      summary: 自选基金行情
+      description: 批量获取自选基金的实时行情数据，最多支持50个基金代码
+      operationId: watchlistQuotes
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WatchlistQuoteRequest"
+      responses:
+        "200":
+          description: 自选基金行情列表
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/APIResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/WatchlistItem"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /api/v1/fund/{fundCode}/detail:
+    get:
+      tags: [基金]
+      summary: 基金详情
+      description: 获取基金详细信息，包括基本信息、行情、业绩表现、基金经理、持仓、风险指标等
+      operationId: fundDetail
+      parameters:
+        - name: fundCode
+          in: path
+          required: true
+          description: 基金代码，6位数字
+          schema:
+            type: string
+            pattern: "^[0-9]{6}$"
+      responses:
+        "200":
+          description: 基金详情
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/APIResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/FundDetailData"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /api/v1/stocks/search:
+    get:
+      tags: [股票]
+      summary: 股票搜索
+      description: 根据条件搜索股票列表，支持关键词、行业、市场等多维度筛选
+      operationId: searchStocks
+      parameters:
+        - name: keyword
+          in: query
+          required: false
+          description: 搜索关键词（股票代码或名称）
+          schema:
+            type: string
+        - name: industry
+          in: query
+          required: false
+          description: 行业筛选
+          schema:
+            type: string
+        - name: market
+          in: query
+          required: false
+          description: 市场筛选（如 SH、SZ）
+          schema:
+            type: string
+        - name: sort_by
+          in: query
+          required: false
+          description: 排序字段
+          schema:
+            type: string
+        - name: sort_order
+          in: query
+          required: false
+          description: 排序方向（asc/desc）
+          schema:
+            type: string
+            enum: [asc, desc]
+        - name: page
+          in: query
+          required: false
+          description: 页码
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: size
+          in: query
+          required: false
+          description: 每页数量，最大100
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        "200":
+          description: 股票搜索结果
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/APIResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/StockSearchData"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /api/v1/stocks/filters:
+    get:
+      tags: [股票]
+      summary: 股票筛选选项
+      description: 获取股票可用的筛选维度，包括行业和市场
+      operationId: stockFilters
+      responses:
+        "200":
+          description: 股票筛选选项
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/APIResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/StockFilters"
+
+  /api/v1/stock/{stockCode}/detail:
+    get:
+      tags: [股票]
+      summary: 股票详情
+      description: 获取股票详细信息，包括基本信息、行情、K线、资金流向、财务数据、股东信息等
+      operationId: stockDetail
+      parameters:
+        - name: stockCode
+          in: path
+          required: true
+          description: 股票代码，6位数字
+          schema:
+            type: string
+            pattern: "^[0-9]{6}$"
+      responses:
+        "200":
+          description: 股票详情
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/APIResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/StockDetailData"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /api/v1/stock/{stockCode}/predict:
+    get:
+      tags: [预测]
+      summary: 股票预测
+      description: 根据股票代码获取预测分析结果，包括日度、周度、日内预测
+      operationId: predictStock
+      parameters:
+        - name: stockCode
+          in: path
+          required: true
+          description: 股票代码，6位数字
+          schema:
+            type: string
+            pattern: "^[0-9]{6}$"
+      responses:
+        "200":
+          description: 股票预测结果
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/APIResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/StockPredictionData"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /api/v1/stocks/quotes:
+    post:
+      tags: [股票]
+      summary: 批量股票行情
+      description: 批量获取股票实时行情数据，最多支持50个股票代码
+      operationId: stockQuotes
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StockQuoteRequest"
+      responses:
+        "200":
+          description: 股票行情数据
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/APIResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        additionalProperties:
+                          $ref: "#/components/schemas/StockQuote"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /api/v1/market/stock-ranking/{type}:
+    get:
+      tags: [市场]
+      summary: 股票排行榜
+      description: 获取股票涨幅、跌幅或成交量排行榜
+      operationId: stockRanking
+      parameters:
+        - name: type
+          in: path
+          required: true
+          description: 排行类型，gainers为涨幅榜，losers为跌幅榜，volume为成交量榜
+          schema:
+            type: string
+            enum: [gainers, losers, volume]
+        - name: size
+          in: query
+          required: false
+          description: 返回数量，默认10
+          schema:
+            type: integer
+            minimum: 1
+            default: 10
+      responses:
+        "200":
+          description: 股票排行列表
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/APIResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/StockRankingItem"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /api/v1/stocks/sync:
+    post:
+      tags: [股票]
+      summary: 同步股票数据
+      description: 从数据源同步股票数据，需要管理员令牌认证
+      operationId: syncStocks
+      security:
+        - adminToken: []
+      responses:
+        "200":
+          description: 同步结果
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/APIResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/StockSyncResult"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+components:
+  securitySchemes:
+    adminToken:
+      type: http
+      scheme: bearer
+      description: 管理员令牌，通过 Authorization 请求头传递 Bearer Token
+
+  schemas:
+    APIResponse:
+      type: object
+      description: 通用API响应包装
+      properties:
+        code:
+          type: integer
+          description: 状态码，0表示成功，-1表示业务错误
+          example: 0
+        message:
+          type: string
+          description: 状态消息
+          example: success
+        data:
+          description: 响应数据
+
+    HealthData:
+      type: object
+      description: 健康检查数据
+      properties:
+        status:
+          type: string
+          description: 服务状态
+          example: ok
+        model_loaded:
+          type: boolean
+          description: 预测模型是否已加载
+        funds_loaded:
+          type: boolean
+          description: 基金数据是否已加载
+        stocks_loaded:
+          type: boolean
+          description: 股票数据是否已加载
+        runtime:
+          type: string
+          description: 运行时环境
+          example: go
+
+    FundItem:
+      type: object
+      description: 基金基本信息
+      properties:
+        fund_code:
+          type: string
+          description: 基金代码
+          example: "000001"
+        fund_name:
+          type: string
+          description: 基金名称
+          example: 华夏成长混合
+        fund_type:
+          type: string
+          description: 基金类型
+          example: 混合型
+        pinyin_abbr:
+          type: string
+          description: 拼音缩写
+        pinyin_full:
+          type: string
+          description: 拼音全拼
+        company:
+          type: string
+          description: 基金公司
+        manager:
+          type: string
+          description: 基金经理
+        latest_nav:
+          type: number
+          format: double
+          description: 最新净值
+        cumulative_nav:
+          type: number
+          format: double
+          description: 累计净值
+        return_1m:
+          type: number
+          format: double
+          description: 近1月收益率
+        return_3m:
+          type: number
+          format: double
+          description: 近3月收益率
+        return_6m:
+          type: number
+          format: double
+          description: 近6月收益率
+        return_1y:
+          type: number
+          format: double
+          description: 近1年收益率
+        return_3y:
+          type: number
+          format: double
+          description: 近3年收益率
+        risk_level:
+          type: string
+          description: 风险等级
+        inception_date:
+          type: string
+          description: 成立日期
+        quote_date:
+          type: string
+          description: 行情日期
+        quote_source:
+          type: string
+          description: 行情来源
+
+    FundSearchData:
+      type: object
+      description: 基金搜索结果
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/FundItem"
+        total:
+          type: integer
+          description: 总数
+        page:
+          type: integer
+          description: 当前页码
+        size:
+          type: integer
+          description: 每页数量
+
+    FundFilters:
+      type: object
+      description: 基金筛选选项
+      properties:
+        types:
+          type: array
+          items:
+            type: string
+          description: 基金类型列表
+        companies:
+          type: array
+          items:
+            type: string
+          description: 基金公司列表
+        risk_levels:
+          type: array
+          items:
+            type: string
+          description: 风险等级列表
+
+    CoverageReport:
+      type: object
+      description: 基金覆盖率报告
+      properties:
+        total_funds:
+          type: integer
+          description: 基金总数
+        funds_with_quote:
+          type: integer
+          description: 有行情数据的基金数
+        funds_with_history:
+          type: integer
+          description: 有历史数据的基金数
+        funds_with_trainable_samples:
+          type: integer
+          description: 有可训练样本的基金数
+        model_supported_funds:
+          type: integer
+          description: 模型支持的基金数
+        baseline_only_funds:
+          type: integer
+          description: 仅基线预测的基金数
+        unsupported_funds:
+          type: integer
+          description: 不支持的基金数
+        counts_by_fund_type:
+          type: object
+          additionalProperties:
+            type: integer
+          description: 按基金类型统计
+        counts_by_quote_source:
+          type: object
+          additionalProperties:
+            type: integer
+          description: 按行情来源统计
+        sample_cutoff_time:
+          type: string
+          description: 样本截止时间
+
+    FundSyncResult:
+      type: object
+      description: 基金同步结果
+      properties:
+        source:
+          type: string
+          description: 数据来源
+        stored_path:
+          type: string
+          description: 存储路径
+        imported:
+          type: integer
+          description: 导入数量
+        total:
+          type: integer
+          description: 总数量
+        updated_at:
+          type: string
+          description: 更新时间
+
+    FundRankingItem:
+      type: object
+      description: 基金排行项
+      properties:
+        rank:
+          type: integer
+          description: 排名
+        fund_code:
+          type: string
+          description: 基金代码
+        fund_name:
+          type: string
+          description: 基金名称
+        fund_type:
+          type: string
+          description: 基金类型
+        change_pct:
+          type: number
+          format: double
+          description: 涨跌幅百分比
+        estimated_nav:
+          type: number
+          format: double
+          description: 估算净值
+        quote_date:
+          type: string
+          description: 行情日期
+        quote_source:
+          type: string
+          description: 行情来源
+
+    WatchlistQuoteRequest:
+      type: object
+      description: 自选基金行情请求
+      required:
+        - codes
+      properties:
+        codes:
+          type: array
+          items:
+            type: string
+            pattern: "^[0-9]{6}$"
+          minItems: 1
+          maxItems: 50
+          description: 基金代码列表，每个代码为6位数字，最多50个
+
+    WatchlistItem:
+      type: object
+      description: 自选基金行情项
+      properties:
+        fund_code:
+          type: string
+          description: 基金代码
+        fund_name:
+          type: string
+          description: 基金名称
+        fund_type:
+          type: string
+          description: 基金类型
+        estimated_nav:
+          type: number
+          format: double
+          description: 估算净值
+        change_pct:
+          type: number
+          format: double
+          description: 涨跌幅百分比
+        direction:
+          type: string
+          description: 涨跌方向
+          enum: [up, down, flat]
+        added_at:
+          type: integer
+          format: int64
+          description: 添加时间戳
+        quote_date:
+          type: string
+          description: 行情日期
+        quote_source:
+          type: string
+          description: 行情来源
+
+    MarketIndex:
+      type: object
+      description: 市场指数
+      properties:
+        code:
+          type: string
+          description: 指数代码
+        name:
+          type: string
+          description: 指数名称
+        market:
+          type: string
+          description: 所属市场
+        value:
+          type: number
+          format: double
+          description: 当前点位
+        change:
+          type: number
+          format: double
+          description: 涨跌点数
+        change_pct:
+          type: number
+          format: double
+          description: 涨跌幅百分比
+        high:
+          type: number
+          format: double
+          description: 最高点
+        low:
+          type: number
+          format: double
+          description: 最低点
+        prev_close:
+          type: number
+          format: double
+          description: 前收盘点数
+        volume:
+          type: number
+          format: double
+          description: 成交量
+        mini_chart_data:
+          type: array
+          items:
+            type: number
+            format: double
+          description: 迷你图数据
+        update_time:
+          type: string
+          description: 更新时间
+        data_source:
+          type: string
+          description: 数据来源
+
+    MarketSnapshot:
+      type: object
+      description: 市场快照
+      properties:
+        sh_index:
+          type: number
+          format: double
+          description: 上证指数
+        sh_index_change_pct:
+          type: number
+          format: double
+          description: 上证指数涨跌幅
+        sz_index:
+          type: number
+          format: double
+          description: 深证成指
+        sz_index_change_pct:
+          type: number
+          format: double
+          description: 深证成指涨跌幅
+        cyb_index:
+          type: number
+          format: double
+          description: 创业板指
+        cyb_index_change_pct:
+          type: number
+          format: double
+          description: 创业板指涨跌幅
+        update_time:
+          type: string
+          description: 更新时间
+
+    PredictionResult:
+      type: object
+      description: 预测结果
+      properties:
+        horizon:
+          type: string
+          description: 预测周期
+        target_window:
+          type: string
+          description: 目标窗口
+        model_source:
+          type: string
+          description: 模型来源
+        model_candidate:
+          type: string
+          description: 模型候选
+        feature_set:
+          type: string
+          description: 特征集
+        model_asof_time:
+          type: string
+          description: 模型截止时间
+        model_coverage_status:
+          type: string
+          description: 模型覆盖状态
+          enum: [model_supported, baseline_only, unsupported_fund, model_unavailable]
+        model_coverage_note:
+          type: string
+          description: 模型覆盖说明
+        direction:
+          type: string
+          description: 预测方向
+          enum: [up, down, flat]
+        direction_confidence:
+          type: number
+          format: double
+          description: 方向置信度
+        predicted_change_pct:
+          type: number
+          format: double
+          description: 预测涨跌幅百分比
+        change_range:
+          $ref: "#/components/schemas/ChangeRange"
+        prediction_interval:
+          $ref: "#/components/schemas/PredictionInterval"
+        return_decomposition:
+          $ref: "#/components/schemas/ReturnDecomposition"
+        actionability_gate:
+          $ref: "#/components/schemas/ActionabilityGate"
+        top_factors:
+          type: array
+          items:
+            $ref: "#/components/schemas/FactorItem"
+          description: 主要影响因素
+        reliability:
+          type: string
+          description: 可靠性评级
+        reliability_note:
+          type: string
+          description: 可靠性说明
+        accuracy_target:
+          type: number
+          format: double
+          description: 准确率目标
+        meets_accuracy_target:
+          type: boolean
+          description: 是否达到准确率目标
+        signal_status:
+          type: string
+          description: 信号状态
+          enum: [actionable, low_confidence, no_signal]
+        is_actionable:
+          type: boolean
+          description: 是否可操作
+        calibration_note:
+          type: string
+          description: 校准说明
+
+    ChangeRange:
+      type: object
+      description: 预测变化范围
+      properties:
+        low:
+          type: number
+          format: double
+          description: 下限
+        high:
+          type: number
+          format: double
+          description: 上限
+
+    PredictionInterval:
+      type: object
+      description: 预测区间
+      properties:
+        low:
+          type: number
+          format: double
+          description: 区间下限
+        high:
+          type: number
+          format: double
+          description: 区间上限
+        method:
+          type: string
+          description: 区间估计方法
+        level:
+          type: number
+          format: double
+          description: 置信水平
+        empirical_coverage:
+          type: number
+          format: double
+          description: 经验覆盖率
+
+    ActionabilityGate:
+      type: object
+      description: 可操作性门控
+      properties:
+        actionable:
+          type: boolean
+          description: 是否可操作
+        reason:
+          type: string
+          description: 原因说明
+        min_high_confidence_accuracy:
+          type: number
+          format: double
+          description: 最低高置信度准确率
+        min_high_confidence_coverage:
+          type: number
+          format: double
+          description: 最低高置信度覆盖率
+        high_confidence_accuracy:
+          type: number
+          format: double
+          description: 高置信度准确率
+        high_confidence_coverage:
+          type: number
+          format: double
+          description: 高置信度覆盖率
+        max_calibration_ece:
+          type: number
+          format: double
+          description: 最大校准ECE
+        calibration_ece:
+          type: number
+          format: double
+          description: 校准ECE
+
+    ReturnDecomposition:
+      type: object
+      description: 收益分解
+      properties:
+        enabled:
+          type: boolean
+          description: 是否启用
+        method:
+          type: string
+          description: 分解方法
+        formula:
+          type: string
+          description: 计算公式
+        index_return_pct:
+          type: number
+          format: double
+          description: 指数收益率
+        tracking_error_pct:
+          type: number
+          format: double
+          description: 跟踪误差
+        direct_fund_return_pct:
+          type: number
+          format: double
+          description: 基金直接收益率
+        index_return_target:
+          type: string
+          description: 指数收益目标
+        tracking_error_target:
+          type: string
+          description: 跟踪误差目标
+
+    FactorItem:
+      type: object
+      description: 影响因素
+      properties:
+        name:
+          type: string
+          description: 因素名称
+        importance:
+          type: number
+          format: double
+          description: 重要性
+        description:
+          type: string
+          description: 因素描述
+
+    PredictionDataQuality:
+      type: object
+      description: 预测数据质量
+      properties:
+        has_realtime_quote:
+          type: boolean
+          description: 是否有实时行情
+        has_market_indices:
+          type: boolean
+          description: 是否有市场指数
+        has_holdings_data:
+          type: boolean
+          description: 是否有持仓数据
+        has_intraday_constituent_data:
+          type: boolean
+          description: 是否有日内成分数据
+        has_etf_flow_data:
+          type: boolean
+          description: 是否有ETF资金流数据
+        coverage_score:
+          type: number
+          format: double
+          description: 覆盖率得分
+        missing_sources:
+          type: array
+          items:
+            type: string
+          description: 缺失数据源列表
+        note:
+          type: string
+          description: 补充说明
+
+    PredictionData:
+      type: object
+      description: 基金预测数据
+      properties:
+        fund_code:
+          type: string
+          description: 基金代码
+        fund_name:
+          type: string
+          description: 基金名称
+        prediction:
+          $ref: "#/components/schemas/PredictionResult"
+        next_day_prediction:
+          $ref: "#/components/schemas/PredictionResult"
+        weekly_prediction:
+          $ref: "#/components/schemas/PredictionResult"
+        intraday_prediction:
+          $ref: "#/components/schemas/PredictionResult"
+        data_quality:
+          $ref: "#/components/schemas/PredictionDataQuality"
+        market_snapshot:
+          $ref: "#/components/schemas/MarketSnapshot"
+
+    StockPredictionData:
+      type: object
+      description: 股票预测数据
+      properties:
+        stock_code:
+          type: string
+          description: 股票代码
+        stock_name:
+          type: string
+          description: 股票名称
+        next_day_prediction:
+          $ref: "#/components/schemas/PredictionResult"
+        weekly_prediction:
+          $ref: "#/components/schemas/PredictionResult"
+        intraday_prediction:
+          $ref: "#/components/schemas/PredictionResult"
+        data_quality:
+          $ref: "#/components/schemas/PredictionDataQuality"
+
+    FundDetailData:
+      type: object
+      description: 基金详情数据
+      properties:
+        basic:
+          $ref: "#/components/schemas/FundItem"
+        quote:
+          $ref: "#/components/schemas/FundItem"
+        performance:
+          $ref: "#/components/schemas/FundPerformanceData"
+        manager:
+          $ref: "#/components/schemas/FundManagerInfo"
+        portfolio:
+          $ref: "#/components/schemas/FundPortfolioData"
+        risk:
+          $ref: "#/components/schemas/FundRiskMetrics"
+
+    FundPerformanceData:
+      type: object
+      description: 基金业绩数据
+      properties:
+        nav_history:
+          type: array
+          items:
+            $ref: "#/components/schemas/NAVPoint"
+          description: 净值历史
+        return_1m:
+          type: number
+          format: double
+          description: 近1月收益率
+        return_3m:
+          type: number
+          format: double
+          description: 近3月收益率
+        return_6m:
+          type: number
+          format: double
+          description: 近6月收益率
+        return_1y:
+          type: number
+          format: double
+          description: 近1年收益率
+        return_3y:
+          type: number
+          format: double
+          description: 近3年收益率
+
+    NAVPoint:
+      type: object
+      description: 净值数据点
+      properties:
+        date:
+          type: string
+          description: 日期
+        nav:
+          type: number
+          format: double
+          description: 单位净值
+        cumulative_nav:
+          type: number
+          format: double
+          description: 累计净值
+        change_pct:
+          type: number
+          format: double
+          description: 涨跌幅百分比
+
+    FundManagerInfo:
+      type: object
+      description: 基金经理信息
+      properties:
+        name:
+          type: string
+          description: 基金经理姓名
+        tenure_days:
+          type: integer
+          description: 任职天数
+        managed_size:
+          type: string
+          description: 管理规模
+        fund_count:
+          type: integer
+          description: 管理基金数量
+        bio:
+          type: string
+          description: 简介
+
+    FundPortfolioData:
+      type: object
+      description: 基金持仓数据
+      properties:
+        top_holdings:
+          type: array
+          items:
+            $ref: "#/components/schemas/HoldingItem"
+          description: 前十大持仓
+        sector_allocation:
+          type: array
+          items:
+            $ref: "#/components/schemas/SectorItem"
+          description: 行业配置
+
+    HoldingItem:
+      type: object
+      description: 持仓项
+      properties:
+        name:
+          type: string
+          description: 持仓名称
+        code:
+          type: string
+          description: 持仓代码
+        ratio:
+          type: number
+          format: double
+          description: 持仓比例
+
+    SectorItem:
+      type: object
+      description: 行业配置项
+      properties:
+        name:
+          type: string
+          description: 行业名称
+        ratio:
+          type: number
+          format: double
+          description: 配置比例
+
+    FundRiskMetrics:
+      type: object
+      description: 基金风险指标
+      properties:
+        volatility_1y:
+          type: number
+          format: double
+          description: 1年波动率
+        max_drawdown_1y:
+          type: number
+          format: double
+          description: 1年最大回撤
+        sharpe_1y:
+          type: number
+          format: double
+          description: 1年夏普比率
+        beta_1y:
+          type: number
+          format: double
+          description: 1年Beta系数
+
+    StockItem:
+      type: object
+      description: 股票基本信息
+      properties:
+        stock_code:
+          type: string
+          description: 股票代码
+          example: "600519"
+        stock_name:
+          type: string
+          description: 股票名称
+          example: 贵州茅台
+        market:
+          type: string
+          description: 所属市场
+          example: SH
+        industry:
+          type: string
+          description: 所属行业
+        list_date:
+          type: string
+          description: 上市日期
+        total_shares:
+          type: number
+          format: double
+          description: 总股本
+        float_shares:
+          type: number
+          format: double
+          description: 流通股本
+        current_price:
+          type: number
+          format: double
+          description: 当前价格
+        change_pct:
+          type: number
+          format: double
+          description: 涨跌幅百分比
+        volume:
+          type: number
+          format: double
+          description: 成交量
+        amount:
+          type: number
+          format: double
+          description: 成交额
+        turnover_rate:
+          type: number
+          format: double
+          description: 换手率
+        pe_ratio:
+          type: number
+          format: double
+          description: 市盈率
+        pb_ratio:
+          type: number
+          format: double
+          description: 市净率
+        total_mv:
+          type: number
+          format: double
+          description: 总市值
+        pinyin:
+          type: string
+          description: 拼音
+        pinyin_alt:
+          type: string
+          description: 拼音备选
+
+    StockSearchData:
+      type: object
+      description: 股票搜索结果
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/StockItem"
+        total:
+          type: integer
+          description: 总数
+        page:
+          type: integer
+          description: 当前页码
+        size:
+          type: integer
+          description: 每页数量
+
+    StockFilters:
+      type: object
+      description: 股票筛选选项
+      properties:
+        industries:
+          type: array
+          items:
+            type: string
+          description: 行业列表
+        markets:
+          type: array
+          items:
+            type: string
+          description: 市场列表
+
+    StockBasicInfo:
+      type: object
+      description: 股票基本信息
+      properties:
+        stock_code:
+          type: string
+          description: 股票代码
+        stock_name:
+          type: string
+          description: 股票名称
+        market:
+          type: string
+          description: 所属市场
+        industry:
+          type: string
+          description: 所属行业
+        list_date:
+          type: string
+          description: 上市日期
+        total_shares:
+          type: number
+          format: double
+          description: 总股本
+        float_shares:
+          type: number
+          format: double
+          description: 流通股本
+
+    StockQuote:
+      type: object
+      description: 股票行情
+      properties:
+        price:
+          type: number
+          format: double
+          description: 当前价格
+        open:
+          type: number
+          format: double
+          description: 开盘价
+        high:
+          type: number
+          format: double
+          description: 最高价
+        low:
+          type: number
+          format: double
+          description: 最低价
+        prev_close:
+          type: number
+          format: double
+          description: 昨收价
+        volume:
+          type: number
+          format: double
+          description: 成交量
+        amount:
+          type: number
+          format: double
+          description: 成交额
+        turnover_rate:
+          type: number
+          format: double
+          description: 换手率
+        change_pct:
+          type: number
+          format: double
+          description: 涨跌幅百分比
+        change_amt:
+          type: number
+          format: double
+          description: 涨跌额
+        bid_price:
+          type: number
+          format: double
+          description: 买一价
+        ask_price:
+          type: number
+          format: double
+          description: 卖一价
+        quote_time:
+          type: string
+          description: 行情时间
+
+    StockQuoteRequest:
+      type: object
+      description: 股票行情请求
+      required:
+        - codes
+      properties:
+        codes:
+          type: array
+          items:
+            type: string
+            pattern: "^[0-9]{6}$"
+          minItems: 1
+          maxItems: 50
+          description: 股票代码列表，每个代码为6位数字，最多50个
+
+    KlinePoint:
+      type: object
+      description: K线数据点
+      properties:
+        date:
+          type: string
+          description: 日期
+        open:
+          type: number
+          format: double
+          description: 开盘价
+        close:
+          type: number
+          format: double
+          description: 收盘价
+        high:
+          type: number
+          format: double
+          description: 最高价
+        low:
+          type: number
+          format: double
+          description: 最低价
+        volume:
+          type: number
+          format: double
+          description: 成交量
+        amount:
+          type: number
+          format: double
+          description: 成交额
+
+    StockKlineData:
+      type: object
+      description: K线数据
+      properties:
+        period:
+          type: string
+          description: K线周期
+        klines:
+          type: array
+          items:
+            $ref: "#/components/schemas/KlinePoint"
+          description: K线数据列表
+
+    CapitalFlowPoint:
+      type: object
+      description: 资金流向数据点
+      properties:
+        date:
+          type: string
+          description: 日期
+        main_inflow:
+          type: number
+          format: double
+          description: 主力流入
+        main_outflow:
+          type: number
+          format: double
+          description: 主力流出
+        retail_inflow:
+          type: number
+          format: double
+          description: 散户流入
+        retail_outflow:
+          type: number
+          format: double
+          description: 散户流出
+        net_inflow:
+          type: number
+          format: double
+          description: 净流入
+
+    StockCapitalFlow:
+      type: object
+      description: 股票资金流向
+      properties:
+        main_net_inflow:
+          type: number
+          format: double
+          description: 主力净流入
+        retail_net_inflow:
+          type: number
+          format: double
+          description: 散户净流入
+        flow_history:
+          type: array
+          items:
+            $ref: "#/components/schemas/CapitalFlowPoint"
+          description: 资金流向历史
+
+    FinancialQuarter:
+      type: object
+      description: 季度财务数据
+      properties:
+        report_date:
+          type: string
+          description: 报告期
+        revenue:
+          type: number
+          format: double
+          description: 营业收入
+        net_profit:
+          type: number
+          format: double
+          description: 净利润
+        eps:
+          type: number
+          format: double
+          description: 每股收益
+        gross_margin:
+          type: number
+          format: double
+          description: 毛利率
+        net_margin:
+          type: number
+          format: double
+          description: 净利率
+        roe:
+          type: number
+          format: double
+          description: 净资产收益率
+
+    StockFinancials:
+      type: object
+      description: 股票财务数据
+      properties:
+        pe_ratio:
+          type: number
+          format: double
+          description: 市盈率
+        pb_ratio:
+          type: number
+          format: double
+          description: 市净率
+        roe:
+          type: number
+          format: double
+          description: 净资产收益率
+        revenue:
+          type: number
+          format: double
+          description: 营业收入
+        net_profit:
+          type: number
+          format: double
+          description: 净利润
+        eps:
+          type: number
+          format: double
+          description: 每股收益
+        gross_margin:
+          type: number
+          format: double
+          description: 毛利率
+        net_margin:
+          type: number
+          format: double
+          description: 净利率
+        quarterly:
+          type: array
+          items:
+            $ref: "#/components/schemas/FinancialQuarter"
+          description: 季度财务数据
+
+    ShareholderItem:
+      type: object
+      description: 股东信息项
+      properties:
+        name:
+          type: string
+          description: 股东名称
+        ratio:
+          type: number
+          format: double
+          description: 持股比例
+        change:
+          type: number
+          format: double
+          description: 变动比例
+        share_type:
+          type: string
+          description: 股份类型
+
+    StockShareholders:
+      type: object
+      description: 股东信息
+      properties:
+        top10:
+          type: array
+          items:
+            $ref: "#/components/schemas/ShareholderItem"
+          description: 前十大股东
+        institution_count:
+          type: integer
+          description: 机构投资者数量
+        institution_ratio:
+          type: number
+          format: double
+          description: 机构持股比例
+
+    StockDetailData:
+      type: object
+      description: 股票详情数据
+      properties:
+        basic:
+          $ref: "#/components/schemas/StockBasicInfo"
+        quote:
+          $ref: "#/components/schemas/StockQuote"
+        kline:
+          $ref: "#/components/schemas/StockKlineData"
+        capital_flow:
+          $ref: "#/components/schemas/StockCapitalFlow"
+        financials:
+          $ref: "#/components/schemas/StockFinancials"
+        shareholders:
+          $ref: "#/components/schemas/StockShareholders"
+
+    StockRankingItem:
+      type: object
+      description: 股票排行项
+      properties:
+        rank:
+          type: integer
+          description: 排名
+        stock_code:
+          type: string
+          description: 股票代码
+        stock_name:
+          type: string
+          description: 股票名称
+        change_pct:
+          type: number
+          format: double
+          description: 涨跌幅百分比
+        current_price:
+          type: number
+          format: double
+          description: 当前价格
+        volume:
+          type: number
+          format: double
+          description: 成交量
+        amount:
+          type: number
+          format: double
+          description: 成交额
+
+    StockSyncResult:
+      type: object
+      description: 股票同步结果
+      properties:
+        total:
+          type: integer
+          description: 总数量
+        imported:
+          type: integer
+          description: 导入数量
+        errors:
+          type: integer
+          description: 错误数量
+
+    UnifiedSearchResponse:
+      type: object
+      description: 统一搜索响应
+      properties:
+        query:
+          type: string
+          description: 搜索关键词
+        funds:
+          $ref: "#/components/schemas/FundSearchData"
+        stocks:
+          $ref: "#/components/schemas/StockSearchData"
+        suggestions:
+          type: array
+          items:
+            type: string
+          description: 搜索建议
+
+  responses:
+    BadRequest:
+      description: 请求参数错误
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/APIResponse"
+          example:
+            code: -1
+            message: "查询参数格式错误"
+            data: null
+
+    Unauthorized:
+      description: 未授权，管理员令牌无效或缺失
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/APIResponse"
+          example:
+            code: -1
+            message: "未提供管理员令牌"
+            data: null
+
+    NotFound:
+      description: 资源未找到
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/APIResponse"
+          example:
+            code: -1
+            message: "not found"
+            data: null
+
+    InternalServerError:
+      description: 服务器内部错误
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/APIResponse"
+          example:
+            code: -1
+            message: "服务器内部错误"
+            data: null

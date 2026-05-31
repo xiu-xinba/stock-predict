@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"stock-predict-go/internal/dto"
@@ -16,10 +17,22 @@ import (
 
 var ErrModelUnsupportedFund = errors.New("model service does not cover fund")
 
+type circuitState int
+
+const (
+	circuitClosed   circuitState = iota
+	circuitOpen
+	circuitHalfOpen
+)
+
 type ModelClient struct {
-	baseURL    *url.URL
-	httpClient *http.Client
-	logger     *slog.Logger
+	baseURL      *url.URL
+	httpClient   *http.Client
+	logger       *slog.Logger
+	circuitMu    sync.Mutex
+	circuitState circuitState
+	failCount    int
+	openedAt     time.Time
 }
 
 type modelPredictionResponse struct {
@@ -94,17 +107,24 @@ func (c *ModelClient) Predict(ctx context.Context, fundCode string) (modelPredic
 	if c == nil {
 		return out, fmt.Errorf("model client is not configured")
 	}
+
+	if !c.allowRequest() {
+		return out, fmt.Errorf("model service circuit breaker is open")
+	}
+
 	endpoint := *c.baseURL
 	endpoint.Path = strings.TrimRight(endpoint.Path, "/") + "/predict/" + url.PathEscape(fundCode)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint.String(), nil)
 	if err != nil {
+		c.recordFailure()
 		return out, err
 	}
 	req.Header.Set("Accept", "application/json")
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
+		c.recordFailure()
 		return out, err
 	}
 	defer resp.Body.Close()
@@ -116,16 +136,55 @@ func (c *ModelClient) Predict(ctx context.Context, fundCode string) (modelPredic
 		if resp.StatusCode == http.StatusBadRequest && strings.Contains(payload.Error, "No sample row found") {
 			return out, fmt.Errorf("%w: %s", ErrModelUnsupportedFund, payload.Error)
 		}
+		c.recordFailure()
 		if payload.Error != "" {
 			return out, fmt.Errorf("model service returned status %d: %s", resp.StatusCode, payload.Error)
 		}
 		return out, fmt.Errorf("model service returned status %d", resp.StatusCode)
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		c.recordFailure()
 		return out, err
 	}
+	c.recordSuccess()
 	if out.FundCode == "" {
 		out.FundCode = fundCode
 	}
 	return out, nil
+}
+
+func (c *ModelClient) allowRequest() bool {
+	c.circuitMu.Lock()
+	defer c.circuitMu.Unlock()
+	switch c.circuitState {
+	case circuitClosed:
+		return true
+	case circuitOpen:
+		if time.Since(c.openedAt) >= 30*time.Second {
+			c.circuitState = circuitHalfOpen
+			return true
+		}
+		return false
+	case circuitHalfOpen:
+		return true
+	default:
+		return true
+	}
+}
+
+func (c *ModelClient) recordFailure() {
+	c.circuitMu.Lock()
+	defer c.circuitMu.Unlock()
+	c.failCount++
+	if c.failCount >= 3 {
+		c.circuitState = circuitOpen
+		c.openedAt = time.Now()
+	}
+}
+
+func (c *ModelClient) recordSuccess() {
+	c.circuitMu.Lock()
+	defer c.circuitMu.Unlock()
+	c.failCount = 0
+	c.circuitState = circuitClosed
 }

@@ -1,27 +1,28 @@
 package api
 
 import (
-	"encoding/json"
-	"errors"
-	"io"
 	"log/slog"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 
 	"stock-predict-go/internal/config"
-	"stock-predict-go/internal/dto"
 	"stock-predict-go/internal/service"
+	"stock-predict-go/internal/store"
+	"stock-predict-go/internal/util"
 )
 
 type Router struct {
-	cfg      config.Config
-	services *service.Registry
-	logger   *slog.Logger
+	cfg       config.Config
+	services  *service.Registry
+	store     store.FundRepository
+	searchIdx *store.SearchIndex
+	logger    *slog.Logger
+	stopCh    chan struct{}
 }
 
-func NewRouter(cfg config.Config, services *service.Registry, logger *slog.Logger) http.Handler {
-	router := &Router{cfg: cfg, services: services, logger: logger}
+func NewRouter(cfg config.Config, services *service.Registry, fundRepo store.FundRepository, logger *slog.Logger, searchIdx *store.SearchIndex) http.Handler {
+	router := &Router{cfg: cfg, services: services, store: fundRepo, searchIdx: searchIdx, logger: logger, stopCh: make(chan struct{})}
 
 	gin.SetMode(gin.ReleaseMode)
 	engine := gin.New()
@@ -30,21 +31,35 @@ func NewRouter(cfg config.Config, services *service.Registry, logger *slog.Logge
 	_ = engine.SetTrustedProxies(nil)
 	engine.Use(
 		recoverer(logger),
+		requestID(),
 		requestLogger(logger),
 		securityHeaders(),
-		cors(cfg),
+		cors(cfg, logger),
+		csrfProtection(cfg, router.stopCh),
+		gzipMiddleware(),
 		maxBody(),
+		rateLimiter(logger, router.stopCh),
 	)
 
 	v1 := engine.Group("/api/v1")
 	v1.GET("/health", router.health)
+	v1.GET("/search", router.unifiedSearch)
 	v1.GET("/funds/search", router.searchFunds)
 	v1.GET("/funds/filters", router.fundFilters)
-	v1.POST("/funds/sync", router.syncFunds)
+	v1.GET("/funds/coverage", router.fundCoverage)
+	v1.POST("/funds/sync", router.requireAdminToken, router.syncFunds)
 	v1.GET("/market/indices", router.marketIndices)
 	v1.GET("/market/ranking/:type", router.marketRanking)
 	v1.GET("/predict/:fundCode", router.predict)
 	v1.POST("/watchlist/quotes", router.watchlistQuotes)
+	v1.GET("/fund/:fundCode/detail", router.fundDetail)
+	v1.GET("/stocks/search", router.searchStocks)
+	v1.GET("/stocks/filters", router.stockFilters)
+	v1.GET("/stock/:stockCode/detail", router.stockDetail)
+	v1.GET("/stock/:stockCode/predict", router.predictStock)
+	v1.POST("/stocks/quotes", router.stockQuotes)
+	v1.GET("/market/stock-ranking/:type", router.stockRanking)
+	v1.POST("/stocks/sync", router.requireAdminToken, router.syncStocks)
 
 	engine.NoRoute(func(c *gin.Context) {
 		writeError(c, http.StatusNotFound, -1, "not found")
@@ -55,139 +70,18 @@ func NewRouter(cfg config.Config, services *service.Registry, logger *slog.Logge
 
 func (r *Router) health(c *gin.Context) {
 	writeJSON(c, http.StatusOK, map[string]any{
-		"status":       "ok",
-		"model_loaded": r.services.Prediction.ModelLoaded(),
-		"runtime":      "go",
+		"status":        "ok",
+		"model_loaded":  r.services.Prediction.ModelLoaded(),
+		"funds_loaded":  r.services.Funds.Count() > 0,
+		"stocks_loaded": r.services.Stocks.IsLoaded(),
+		"runtime":       "go",
 	})
 }
 
-func (r *Router) searchFunds(c *gin.Context) {
-	var query dto.FundSearchRequest
-	if err := c.ShouldBindQuery(&query); err != nil {
-		writeError(c, http.StatusBadRequest, -1, "查询参数格式错误")
-		return
-	}
-	writeSuccess(c, r.services.Funds.Search(query))
+func (r *Router) Close() {
+	close(r.stopCh)
 }
 
-func (r *Router) fundFilters(c *gin.Context) {
-	writeSuccess(c, r.services.Funds.Filters())
-}
-
-func (r *Router) syncFunds(c *gin.Context) {
-	if !r.cfg.IsDevelopment() {
-		if r.cfg.AdminToken == "" {
-			writeError(c, http.StatusForbidden, -1, "未配置管理员令牌，禁止触发同步")
-			return
-		}
-		if c.GetHeader("X-Admin-Token") != r.cfg.AdminToken {
-			writeError(c, http.StatusUnauthorized, -1, "无权触发同步")
-			return
-		}
-	}
-	result, err := r.services.Funds.SyncFromSources(r.cfg.FundUniverseURL, r.cfg.FundMetricsURL, r.cfg.FundSyncCSVPath)
-	if errors.Is(err, service.ErrSyncSourceRequired) {
-		writeError(c, http.StatusBadRequest, -1, "未配置基金同步来源，无法同步基金数据")
-		return
-	}
-	if errors.Is(err, service.ErrSyncUnsupported) {
-		writeError(c, http.StatusInternalServerError, -1, "当前数据仓库不支持同步")
-		return
-	}
-	if err != nil {
-		r.logger.Warn("fund sync failed", "source", r.cfg.FundSyncCSVPath, "error", err)
-		writeError(c, http.StatusInternalServerError, -1, "基金同步失败")
-		return
-	}
-	writeSuccess(c, result)
-}
-
-func (r *Router) marketIndices(c *gin.Context) {
-	writeSuccess(c, r.services.Market.Indices())
-}
-
-func (r *Router) marketRanking(c *gin.Context) {
-	var path dto.MarketRankingPath
-	var query dto.MarketRankingQuery
-	if err := c.ShouldBindUri(&path); err != nil {
-		writeError(c, http.StatusBadRequest, -1, "路径参数格式错误")
-		return
-	}
-	if err := c.ShouldBindQuery(&query); err != nil {
-		writeError(c, http.StatusBadRequest, -1, "查询参数格式错误")
-		return
-	}
-	items, err := r.services.Funds.Ranking(path.Type, query.Size)
-	if errors.Is(err, service.ErrInvalidRankingType) {
-		writeJSON(c, http.StatusOK, dto.APIResponse{Code: -1, Message: "type 必须为 gainers 或 losers", Data: nil})
-		return
-	}
-	if err != nil {
-		writeError(c, http.StatusInternalServerError, -1, "服务器繁忙，请稍后重试")
-		return
-	}
-	writeSuccess(c, items)
-}
-
-func (r *Router) predict(c *gin.Context) {
-	var path dto.PredictPath
-	if err := c.ShouldBindUri(&path); err != nil {
-		writeError(c, http.StatusBadRequest, -1, "路径参数格式错误")
-		return
-	}
-	result, err := r.services.Prediction.PredictByFundCode(path.FundCode)
-	if errors.Is(err, service.ErrInvalidFundCode) {
-		writeJSON(c, http.StatusOK, dto.APIResponse{Code: -1, Message: "基金代码必须为6位数字", Data: nil})
-		return
-	}
-	if errors.Is(err, service.ErrFundNotFound) {
-		writeJSON(c, http.StatusOK, dto.APIResponse{Code: -1, Message: "未找到基金 " + path.FundCode, Data: nil})
-		return
-	}
-	if err != nil {
-		writeError(c, http.StatusInternalServerError, -1, "服务器繁忙，请稍后重试")
-		return
-	}
-	writeSuccess(c, result)
-}
-
-func (r *Router) watchlistQuotes(c *gin.Context) {
-	var payload dto.WatchlistQuoteRequest
-	decoder := json.NewDecoder(c.Request.Body)
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&payload); err != nil {
-		writeError(c, http.StatusBadRequest, -1, "请求体格式错误")
-		return
-	}
-	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
-		writeError(c, http.StatusBadRequest, -1, "请求体格式错误")
-		return
-	}
-	if len(payload.Codes) == 0 {
-		writeSuccess(c, []dto.WatchlistItem{})
-		return
-	}
-	if len(payload.Codes) > 50 {
-		writeError(c, http.StatusBadRequest, -1, "最多支持50个基金代码")
-		return
-	}
-	for _, code := range payload.Codes {
-		if !isFundCode(code) {
-			writeError(c, http.StatusBadRequest, -1, "基金代码必须为6位数字")
-			return
-		}
-	}
-	writeSuccess(c, r.services.Prediction.WatchlistQuotes(payload.Codes))
-}
-
-func isFundCode(value string) bool {
-	if len(value) != 6 {
-		return false
-	}
-	for _, ch := range value {
-		if ch < '0' || ch > '9' {
-			return false
-		}
-	}
-	return true
+func isSixDigitCode(value string) bool {
+	return len(value) == 6 && util.IsAllDigits(value)
 }

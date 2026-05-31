@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import path from 'path'
@@ -35,10 +36,21 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id) {
-          if (id.includes('node_modules/echarts')) return 'echarts'
-          if (id.includes('node_modules/element-plus') || id.includes('node_modules/@element-plus')) return 'element-plus'
-          if (id.includes('node_modules/vue') || id.includes('node_modules/vue-router') || id.includes('node_modules/pinia')) return 'vue-vendor'
+          if (id.includes('node_modules/echarts') || id.includes('node_modules\\echarts')) return 'echarts'
+          if (id.includes('node_modules/element-plus') || id.includes('node_modules\\element-plus') || id.includes('node_modules/@element-plus') || id.includes('node_modules\\@element-plus')) return 'element-plus'
+          if (id.includes('node_modules/vue') || id.includes('node_modules\\vue') || id.includes('node_modules/vue-router') || id.includes('node_modules\\vue-router') || id.includes('node_modules/pinia') || id.includes('node_modules\\pinia')) return 'vue-vendor'
         },
+      },
+    },
+  },
+  test: {
+    environment: 'happy-dom',
+    setupFiles: ['src/__tests__/setup.ts'],
+    globals: true,
+    css: true,
+    server: {
+      deps: {
+        inline: ['element-plus'],
       },
     },
   },

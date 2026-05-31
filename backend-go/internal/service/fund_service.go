@@ -316,6 +316,7 @@ func compareInt(a, b int) int {
 	}
 }
 
+// searchRelevance mirrors searchFundRelevance in search_service.go; keep in sync.
 func searchRelevance(fund dto.FundItem, keyword string) int {
 	code := strings.ToLower(fund.FundCode)
 	name := strings.ToLower(fund.FundName)
@@ -345,6 +346,7 @@ func searchRelevance(fund dto.FundItem, keyword string) int {
 	}
 }
 
+// fundMatchesKeyword mirrors searchFundMatchesKeyword in search_service.go; keep in sync.
 func fundMatchesKeyword(fund dto.FundItem, keyword string) bool {
 	for _, value := range []string{
 		fund.FundCode,
@@ -361,6 +363,7 @@ func fundMatchesKeyword(fund dto.FundItem, keyword string) bool {
 	return false
 }
 
+// keys extracts sorted keys from a string set; also used by StockService.Filters().
 func keys(set map[string]bool) []string {
 	out := make([]string, 0, len(set))
 	for key := range set {

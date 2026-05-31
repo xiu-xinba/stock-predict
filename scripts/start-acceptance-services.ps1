@@ -1,3 +1,30 @@
+<#
+.SYNOPSIS
+    启动验收测试所需的全部服务
+
+.DESCRIPTION
+    按顺序启动模型服务（日线/周线/日内三个实例）、Go 后端和前端开发服务器，
+    等待各服务健康检查通过后输出进程 PID 和访问地址。PID 信息保存到
+    .run-logs/acceptance-pids.json，供 stop-acceptance-services.ps1 使用。
+
+.EXAMPLE
+    .\scripts\start-acceptance-services.ps1
+    .\scripts\start-acceptance-services.ps1 -BackendPort 5070 -DailyModelPort 8097
+    .\scripts\start-acceptance-services.ps1 -FrontendPort 5173
+
+.PREREQUISITES
+    - Python 3.11+ 及 fund_model_training 包已安装（pip install -e ".[data,dev]"）
+    - Go 1.21+ 已安装
+    - Node.js 18+ 及前端依赖已安装（npm install）
+    - 模型 artifact 文件已存在于 model-training/artifacts/
+    - 训练样本 CSV 已存在于 model-training/data/processed/
+    - PowerShell 5.1+ 或 PowerShell 7+
+
+.NOTES
+    日志文件保存在 .run-logs/ 目录下
+    默认端口：后端 5070、前端 5173、日线模型 8097、周线模型 8098、日内模型 8099
+    启动完成后使用 stop-acceptance-services.ps1 停止所有服务
+#>
 param(
   [int]$BackendPort = 5070,
   [int]$FrontendPort = 5173,

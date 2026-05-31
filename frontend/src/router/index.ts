@@ -31,8 +31,22 @@ const routes: RouteRecordRaw[] = [
     meta: { title: '预测', icon: 'MagicStick' },
   },
   {
+    path: '/fund/:fundCode',
+    name: 'FundDetail',
+    component: () => import('@/views/FundDetailView.vue'),
+    meta: { title: '基金详情' },
+  },
+  {
+    path: '/stock/:stockCode',
+    name: 'StockDetail',
+    component: () => import('@/views/StockDetailView.vue'),
+    meta: { title: '股票详情' },
+  },
+  {
     path: '/:pathMatch(.*)*',
-    redirect: '/watchlist',
+    name: 'NotFound',
+    component: () => import('@/views/NotFoundView.vue'),
+    meta: { title: '页面未找到' },
   },
 ]
 
@@ -44,9 +58,16 @@ const router = createRouter({
   },
 })
 
-router.beforeEach((to) => {
+router.beforeEach((to, _from, next) => {
   const title = (to.meta.title as string) || '基金预测'
-  document.title = title
+  document.title = `${title} · 基金预测`
+
+  // Auth check point - currently no auth required
+  // if (to.meta.requiresAuth && !isAuthenticated()) {
+  //   return next({ name: 'Login', query: { redirect: to.fullPath } })
+  // }
+
+  next()
 })
 
 export default router
