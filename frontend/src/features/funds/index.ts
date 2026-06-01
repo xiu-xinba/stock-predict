@@ -1,0 +1,5 @@
+export { default as FundDetailView } from '@/views/FundDetailView.vue'
+export { useFundDetailStore } from '@/stores/fundDetail'
+export * from '@/api/fundDetail'
+export type * from '@/types/fund'
+export type * from '@/types/fundDetail'
