@@ -34,6 +34,16 @@ npm run build
 
 如果任一命令失败，不允许继续发布。先修复失败项，再重新执行完整门禁。
 
+## Quality Gate
+
+Run before deployment:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\verify-commercial-readiness.ps1
+```
+
+Deployment is blocked if API contract, Go tests, Go vet, frontend lint, frontend tests, or frontend build fail.
+
 ## 3. 后端配置
 
 生产环境至少配置以下环境变量：

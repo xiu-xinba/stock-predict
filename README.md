@@ -37,17 +37,13 @@
 
 ```
 stock-predict/
-├── frontend/                    # Vue 3 前端
+├── frontend/                    # Vue 3 前端应用
 │   ├── src/
-│   │   ├── api/                # API 请求层
-│   │   ├── components/
-│   │   │   ├── market/         # 行情组件（MarketDock, RankingList, StockRanking, FundRanking）
-│   │   │   ├── watchlist/      # 自选组件
-│   │   │   ├── fund/           # 基金详情组件（FundHeader, FundPerformance, FundPortfolio…）
-│   │   │   ├── stock/          # 股票详情组件（StockHeader, StockQuote, StockKline, StockCapitalFlow…）
-│   │   │   ├── common/         # 通用布局组件（DetailPageLayout, AssetHeader）
-│   │   │   ├── SearchOverlay.vue     # 统一搜索浮层
-│   │   │   └── RefreshFab.vue        # 页面刷新浮动按钮
+│   │   ├── app/                # 应用启动、路由入口
+│   │   ├── shared/             # 共享 API 路由、通用能力边界
+│   │   ├── features/           # funds/stocks/market/watchlist/search 业务入口
+│   │   ├── api/                # 兼容旧路径的 API 请求层
+│   │   ├── components/         # 页面组件与通用组件
 │   │   ├── composables/        # 组合式函数
 │   │   ├── router/             # 路由配置
 │   │   ├── stores/             # Pinia Store
@@ -56,31 +52,16 @@ stock-predict/
 │   │   └── views/              # 页面视图
 │   └── vite.config.ts
 ├── backend-go/                  # Go 后端
-│   ├── cmd/api/                # 入口
+│   ├── cmd/api/                # 进程入口
 │   └── internal/
-│       ├── api/                # HTTP handler & 路由
+│       ├── app/                # 应用装配、依赖初始化、HTTP server 构造
+│       ├── api/                # HTTP handler、路由、中间件
+│       ├── platform/           # 通用响应、错误码等平台边界
 │       ├── config/             # 环境变量配置
 │       ├── data/               # 种子数据 & 默认 JSON
 │       ├── dto/                # 请求/响应数据结构
-│       ├── service/            # 业务逻辑
-│       │   ├── stock_sync.go       # 股票数据同步
-│       │   ├── stock_search.go     # 股票搜索逻辑
-│       │   ├── stock_service.go    # 股票 CRUD
-│       │   ├── stock_detail_service.go # 股票详情聚合
-│       │   ├── stock_quote.go      # 股票实时报价
-│       │   ├── fund_service.go     # 基金业务
-│       │   ├── fund_detail_service.go # 基金详情
-│       │   ├── fund_quote.go       # 基金报价
-│       │   ├── search_service.go   # 统一搜索
-│       │   ├── market_service.go   # 市场行情
-│       │   └── watchlist_service.go # 自选基金报价
-│       ├── store/              # 数据持久化
-│       │   ├── persistence.go       # 主持久化逻辑
-│       │   ├── persistence_sync.go  # 同步写入流程
-│       │   ├── persistence_helpers.go # 持久化辅助函数
-│       │   ├── search_index.go      # SQLite FTS5 搜索索引
-│       │   ├── memory.go            # 内存数据仓库
-│       │   └── interfaces.go        # 仓库接口定义
+│       ├── service/            # 现有领域服务，后续按 domain 继续收敛
+│       ├── store/              # 数据持久化、内存仓储、SQLite FTS5 搜索索引
 │       └── util/               # 工具函数
 └── docs/                       # 项目文档
     ├── architecture.md          # 架构设计文档
@@ -107,6 +88,20 @@ go run ./cmd/api
 预测模型训练和在线推理已拆分出当前主项目。当前后端会保留 `/api/v1/predict/{fundCode}` 与 `/api/v1/stock/{stockCode}/predict`，并返回 `501 feature_disabled` 占位响应。
 
 商业化发布前可运行完整质量门禁：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\verify-commercial-readiness.ps1
+```
+
+### 前端数据不可见排查
+
+如果基金或股票数据在前端不可见，先确认后端 gzip 响应没有被污染：
+
+```powershell
+curl.exe -s --compressed "http://localhost:5070/api/v1/stocks/search?size=1"
+```
+
+输出必须是纯 JSON，不能出现 gzip 尾部乱码。随后运行完整门禁：
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts\verify-commercial-readiness.ps1

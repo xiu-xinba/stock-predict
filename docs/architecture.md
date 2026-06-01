@@ -131,8 +131,10 @@ internal/store/          → 数据存储层
 | service | fund_quote.go | 基金实时行情（东方财富/腾讯） |
 | service | stock_quote.go | 股票实时行情 |
 | service | url_validator.go | URL 白名单验证 |
-| store | interfaces.go | FundRepository 接口定义 |
-| store | memory.go | 内存存储实现（MemoryStore） |
+| service | errors.go | 统一业务错误码体系 |
+| service | constants.go | 共享常量和 HTTP 客户端工厂 |
+| store | interfaces.go | FundRepository、StockRepository 接口定义 |
+| store | memory.go | 内存存储实现（MemoryStore，同时实现 FundRepository 和 StockRepository） |
 | store | persistence.go | JSON 文件持久化 |
 | store | persistence_sync.go | 东方财富数据同步解析 |
 | store | search_index.go | SQLite FTS5 搜索索引 |
@@ -162,12 +164,24 @@ Registry
  ├── MarketService        ← (独立，无外部依赖)
  ├── FundQuoteClient      ← (HTTP 客户端)
  ├── StockQuoteClient     ← (HTTP 客户端)
- ├── StockService         ← Logger
+ ├── StockService         ← StockRepository, Logger
  ├── WatchlistService     ← FundRepository, Config, Logger
  ├── FundDetailService    ← FundRepository, FundQuoteClient, Logger
- ├── StockDetailService   ← StockService, StockQuoteClient, Logger
- └── SearchService        ← FundRepository, StockService, SearchIndex
+ ├── StockDetailService   ← StockRepository, StockQuoteClient, Logger
+ └── SearchService        ← FundRepository, StockRepository, SearchIndex
 ```
+
+**统一业务错误码体系（service/errors.go）：**
+
+| 错误变量 | 业务码 | HTTP状态 | 说明 |
+|---------|--------|---------|------|
+| ErrInvalidFundCode | 10001 | 400 | 无效基金代码 |
+| ErrFundNotFound | 10002 | 404 | 基金不存在 |
+| ErrInvalidStockCode | 10003 | 400 | 无效股票代码 |
+| ErrStockNotFound | 10004 | 404 | 股票不存在 |
+| ErrInvalidRankingType | 10005 | 400 | 无效排行类型 |
+| ErrSyncSourceRequired | 10006 | 400 | 同步源未指定 |
+| ErrSyncUnsupported | 10007 | 500 | 同步源不支持 |
 
 **初始化流程（main.go）：**
 
@@ -196,10 +210,10 @@ Registry
 | Recoverer | Panic 恢复，返回 500 | 记录堆栈到日志 |
 | RequestID | 生成唯一请求 ID | 8 字节随机 hex，写入 `X-Request-ID` 头 |
 | RequestLogger | 请求日志 | 记录方法/路径/状态码/耗时/请求ID |
-| SecurityHeaders | 安全响应头 | `X-Content-Type-Options: nosniff`、`X-Frame-Options: DENY`、`Referrer-Policy: no-referrer`、`Cache-Control: no-store`、`Permissions-Policy`、`X-Permitted-Cross-Domain-Policies: none` |
+| SecurityHeaders | 安全响应头 | `X-Content-Type-Options: nosniff`、`X-Frame-Options: DENY`、`Referrer-Policy: no-referrer`、`Cache-Control: no-store`、`Permissions-Policy`、`X-Permitted-Cross-Domain-Policies: none`、`Strict-Transport-Security`（非开发环境）、`Content-Security-Policy`（非开发环境）、`X-XSS-Protection: 0` |
 | CORS | 跨域控制 | 基于 `CORS_ORIGINS` 配置，开发模式默认允许 `localhost:5173` |
 | CSRF | 跨站请求伪造防护 | Cookie + Header 双令牌验证，24h 过期，5 分钟清理 |
-| Gzip | 响应压缩 | 检查 `Accept-Encoding`，自动压缩 |
+| Gzip | 响应压缩 | 检查 `Accept-Encoding`，仅对 JSON/文本内容压缩 |
 | MaxBody | 请求体大小限制 | 最大 1MB |
 | RateLimiter | IP 限流 | 每分钟 60 次，1 分钟清理过期条目 |
 
@@ -508,12 +522,13 @@ Pinia
                        │
                        ▼
 ┌──────────────────────────────────────────────────────────────┐
-│              内存存储 (StockService.stocks)                    │
+│              内存存储 (MemoryStore - StockRepository)         │
 │                                                              │
-│  结构: []StockItem                                            │
+│  结构: map[string]StockItem  (key = StockCode)                │
 │  并发: sync.RWMutex                                          │
 │  缓存: rankingCache (30 秒过期)                               │
-│  操作: Search / FindStock / ListStocks / SyncStocks / Ranking │
+│  操作: 通过 StockRepository 接口访问                           │
+│        Search / FindStock / ListStocks / SyncStocks / Ranking │
 └──────────────────────────────────────────────────────────────┘
 ```
 
@@ -709,7 +724,7 @@ GET/HEAD/OPTIONS 请求：
 POST/PUT/DELETE/PATCH 请求：
     → 读取 Cookie: csrf_token
     → 读取 Header: X-CSRF-Token
-    → 验证：两者均非空且相等
+    → 验证：两者均非空且相等（使用 crypto/subtle.ConstantTimeCompare 进行时间安全比较，防止时序攻击）
     → 验证：令牌在服务端映射中存在且未过期
     → 失败 → 403 "CSRF token 验证失败"
 
@@ -727,9 +742,9 @@ POST/PUT/DELETE/PATCH 请求：
 
 验证流程：
     1. 读取 Authorization 头，去除 "Bearer " 前缀
-    2. 空令牌 → 401 "未提供管理员令牌"
+    2. 空令牌 → 401 "未提供管理员令牌"（生产环境直接拒绝，开发模式允许 dev-admin-token）
     3. 开发模式 + "dev-admin-token" → 放行
-    4. 与 ADMIN_TOKEN 环境变量匹配 → 放行
+    4. 与 ADMIN_TOKEN 环境变量匹配（使用 crypto/subtle.ConstantTimeCompare 时间安全比较） → 放行
     5. 不匹配 → 401 "管理员令牌无效"
 ```
 
@@ -741,6 +756,7 @@ POST/PUT/DELETE/PATCH 请求：
 | 股票代码 | 6 位纯数字 | Handler + Service |
 | 请求体大小 | 最大 1MB | MaxBody 中间件 |
 | 自选列表 | 最多 50 个代码，每个 6 位数字 | Handler binding tag |
+| 股票行情请求 | StockQuoteRequest binding tag 验证（Codes 必填，每项 6 位数字，最多 50 个） | Handler binding tag |
 | 搜索分页 | Page ≥ 1, 1 ≤ Size ≤ 50 | Service 层 |
 | 排行数量 | 1 ≤ Size ≤ 50 | Service 层 |
 | FTS 查询 | 转义特殊字符 `("*,()^+-:)` | SearchIndex 层 |
@@ -756,6 +772,27 @@ POST/PUT/DELETE/PATCH 请求：
 | `push2his.eastmoney.com` | 股票历史数据 |
 | `*.qq.com` | 腾讯数据源 |
 | `qt.gtimg.cn` | 腾讯行情接口 |
+
+### 7.6 Config 验证
+
+生产环境启动时对关键配置进行校验：
+
+```
+校验项：
+    ├── ADMIN_TOKEN 为空 → 启动警告（生产环境强烈建议配置）
+    ├── CORS_ORIGINS 包含 "*" → 启动警告（非开发模式不推荐通配符）
+    └── 配置冲突检测（如端口占用等）
+```
+
+### 7.7 安全头增强
+
+非开发环境下自动启用以下安全响应头：
+
+| 响应头 | 值 | 说明 |
+|--------|------|------|
+| Strict-Transport-Security | max-age=31536000; includeSubDomains | HSTS，强制 HTTPS（仅生产环境） |
+| Content-Security-Policy | default-src 'self'; ... | CSP 策略，限制资源加载来源（仅生产环境） |
+| X-XSS-Protection | 0 | 禁用浏览器 XSS 过滤器（现代浏览器已弃用，设为 0 避免误判） |
 
 ---
 
@@ -848,3 +885,26 @@ POST/PUT/DELETE/PATCH 请求：
 | READ_TIMEOUT_SECONDS | 8 | 读超时 |
 | WRITE_TIMEOUT_SECONDS | 12 | 写超时 |
 | SHUTDOWN_TIMEOUT_SECONDS | 8 | 优雅关闭超时 |
+
+---
+
+## 9. 商业级边界收敛
+
+### 9.1 后端边界
+
+后端新增 `internal/app` 作为应用装配层，`cmd/api` 只负责配置加载、日志初始化、进程启动和优雅关闭。HTTP 处理仍位于 `internal/api`，业务能力继续由现有 `internal/service` 与 `internal/store` 承载；后续领域迁移以 `fund`、`stock`、`market`、`watchlist`、`search` 和 `prediction` 为边界逐步收敛。
+
+`internal/platform` 作为平台能力入口，当前包含统一响应 envelope 与错误码基础类型，后续可逐步承接通用响应、错误映射、安全策略和 telemetry 边界。
+
+### 9.2 前端边界
+
+前端新增 `src/app` 作为应用启动入口，`src/shared` 作为共享 API 与通用能力边界，`src/features` 作为业务模块入口。现有 `src/api`、`src/stores`、`src/components`、`src/views` 路径保持兼容，避免一次性迁移造成大范围回归。
+
+### 9.3 P0 数据可见性修复
+
+本轮排查发现前端基金/股票数据不可见的关键风险来自后端 gzip 中间件响应污染：当客户端发送 `Accept-Encoding: gzip` 时，旧实现会输出普通 JSON 后附加 gzip trailer 字节，导致浏览器或 Axios 无法稳定解析 JSON。修复后 gzip writer 只在确认 JSON/text 响应需要压缩时创建，并只在实际创建后关闭。
+
+回归测试覆盖：
+
+- `backend-go/internal/api/router_test.go`：验证 gzip 响应可被正常解压并解析为 API JSON。
+- `frontend/src/__tests__/data-visibility.test.ts`：验证市场基金排行、热门股票、基金详情和股票详情能消费 API payload 并渲染关键数据。

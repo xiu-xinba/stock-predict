@@ -30,6 +30,16 @@ npm run test:run
 - 预测接口是否返回明确的独立项目占位状态。
 - 后端日志是否出现外部数据源持续失败。
 
+## Quality Gate
+
+Run before deployment:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\verify-commercial-readiness.ps1
+```
+
+Deployment is blocked if API contract, Go tests, Go vet, frontend lint, frontend tests, or frontend build fail.
+
 ## 2. 数据同步
 
 ### 基金同步
@@ -83,6 +93,24 @@ Invoke-RestMethod -Method Post `
 2. 运行 `go test ./...` 和 `go vet ./...`。
 3. 检查数据文件是否存在且可读写。
 4. 检查外部数据源不可用时是否有兜底数据。
+
+### 前端基金或股票数据不可见
+
+1. 直接调用后端接口，确认接口返回纯 JSON：
+
+   ```powershell
+   curl.exe -s --compressed "http://localhost:5070/api/v1/stocks/search?size=1"
+   ```
+
+2. 输出中不得出现 gzip 尾部乱码。如果出现普通 JSON 后附加乱码，优先检查 `backend-go/internal/api/middleware.go` 的 gzip writer 生命周期。
+3. 运行前端数据可见性测试：
+
+   ```powershell
+   cd frontend
+   npm run test:run -- src/__tests__/data-visibility.test.ts
+   ```
+
+4. 如果接口正常但页面仍无数据，沿 `API route -> Axios -> Pinia store -> Vue view` 逐层定位。
 
 ### 预测入口异常
 
