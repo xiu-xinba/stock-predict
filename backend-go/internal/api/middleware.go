@@ -3,6 +3,7 @@ package api
 import (
 	"compress/gzip"
 	"crypto/rand"
+	"crypto/subtle"
 	"encoding/hex"
 	"log/slog"
 	"net/http"
@@ -114,7 +115,7 @@ func cors(cfg config.Config, logger *slog.Logger) gin.HandlerFunc {
 	}
 }
 
-func securityHeaders() gin.HandlerFunc {
+func securityHeaders(cfg config.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		headers := c.Writer.Header()
 		headers.Set("X-Content-Type-Options", "nosniff")
@@ -123,6 +124,11 @@ func securityHeaders() gin.HandlerFunc {
 		headers.Set("Cache-Control", "no-store")
 		headers.Set("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
 		headers.Set("X-Permitted-Cross-Domain-Policies", "none")
+		headers.Set("X-XSS-Protection", "0")
+		if !cfg.IsDevelopment() {
+			headers.Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+			headers.Set("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:")
+		}
 		c.Next()
 	}
 }
@@ -180,15 +186,35 @@ func scrubRemote(remote string) string {
 
 type gzipResponseWriter struct {
 	gin.ResponseWriter
-	gw *gzip.Writer
+	gw      *gzip.Writer
+	gzipped bool
 }
 
 func (w *gzipResponseWriter) Write(data []byte) (int, error) {
+	if !w.gzipped {
+		ct := w.Header().Get("Content-Type")
+		ce := w.Header().Get("Content-Encoding")
+		if ce != "" || !(strings.Contains(ct, "json") || strings.Contains(ct, "text")) {
+			return w.ResponseWriter.Write(data)
+		}
+		w.Header().Del("Content-Length")
+		w.Header().Set("Content-Encoding", "gzip")
+		w.Header().Set("Vary", "Accept-Encoding")
+		w.gw = gzip.NewWriter(w.ResponseWriter)
+		w.gzipped = true
+	}
 	return w.gw.Write(data)
 }
 
 func (w *gzipResponseWriter) WriteString(s string) (int, error) {
-	return w.gw.Write([]byte(s))
+	return w.Write([]byte(s))
+}
+
+func (w *gzipResponseWriter) Close() error {
+	if w.gw == nil {
+		return nil
+	}
+	return w.gw.Close()
 }
 
 func csrfProtection(cfg config.Config, stopCh chan struct{}) gin.HandlerFunc {
@@ -286,11 +312,16 @@ func (r *Router) requireAdminToken(c *gin.Context) {
 		c.Abort()
 		return
 	}
-	if r.cfg.Env == "development" && token == "dev-admin-token" {
+	if r.cfg.Env == "development" && subtle.ConstantTimeCompare([]byte(token), []byte("dev-admin-token")) == 1 {
 		c.Next()
 		return
 	}
-	if r.cfg.AdminToken != "" && token == r.cfg.AdminToken {
+	if r.cfg.AdminToken == "" {
+		writeError(c, http.StatusUnauthorized, -1, "管理员令牌无效")
+		c.Abort()
+		return
+	}
+	if subtle.ConstantTimeCompare([]byte(token), []byte(r.cfg.AdminToken)) == 1 {
 		c.Next()
 		return
 	}
@@ -304,11 +335,11 @@ func gzipMiddleware() gin.HandlerFunc {
 			c.Next()
 			return
 		}
-		gz := gzip.NewWriter(c.Writer)
-		defer gz.Close()
-		c.Header("Content-Encoding", "gzip")
-		c.Header("Vary", "Accept-Encoding")
-		c.Writer = &gzipResponseWriter{ResponseWriter: c.Writer, gw: gz}
+		writer := &gzipResponseWriter{ResponseWriter: c.Writer}
+		c.Writer = writer
 		c.Next()
+		if err := writer.Close(); err != nil && !c.Writer.Written() {
+			writeError(c, http.StatusInternalServerError, -1, "服务器内部错误")
+		}
 	}
 }

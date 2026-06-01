@@ -2,6 +2,7 @@ package api_test
 
 import (
 	"bytes"
+	"compress/gzip"
 	"encoding/json"
 	"log/slog"
 	"net/http"
@@ -29,15 +30,15 @@ func newTestHandler() http.Handler {
 	logger := slog.New(slog.NewTextHandler(bytes.NewBuffer(nil), nil))
 	fundStore := store.NewMemoryStore()
 	searchIdx, _ := store.NewSearchIndex("file:test_search?mode=memory", logger)
-	services := service.NewRegistry(fundStore, cfg, logger, searchIdx)
+	services := service.NewRegistry(fundStore, fundStore, cfg, logger, searchIdx)
 	return api.NewRouter(cfg, services, fundStore, logger, searchIdx)
 }
 
-func newTestHandlerWithConfig(cfg config.Config, fundStore store.FundRepository) http.Handler {
+func newTestHandlerWithConfig(cfg config.Config, mem *store.MemoryStore) http.Handler {
 	logger := slog.New(slog.NewTextHandler(bytes.NewBuffer(nil), nil))
 	searchIdx, _ := store.NewSearchIndex("file:test_search?mode=memory", logger)
-	services := service.NewRegistry(fundStore, cfg, logger, searchIdx)
-	return api.NewRouter(cfg, services, fundStore, logger, searchIdx)
+	services := service.NewRegistry(mem, mem, cfg, logger, searchIdx)
+	return api.NewRouter(cfg, services, mem, logger, searchIdx)
 }
 
 func TestHealth(t *testing.T) {
@@ -315,6 +316,53 @@ func TestNoRouteReturnsJSON(t *testing.T) {
 	response := decodeAPIResponse(t, rec, http.StatusNotFound)
 	if response.Code != -1 || response.Message != "not found" {
 		t.Fatalf("unexpected not-found response: %+v", response)
+	}
+}
+
+func TestGzipMiddlewareReturnsValidCompressedJSON(t *testing.T) {
+	cfg := config.Config{
+		Port:            "0",
+		Env:             "test",
+		CORSOrigins:     []string{"http://localhost:5173"},
+		ReadTimeout:     1,
+		WriteTimeout:    1,
+		ShutdownTimeout: 1,
+	}
+	mem := store.NewMemoryStoreWithStocks(nil, []dto.StockItem{
+		{StockCode: "600519", StockName: "贵州茅台", Market: "SH", Industry: "白酒"},
+	})
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/stocks/search?size=1", nil)
+	req.Header.Set("Accept-Encoding", "gzip")
+
+	newTestHandlerWithConfig(cfg, mem).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d: %s", rec.Code, rec.Body.String())
+	}
+	if got := rec.Header().Get("Content-Encoding"); got != "gzip" {
+		t.Fatalf("expected gzip content encoding, got %q", got)
+	}
+
+	reader, err := gzip.NewReader(bytes.NewReader(rec.Body.Bytes()))
+	if err != nil {
+		t.Fatalf("expected gzip body, got invalid gzip stream: %v; raw=%q", err, rec.Body.String())
+	}
+	defer reader.Close()
+
+	var response dto.APIResponse
+	if err := json.NewDecoder(reader).Decode(&response); err != nil {
+		t.Fatalf("decode gzipped API response: %v", err)
+	}
+	if response.Code != 0 {
+		t.Fatalf("expected API code 0, got %d: %s", response.Code, response.Message)
+	}
+	data, err := remarshal[dto.StockSearchData](response.Data)
+	if err != nil {
+		t.Fatalf("decode stock search data: %v", err)
+	}
+	if len(data.Items) == 0 {
+		t.Fatalf("expected stock items in gzipped response")
 	}
 }
 
