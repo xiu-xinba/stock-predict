@@ -140,7 +140,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\verify-api-contract.
 
 - Go 后端 `backend-go/internal/api/router.go` 中注册的 API 路由。
 - `docs/api/openapi.yaml` 中声明的 OpenAPI 路径。
-- 前端 `frontend/src/api/routes.ts` 中使用的 API 路由。
+- 前端 `frontend/src/shared/api/routes.ts` 中使用的 API 路由。
 
 如果任一层缺失对应路径，脚本会失败并输出缺失路由。
 

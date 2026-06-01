@@ -908,3 +908,4 @@ POST/PUT/DELETE/PATCH 请求：
 
 - `backend-go/internal/api/router_test.go`：验证 gzip 响应可被正常解压并解析为 API JSON。
 - `frontend/src/__tests__/data-visibility.test.ts`：验证市场基金排行、热门股票、基金详情和股票详情能消费 API payload 并渲染关键数据。
+- `scripts/verify-api-contract.ps1`：以 `frontend/src/shared/api/routes.ts` 作为前端 API route 真源，与后端路由和 OpenAPI 对齐。

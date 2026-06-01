@@ -1,7 +1,7 @@
 param(
   [string]$BackendRouter = "backend-go/internal/api/router.go",
   [string]$OpenApiPath = "docs/api/openapi.yaml",
-  [string]$FrontendRoutes = "frontend/src/api/routes.ts"
+  [string]$FrontendRoutes = "frontend/src/shared/api/routes.ts"
 )
 
 $ErrorActionPreference = "Stop"
