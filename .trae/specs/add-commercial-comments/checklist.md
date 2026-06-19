@@ -1,0 +1,32 @@
+- [x] Go domain 层所有包均包含 `// Package xxx` 包注释
+- [x] Go domain 层所有导出类型（struct/interface/type）均有 godoc 注释
+- [x] Go domain 层结构体中含义不明显的导出字段均有行尾注释
+- [x] Go platform 层所有包均包含包注释
+- [x] Go platform 层 Config 结构体所有字段均有说明注释
+- [x] Go platform 层所有导出函数/方法均有 godoc 注释
+- [x] Go infrastructure/database 层所有包均包含包注释
+- [x] Go infrastructure/database 层所有 Store 导出方法均有注释
+- [x] Go infrastructure/providers 层所有包均包含包注释
+- [x] Go infrastructure/providers 层所有 Provider 接口方法均有注释
+- [x] Go infrastructure/providers 层各数据源 Provider 的导出函数均有注释
+- [x] Go transport 层所有包均包含包注释
+- [x] Go transport 层所有 HTTP handler 函数均有注释说明其 API 用途
+- [x] Go app 层 NewServer 函数有关键步骤行内注释
+- [x] Go cmd 层 main 函数有功能说明注释
+- [x] 前端 shared/api 层所有导出函数和类型均有 JSDoc 注释
+- [x] 前端 shared/charts 层 composable 均有 JSDoc 注释
+- [x] 前端 shared/components 层所有 Vue 组件均有组件说明注释
+- [x] 前端 shared/composables 层所有 composable 均有 JSDoc 注释
+- [x] 前端 shared/utils 层所有导出函数均有 JSDoc 注释
+- [x] 前端 features 各模块的 types.ts 中所有 interface/type 均有 JSDoc 注释
+- [x] 前端 features 各模块的 api 层导出函数均有 JSDoc 注释
+- [x] 前端 features 各模块的 store 导出函数均有 JSDoc 注释
+- [x] 前端 features 各模块的 Vue 组件均有组件说明注释
+- [x] 前端 app 层核心文件（router/bootstrap）均有模块注释
+- [x] Python AKShare 微服务 main.py 包含模块级 docstring
+- [x] Python AKShare 微服务所有函数均有 Google 风格 docstring
+- [x] 所有注释使用中文编写
+- [x] `go vet ./...` 通过无警告
+- [x] `go build ./...` 构建成功
+- [x] `vue-tsc --noEmit` 类型检查通过
+- [x] `npm run build` 前端构建成功

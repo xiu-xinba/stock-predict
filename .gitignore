@@ -23,6 +23,8 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 *.egg-info/
+.venv/
+venv/
 
 # ============================================
 # Go
@@ -43,6 +45,9 @@ backend-go/dc_*.json
 *.user
 *.userosscache
 *.sln.docstates
+*~
+*.swp
+*.swo
 
 # ============================================
 # 系统文件
@@ -70,17 +75,4 @@ logs/
 # ============================================
 describe/
 docs/superpowers/
-
-# ============================================
-# 模型训练项目
-# ============================================
-model-training/.venv/
-model-training/data/raw/*
-model-training/data/processed/*
-model-training/artifacts/*
-model-training/reports/*
-model-training/model_registry/*
-!model-training/data/raw/.gitkeep
-!model-training/data/processed/.gitkeep
-!model-training/artifacts/.gitkeep
-!model-training/reports/.gitkeep
+.superpowers/

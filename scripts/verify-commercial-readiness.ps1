@@ -2,36 +2,48 @@ $ErrorActionPreference = "Stop"
 
 $root = Split-Path -Parent $PSScriptRoot
 
-function Invoke-QualityStep {
-  param(
-    [string]$Name,
-    [string]$WorkingDirectory,
-    [string[]]$Command
-  )
-
-  Write-Host ""
-  Write-Host "==> $Name" -ForegroundColor Cyan
-  Push-Location $WorkingDirectory
-  try {
-    & $Command[0] @($Command[1..($Command.Length - 1)])
-    if ($LASTEXITCODE -ne 0) {
-      throw "$Name failed with exit code $LASTEXITCODE"
+function Invoke-Checked([string]$WorkingDirectory, [string]$Command) {
+    Push-Location $WorkingDirectory
+    try {
+        Write-Host ">>> $Command"
+        Invoke-Expression $Command
+        if ($LASTEXITCODE -ne 0) {
+            throw "Command failed with exit code ${LASTEXITCODE}: $Command"
+        }
     }
-  } finally {
-    Pop-Location
-  }
+    finally {
+        Pop-Location
+    }
 }
 
-Invoke-QualityStep "API contract check" $root @("powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "scripts\verify-api-contract.ps1")
+& (Join-Path $PSScriptRoot "verify-api-contract.ps1")
+if (-not $?) {
+    throw "API contract verification failed."
+}
 
 $backend = Join-Path $root "backend-go"
-Invoke-QualityStep "Go tests" $backend @("go", "test", "./...")
-Invoke-QualityStep "Go vet" $backend @("go", "vet", "./...")
-
 $frontend = Join-Path $root "frontend"
-Invoke-QualityStep "Frontend lint" $frontend @("npm", "run", "lint")
-Invoke-QualityStep "Frontend tests" $frontend @("npm", "run", "test:run")
-Invoke-QualityStep "Frontend build" $frontend @("npm", "run", "build")
+$akshare = Join-Path $backend "akshare-service"
 
-Write-Host ""
-Write-Host "Commercial readiness verification passed." -ForegroundColor Green
+Invoke-Checked $backend '$files = @(gofmt -l .); if ($files.Count -gt 0) { $files; exit 1 }'
+Invoke-Checked $backend 'go test -count=2 ./...'
+Invoke-Checked $backend 'go vet ./...'
+Invoke-Checked $backend 'go build ./...'
+Invoke-Checked $backend 'go run golang.org/x/vuln/cmd/govulncheck@latest ./...'
+
+Invoke-Checked $frontend 'npx prettier --check "src/**/*.{ts,tsx,vue,css}"'
+Invoke-Checked $frontend 'npm run lint -- --max-warnings 0'
+Invoke-Checked $frontend 'npm run test:run'
+Invoke-Checked $frontend 'npm run build'
+Invoke-Checked $frontend 'npm audit --audit-level=high'
+Invoke-Checked $frontend 'npm audit --omit=dev --audit-level=high'
+
+$python = Join-Path $akshare ".venv\Scripts\python.exe"
+if (-not (Test-Path -LiteralPath $python)) {
+    throw "AKShare virtual environment is missing: $python"
+}
+Invoke-Checked $akshare "& '$python' -m pip check"
+Invoke-Checked $akshare "& '$python' -m compileall -q ."
+Invoke-Checked $akshare "& '$python' -m unittest -v"
+
+Write-Host "Commercial readiness checks passed."

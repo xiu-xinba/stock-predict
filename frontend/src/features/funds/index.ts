@@ -1,5 +1,4 @@
-export { default as FundDetailView } from '@/views/FundDetailView.vue'
-export { useFundDetailStore } from '@/stores/fundDetail'
-export * from '@/api/fundDetail'
-export type * from '@/types/fund'
-export type * from '@/types/fundDetail'
+/** @module funds — 基金模块公共入口，导出 store 和类型 */
+/** 导出基金详情 store */
+export { useFundDetailStore } from './store/fundDetail'
+export type * from './types'

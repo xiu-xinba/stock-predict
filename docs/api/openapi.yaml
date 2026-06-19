@@ -2,7 +2,7 @@ openapi: 3.0.3
 
 info:
   title: 股票/基金行情平台 API
-  description: 股票与基金行情平台后端服务接口文档，提供基金搜索、股票搜索、市场行情和预测入口占位等功能。
+  description: 股票与基金行情平台后端服务接口文档，提供基金搜索、股票搜索和市场行情等功能；旧预测路径仅作为已废弃兼容端点保留。错误码体系参见 ErrorCode schema。
   version: 1.0.0
 
 servers:
@@ -21,7 +21,7 @@ tags:
   - name: 市场
     description: 市场行情接口
   - name: 预测
-    description: 预测分析接口
+    description: 已迁移预测服务的废弃兼容端点
   - name: 自选股
     description: 自选股行情接口
 
@@ -31,8 +31,8 @@ paths:
   /api/v1/health:
     get:
       tags: [系统]
-      summary: 健康检查
-      description: 返回服务运行状态，包括基金/股票数据加载情况；预测模型已拆分，model_loaded 固定为 false。
+      summary: 就绪检查（兼容路径）
+      description: 检查数据库连接并返回服务与数据加载状态；数据库不可用时返回 503。
       operationId: health
       responses:
         "200":
@@ -46,6 +46,28 @@ paths:
                     properties:
                       data:
                         $ref: "#/components/schemas/HealthData"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /api/v1/health/live:
+    get:
+      tags: [系统]
+      summary: 存活检查
+      operationId: liveness
+      responses:
+        "200":
+          description: 进程正在运行
+
+  /api/v1/health/ready:
+    get:
+      tags: [系统]
+      summary: 就绪检查
+      operationId: readiness
+      responses:
+        "200":
+          description: 数据库连接可用
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
 
   /api/v1/metrics:
     get:
@@ -53,6 +75,8 @@ paths:
       summary: 运行指标
       description: 返回进程内最小运行指标，包括请求数、错误数、状态码分布、平均耗时和运行时间。
       operationId: metrics
+      security:
+        - adminToken: []
       responses:
         "200":
           description: 运行指标快照
@@ -65,6 +89,8 @@ paths:
                     properties:
                       data:
                         $ref: "#/components/schemas/MetricsData"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
 
   /api/v1/search:
     get:
@@ -259,6 +285,8 @@ paths:
       operationId: syncFunds
       security:
         - adminToken: []
+          csrfCookie: []
+          csrfHeader: []
       responses:
         "200":
           description: 同步结果
@@ -275,6 +303,8 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "500":
           $ref: "#/components/responses/InternalServerError"
 
@@ -338,23 +368,147 @@ paths:
         "400":
           $ref: "#/components/responses/BadRequest"
 
-  /api/v1/predict/{fundCode}:
+  /api/v1/market/index/{code}/kline:
     get:
-      tags: [预测]
-      summary: 基金预测入口占位
-      description: 预测模型已拆分为独立项目，当前主项目仅保留入口。
-      operationId: predictFund
+      tags: [市场]
+      summary: 指数 K 线
+      description: 获取指定市场指数的历史 K 线数据
+      operationId: indexKline
       parameters:
-        - name: fundCode
+        - name: code
           in: path
           required: true
-          description: 基金代码，6位数字
+          description: 指数代码
           schema:
             type: string
-            pattern: "^[0-9]{6}$"
+        - name: count
+          in: query
+          required: false
+          description: 返回条数，默认 120，最大 500
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 500
+            default: 120
       responses:
-        "501":
-          description: 预测功能已拆分为独立项目
+        "200":
+          description: 指数 K 线数据
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/APIResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/IndexKlinePoint"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /api/v1/market/index/{code}/minute:
+    get:
+      tags: [市场]
+      summary: 指数分时
+      description: 获取指定市场指数的当日分时数据
+      operationId: indexMinute
+      parameters:
+        - name: code
+          in: path
+          required: true
+          description: 指数代码
+          schema:
+            type: string
+      responses:
+        "200":
+          description: 指数分时数据
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/APIResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/IndexMinutePoint"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /api/v1/market/sectors:
+    get:
+      tags: [市场]
+      summary: 板块热度
+      description: 获取市场板块涨跌幅、上涨/下跌家数和领涨股
+      operationId: sectorRanking
+      responses:
+        "200":
+          description: 板块热度列表
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/APIResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/MarketSectorItem"
+
+  /api/v1/market/northbound:
+    get:
+      tags: [市场]
+      summary: 北向资金
+      description: 获取沪股通、深股通及合计净买入和分时流向
+      operationId: northboundFlow
+      responses:
+        "200":
+          description: 北向资金流向
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/APIResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/NorthboundFlow"
+
+  /api/v1/market/sync-status:
+    get:
+      tags: [市场]
+      summary: 市场同步状态
+      description: 返回市场同步后台任务状态、数据源健康状态和本地缓存统计
+      operationId: syncStatus
+      responses:
+        "200":
+          description: 市场同步状态
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/APIResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/MarketSyncStatus"
+
+  /api/v1/market/health:
+    get:
+      tags: [市场]
+      summary: 数据源健康状态
+      description: 返回各行情数据源的健康状态快照
+      operationId: marketHealth
+      responses:
+        "200":
+          description: 数据源健康状态
           content:
             application/json:
               schema:
@@ -364,10 +518,121 @@ paths:
                     properties:
                       data:
                         type: object
-                        nullable: true
-                        description: 预测模型已拆分，当前固定为 null
+                        additionalProperties:
+                          $ref: "#/components/schemas/SourceHealth"
+
+  /api/v1/market/health/{source}/simulate:
+    post:
+      tags: [市场]
+      summary: 模拟数据源健康状态
+      description: 诊断接口，用于模拟指定数据源的健康状态；需要管理员令牌认证。
+      operationId: simulateHealth
+      security:
+        - adminToken: []
+          csrfCookie: []
+          csrfHeader: []
+      parameters:
+        - name: source
+          in: path
+          required: true
+          description: 数据源名称
+          schema:
+            type: string
+        - name: status
+          in: query
+          required: true
+          description: 模拟状态
+          schema:
+            type: string
+            enum: [healthy, degraded, unhealthy]
+        - name: error
+          in: query
+          required: false
+          description: 模拟错误信息
+          schema:
+            type: string
+      responses:
+        "200":
+          description: 更新后的数据源健康状态
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/APIResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        additionalProperties:
+                          $ref: "#/components/schemas/SourceHealth"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /api/v1/market/health/reset:
+    post:
+      tags: [市场]
+      summary: 重置数据源健康模拟
+      description: 诊断接口，用于清除健康状态模拟；需要管理员令牌认证。
+      operationId: resetHealth
+      security:
+        - adminToken: []
+          csrfCookie: []
+          csrfHeader: []
+      responses:
+        "200":
+          description: 重置后的数据源健康状态
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/APIResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        additionalProperties:
+                          $ref: "#/components/schemas/SourceHealth"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /api/v1/predict/{fundCode}:
+    get:
+      tags: [预测]
+      summary: 基金预测兼容端点（已废弃）
+      description: 预测服务已迁移至独立项目。此路径仅为兼容旧调用保留，合法基金代码固定返回 410 Gone。
+      operationId: predictFund
+      deprecated: true
+      parameters:
+        - name: fundCode
+          in: path
+          required: true
+          description: 基金代码，6位数字
+          schema:
+            type: string
+            pattern: "^[0-9]{6}$"
+      responses:
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "410":
+          description: 预测服务已迁移，当前端点已废弃
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIResponse"
+              example:
+                code: -1
+                message: "预测服务已迁移，此接口已废弃"
+                data: null
 
   /api/v1/watchlist/quotes:
     post:
@@ -375,6 +640,9 @@ paths:
       summary: 自选基金行情
       description: 批量获取自选基金的实时行情数据，最多支持50个基金代码
       operationId: watchlistQuotes
+      security:
+        - csrfCookie: []
+          csrfHeader: []
       requestBody:
         required: true
         content:
@@ -397,6 +665,8 @@ paths:
                           $ref: "#/components/schemas/WatchlistItem"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
 
   /api/v1/fund/{fundCode}/detail:
     get:
@@ -549,12 +819,12 @@ paths:
         "500":
           $ref: "#/components/responses/InternalServerError"
 
-  /api/v1/stock/{stockCode}/predict:
+  /api/v1/stock/{stockCode}/minute:
     get:
-      tags: [预测]
-      summary: 股票预测入口占位
-      description: 预测模型已拆分为独立项目，当前主项目仅保留入口。
-      operationId: predictStock
+      tags: [股票]
+      summary: 股票分时
+      description: 获取指定股票的当日分时数据
+      operationId: stockMinute
       parameters:
         - name: stockCode
           in: path
@@ -564,8 +834,8 @@ paths:
             type: string
             pattern: "^[0-9]{6}$"
       responses:
-        "501":
-          description: 预测功能已拆分为独立项目
+        "200":
+          description: 股票分时数据
           content:
             application/json:
               schema:
@@ -574,18 +844,52 @@ paths:
                   - type: object
                     properties:
                       data:
-                        type: object
-                        nullable: true
-                        description: 预测模型已拆分，当前固定为 null
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/IndexMinutePoint"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /api/v1/stock/{stockCode}/predict:
+    get:
+      tags: [预测]
+      summary: 股票预测兼容端点（已废弃）
+      description: 预测服务已迁移至独立项目。此路径仅为兼容旧调用保留，合法股票代码固定返回 410 Gone。
+      operationId: predictStock
+      deprecated: true
+      parameters:
+        - name: stockCode
+          in: path
+          required: true
+          description: 股票代码，6位数字
+          schema:
+            type: string
+            pattern: "^[0-9]{6}$"
+      responses:
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "410":
+          description: 预测服务已迁移，当前端点已废弃
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIResponse"
+              example:
+                code: -1
+                message: "预测服务已迁移，此接口已废弃"
+                data: null
 
   /api/v1/stocks/quotes:
     post:
       tags: [股票]
       summary: 批量股票行情
-      description: 批量获取股票实时行情数据，最多支持50个股票代码
+      description: 批量获取股票行情数据，最多支持50个股票代码；可通过 freshness 选择平衡缓存或实时优先策略
       operationId: stockQuotes
+      security:
+        - csrfCookie: []
+          csrfHeader: []
       requestBody:
         required: true
         content:
@@ -608,6 +912,8 @@ paths:
                           $ref: "#/components/schemas/StockQuote"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
 
   /api/v1/market/stock-ranking/{type}:
     get:
@@ -656,6 +962,8 @@ paths:
       operationId: syncStocks
       security:
         - adminToken: []
+          csrfCookie: []
+          csrfHeader: []
       responses:
         "200":
           description: 同步结果
@@ -670,6 +978,8 @@ paths:
                         $ref: "#/components/schemas/StockSyncResult"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "500":
           $ref: "#/components/responses/InternalServerError"
 
@@ -679,6 +989,16 @@ components:
       type: http
       scheme: bearer
       description: 管理员令牌，通过 Authorization 请求头传递 Bearer Token
+    csrfCookie:
+      type: apiKey
+      in: cookie
+      name: csrf_token
+      description: 先通过任意 GET 请求获取 HttpOnly CSRF Cookie
+    csrfHeader:
+      type: apiKey
+      in: header
+      name: X-CSRF-Token
+      description: 使用 GET 响应头返回的令牌，值必须与 csrf_token Cookie 一致
 
   schemas:
     APIResponse:
@@ -687,7 +1007,7 @@ components:
       properties:
         code:
           type: integer
-          description: 状态码，0表示成功，-1表示业务错误
+          description: 状态码，0表示成功，正数为业务错误码，-1为通用错误
           example: 0
         message:
           type: string
@@ -695,6 +1015,24 @@ components:
           example: success
         data:
           description: 响应数据
+
+    ErrorCode:
+      type: object
+      description: 业务错误码定义
+      properties:
+        code:
+          type: integer
+          description: 业务错误码
+        message:
+          type: string
+          description: 错误描述
+        http_status:
+          type: integer
+          description: 对应HTTP状态码
+      example:
+        code: 10001
+        message: 无效的基金代码
+        http_status: 400
 
     HealthData:
       type: object
@@ -1036,6 +1374,186 @@ components:
         data_source:
           type: string
           description: 数据来源
+        is_closed:
+          type: boolean
+          description: 市场是否已休市
+
+    IndexKlinePoint:
+      type: object
+      description: 指数 K 线数据点
+      properties:
+        date:
+          type: string
+          description: 日期
+        open:
+          type: number
+          format: double
+          description: 开盘点位
+        close:
+          type: number
+          format: double
+          description: 收盘点位
+        high:
+          type: number
+          format: double
+          description: 最高点位
+        low:
+          type: number
+          format: double
+          description: 最低点位
+        volume:
+          type: integer
+          format: int64
+          description: 成交量
+        amount:
+          type: number
+          format: double
+          description: 成交额
+
+    IndexMinutePoint:
+      type: object
+      description: 指数或股票分时数据点
+      properties:
+        time:
+          type: string
+          description: 分时时间
+        price:
+          type: number
+          format: double
+          description: 最新价格或点位
+        avg_price:
+          type: number
+          format: double
+          description: 均价
+        volume:
+          type: integer
+          format: int64
+          description: 成交量
+
+    MarketSectorItem:
+      type: object
+      description: 市场板块项
+      properties:
+        name:
+          type: string
+          description: 板块名称
+        change_pct:
+          type: number
+          format: double
+          description: 涨跌幅百分比
+        up_count:
+          type: integer
+          description: 上涨家数
+        down_count:
+          type: integer
+          description: 下跌家数
+        lead_stock:
+          type: string
+          description: 领涨股票
+
+    NorthboundFlow:
+      type: object
+      description: 北向资金流向
+      properties:
+        sh_net_buy:
+          type: number
+          format: double
+          description: 沪股通净买入
+        sz_net_buy:
+          type: number
+          format: double
+          description: 深股通净买入
+        total_net_buy:
+          type: number
+          format: double
+          description: 合计净买入
+        timeline:
+          type: array
+          items:
+            $ref: "#/components/schemas/NorthboundPoint"
+          description: 分时流向
+
+    NorthboundPoint:
+      type: object
+      description: 北向资金分时点
+      properties:
+        time:
+          type: string
+          description: 分时时间
+        sh_flow:
+          type: number
+          format: double
+          description: 沪股通分时流入
+        sz_flow:
+          type: number
+          format: double
+          description: 深股通分时流入
+
+    CacheStat:
+      type: object
+      description: 本地缓存统计
+      properties:
+        start:
+          type: string
+          description: 缓存起始日期
+        end:
+          type: string
+          description: 缓存结束日期
+        count:
+          type: integer
+          description: 缓存记录数
+
+    SourceHealth:
+      type: object
+      description: 数据源健康状态
+      properties:
+        name:
+          type: string
+          description: 数据源名称
+        status:
+          type: string
+          enum: [healthy, degraded, unhealthy]
+          description: 数据源状态
+        fail_count:
+          type: integer
+          description: 连续失败次数
+        last_check:
+          type: string
+          format: date-time
+          description: 最近检查时间
+
+    MarketSyncStatus:
+      type: object
+      description: 市场同步服务状态
+      properties:
+        running:
+          type: boolean
+          description: 同步服务是否运行
+        last_sync_time:
+          type: string
+          description: 最近同步时间
+        last_sync_source:
+          type: string
+          description: 最近同步数据源
+        last_sync_result:
+          type: string
+          description: 最近同步结果
+        sync_count:
+          type: integer
+          description: 已完成同步次数
+        sources:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/SourceHealth"
+          description: 数据源健康状态
+        tdx_preloaded:
+          type: boolean
+          description: TDX 历史数据是否已预加载
+        cache_stats:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/CacheStat"
+          description: 本地缓存统计
 
     FundDetailData:
       type: object
@@ -1386,7 +1904,12 @@ components:
             pattern: "^[0-9]{6}$"
           minItems: 1
           maxItems: 50
-          description: 股票代码列表，每个代码为6位数字，最多50个
+          description: 股票代码列表，每个代码为6位纯数字，最多50个
+        freshness:
+          type: string
+          enum: [balanced, realtime]
+          default: balanced
+          description: 行情新鲜度策略；balanced 使用较长缓存窗口，realtime 使用短 TTL 与后台刷新
 
     KlinePoint:
       type: object
@@ -1599,6 +2122,11 @@ components:
           $ref: "#/components/schemas/StockQuote"
         kline:
           $ref: "#/components/schemas/StockKlineData"
+        minute_data:
+          type: array
+          items:
+            $ref: "#/components/schemas/IndexMinutePoint"
+          description: 股票分时数据
         capital_flow:
           $ref: "#/components/schemas/StockCapitalFlow"
         financials:
@@ -1635,6 +2163,12 @@ components:
           type: number
           format: double
           description: 成交额
+        data_source:
+          type: string
+          description: 行情数据来源
+        update_time:
+          type: string
+          description: 更新时间
 
     StockSyncResult:
       type: object
@@ -1690,6 +2224,17 @@ components:
             message: "未提供管理员令牌"
             data: null
 
+    Forbidden:
+      description: CSRF Cookie 或请求头缺失、不一致
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/APIResponse"
+          example:
+            code: -1
+            message: "CSRF token 验证失败"
+            data: null
+
     NotFound:
       description: 资源未找到
       content:
@@ -1710,4 +2255,15 @@ components:
           example:
             code: -1
             message: "服务器内部错误"
+            data: null
+
+    ServiceUnavailable:
+      description: 服务暂时不可用
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/APIResponse"
+          example:
+            code: -1
+            message: "服务暂时不可用"
             data: null

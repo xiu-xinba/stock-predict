@@ -1,152 +1,78 @@
 # 维护手册
 
-本文档面向日常维护、数据同步、故障处理和质量门禁巡检。
-
-## 1. 日常巡检
-
-每个工作日建议执行：
+## 日常检查
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts\verify-commercial-readiness.ps1
 ```
 
-需要分模块定位时可执行：
+该脚本会执行 Go `govulncheck`、npm 全量/生产依赖审计、Python 依赖一致性检查和各语言测试。
 
-```powershell
-cd backend-go
-go test ./...
+- `/api/v1/health/live` 和 `/api/v1/health/ready` 应返回 200。
+- `/api/v1/market/health` 不应包含上游错误或凭据。
+- 使用 `Authorization: Bearer <ADMIN_TOKEN>` 访问 `/api/v1/metrics`，错误率和延迟应在预期范围。
 
-cd ../frontend
-npm run lint
-npm run test:run
-```
-
-生产环境巡检还应检查：
-
-- `/api/v1/health` 是否返回 `status=ok`。
-- `/api/v1/metrics` 是否返回请求计数、错误计数、状态码分布和 uptime。
-- 搜索接口是否能返回基金和股票结果。
-- 行情接口是否有合理更新时间。
-- 预测接口是否返回明确的独立项目占位状态。
-- 后端日志是否出现外部数据源持续失败。
-
-## Quality Gate
-
-Run before deployment:
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts\verify-commercial-readiness.ps1
-```
-
-Deployment is blocked if API contract, Go tests, Go vet, frontend lint, frontend tests, or frontend build fail.
-
-## 2. 数据同步
-
-### 基金同步
+## 数据同步
 
 ```powershell
 Invoke-RestMethod -Method Post `
   -Uri "http://localhost:5070/api/v1/funds/sync" `
   -Headers @{ Authorization = "Bearer <ADMIN_TOKEN>" }
-```
 
-同步后检查：
-
-- `/api/v1/funds/coverage` 覆盖率是否正常。
-- `/api/v1/search?q=510300` 是否返回目标基金。
-- 自选基金报价是否仍能刷新。
-
-### 股票同步
-
-```powershell
 Invoke-RestMethod -Method Post `
   -Uri "http://localhost:5070/api/v1/stocks/sync" `
   -Headers @{ Authorization = "Bearer <ADMIN_TOKEN>" }
 ```
 
-同步后检查：
+同步前后记录基金/股票数量。API 重启不应降低股票数量；默认种子只在空表时使用。
 
-- `/api/v1/stocks/search?keyword=600519` 是否返回目标股票。
-- `/api/v1/market/stock-ranking/gainers` 是否返回排行数据。
-- 股票详情页是否能加载行情和基础信息。
+## 数据库变更
 
-## 3. 故障分级
+1. 创建数据库快照。
+2. 在验收环境运行 `go run ./cmd/migrate`。
+3. 验证历史 `updated_at` 和核心行数。
+4. 在生产使用发布身份运行同一迁移。
+5. API 保持 `RUN_DATABASE_MIGRATIONS=false`。
 
-| 等级 | 示例 | 处理目标 |
-| --- | --- | --- |
-| P0 | 前端无法构建、API 无法启动、核心行情不可用 | 立即回滚或修复 |
-| P1 | 搜索、行情、自选、预测占位入口部分失败 | 当天修复 |
-| P2 | 单个数据源失败但有降级、部分页面展示不完整 | 规划修复 |
-| P3 | 文档、样式、性能提示和开发体验问题 | 排入迭代 |
+## 常见故障
 
-## 4. 常见问题处理
+### Readiness 失败
 
-### 前端构建失败
+检查 PostgreSQL 网络、TLS、账号和连接数；确认已执行迁移。不要通过删除列或清空表
+恢复启动。
 
-1. 运行 `npm run build`，读取首个 TypeScript 错误。
-2. 如果是无用导入或类型不匹配，先做最小修复。
-3. 运行 `npm run lint` 和 `npm run test:run`，确认没有引入新问题。
+### 前端写请求 403
 
-### Go API 启动失败
+确认 GET 响应包含 `X-CSRF-Token`，后续写请求同时携带 CSRF Cookie 和该响应头。
+跨 Origin 部署还需检查 CORS exposed headers 与 credentials。
 
-1. 检查环境变量是否有效，尤其是端口、数据路径和 CORS。
-2. 运行 `go test ./...` 和 `go vet ./...`。
-3. 检查数据文件是否存在且可读写。
-4. 检查外部数据源不可用时是否有兜底数据。
+### 反向代理后大量 429
 
-### 前端基金或股票数据不可见
+检查 `TRUSTED_PROXIES` 和代理追加的 `X-Forwarded-For`。不要配置宽泛公网 CIDR。
 
-1. 直接调用后端接口，确认接口返回纯 JSON：
+### 数据源失败
 
-   ```powershell
-   curl.exe -s --compressed "http://localhost:5070/api/v1/stocks/search?size=1"
-   ```
+保留缓存并展示更新时间。不要恢复明文 HTTP 回退或宽松 TLS 重协商。
 
-2. 输出中不得出现 gzip 尾部乱码。如果出现普通 JSON 后附加乱码，优先检查 `backend-go/internal/api/middleware.go` 的 gzip writer 生命周期。
-3. 运行前端数据可见性测试：
+## AKShare
 
-   ```powershell
-   cd frontend
-   npm run test:run -- src/__tests__/data-visibility.test.ts
-   ```
+Go 和 Python 必须使用相同 `AKSHARE_SERVICE_TOKEN`。服务默认监听
+`127.0.0.1:8900`，健康接口无需令牌，数据接口必须认证。
 
-4. 如果接口正常但页面仍无数据，沿 `API route -> Axios -> Pinia store -> Vue view` 逐层定位。
+```powershell
+cd backend-go\akshare-service
+.\.venv\Scripts\python.exe -m unittest -v
+```
 
-### 预测入口异常
-
-1. 调用 `/api/v1/predict/{fundCode}` 或 `/api/v1/stock/{stockCode}/predict`。
-2. 有效 6 位代码应返回 HTTP 501 和“预测模型已拆分为独立项目”的提示。
-3. 前端预测页和详情页预测卡片应显示同一占位语义。
-
-## 5. 日志和审计
-
-后端日志应至少保留：
-
-- 请求 ID、方法、路径、状态码、耗时。
-- 外部数据源请求失败原因。
-- 管理接口调用时间和结果。
-
-日志中不得输出管理员令牌、Cookie、完整用户认证信息或敏感请求头。
-
-## 6. 契约校验
-
-接口变更后必须运行：
+## API 契约
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts\verify-api-contract.ps1
 ```
 
-该脚本会对比：
+路由变化时同步更新 OpenAPI 和前端 API routes。
 
-- Go 后端 `backend-go/internal/api/router.go` 中注册的 API 路由。
-- `docs/api/openapi.yaml` 中声明的 OpenAPI 路径。
-- 前端 `frontend/src/shared/api/routes.ts` 中使用的 API 路由。
+## 日志
 
-如果任一层缺失对应路径，脚本会失败并输出缺失路由。
-
-## 7. 维护原则
-
-- 修复故障前先复现和定位根因。
-- 每次修复至少运行相关模块测试。
-- 涉及接口字段时同步更新 OpenAPI、后端 DTO、前端类型和文档。
-- 涉及预测入口时同步检查后端 501 响应、OpenAPI 和前端占位文案。
+允许记录请求 ID、路径、状态码、耗时、数据源名和脱敏错误类别。禁止记录完整 DSN、
+管理员令牌、AKShare 令牌、Biying licence、Cookie 或 Authorization。

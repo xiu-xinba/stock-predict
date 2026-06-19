@@ -11,32 +11,8 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
-    AssetHeader: typeof import('./src/components/common/AssetHeader.vue')['default']
-    CollapsibleCard: typeof import('./src/components/CollapsibleCard.vue')['default']
-    DetailPageLayout: typeof import('./src/components/common/DetailPageLayout.vue')['default']
     ElIcon: typeof import('element-plus/es')['ElIcon']
-    ErrorState: typeof import('./src/components/ErrorState.vue')['default']
-    FundHeader: typeof import('./src/components/fund/FundHeader.vue')['default']
-    FundManager: typeof import('./src/components/fund/FundManager.vue')['default']
-    FundPerformance: typeof import('./src/components/fund/FundPerformance.vue')['default']
-    FundPortfolio: typeof import('./src/components/fund/FundPortfolio.vue')['default']
-    FundPrediction: typeof import('./src/components/fund/FundPrediction.vue')['default']
-    FundRanking: typeof import('./src/components/market/FundRanking.vue')['default']
-    FundRisk: typeof import('./src/components/fund/FundRisk.vue')['default']
-    MarketDock: typeof import('./src/components/market/MarketDock.vue')['default']
-    RankingList: typeof import('./src/components/market/RankingList.vue')['default']
-    RefreshFab: typeof import('./src/components/RefreshFab.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
-    SearchOverlay: typeof import('./src/components/SearchOverlay.vue')['default']
-    StockCapitalFlow: typeof import('./src/components/stock/StockCapitalFlow.vue')['default']
-    StockFinancials: typeof import('./src/components/stock/StockFinancials.vue')['default']
-    StockHeader: typeof import('./src/components/stock/StockHeader.vue')['default']
-    StockKline: typeof import('./src/components/stock/StockKline.vue')['default']
-    StockPrediction: typeof import('./src/components/stock/StockPrediction.vue')['default']
-    StockQuote: typeof import('./src/components/stock/StockQuote.vue')['default']
-    StockRanking: typeof import('./src/components/market/StockRanking.vue')['default']
-    StockShareholders: typeof import('./src/components/stock/StockShareholders.vue')['default']
-    WatchlistEmpty: typeof import('./src/components/watchlist/WatchlistEmpty.vue')['default']
   }
 }

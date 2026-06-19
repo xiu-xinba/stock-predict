@@ -1,0 +1,161 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: stock_predict_test
+          POSTGRES_USER: stock
+          POSTGRES_PASSWORD: test-only-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U stock -d stock_predict_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    defaults:
+      run:
+        working-directory: backend-go
+    env:
+      DATABASE_URL: postgres://stock:test-only-password@localhost:5432/stock_predict_test?sslmode=disable
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: 1.26.4
+          cache-dependency-path: backend-go/go.sum
+      - run: test -z "$(gofmt -l .)"
+      - run: go test -count=2 ./...
+      - run: go vet ./...
+      - run: go build ./...
+      - run: go install golang.org/x/vuln/cmd/govulncheck@v1.3.0
+      - run: govulncheck ./...
+      - run: docker build --file Dockerfile .
+
+  container-smoke:
+    runs-on: ubuntu-latest
+    env:
+      COMPOSE_PROJECT_NAME: stock-predict-smoke
+      POSTGRES_DB: stock_predict_smoke
+      POSTGRES_USER: stock_owner
+      POSTGRES_PASSWORD: owner-smoke-password
+      POSTGRES_RUNTIME_USER: stock_app
+      POSTGRES_RUNTIME_PASSWORD: runtime-smoke-password
+      MIGRATION_DATABASE_URL: postgres://stock_owner:owner-smoke-password@postgres:5432/stock_predict_smoke?sslmode=disable
+      DATABASE_URL: postgres://stock_app:runtime-smoke-password@postgres:5432/stock_predict_smoke?sslmode=disable
+      ADMIN_TOKEN: 0123456789abcdef0123456789abcdef
+      CORS_ORIGINS: http://127.0.0.1:5173
+      FUND_AUTO_SYNC_ON_START: false
+      STOCK_AUTO_SYNC_ON_START: false
+      MARKET_SYNC_ENABLED: false
+      POSTGRES_PORT: "55432"
+      BACKEND_PORT: "5070"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start fresh Compose stack
+        run: |
+          docker compose --profile app down -v --remove-orphans || true
+          docker compose --profile app up -d --build
+      - name: Verify API and database roles
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:5070/api/v1/health/live >/dev/null; then
+              break
+            fi
+            if [ "$attempt" -eq 60 ]; then
+              echo "API did not become live within 120 seconds."
+              exit 1
+            fi
+            sleep 2
+          done
+
+          curl --fail --silent http://127.0.0.1:5070/api/v1/health/live
+          curl --fail --silent http://127.0.0.1:5070/api/v1/health/ready
+          docker compose exec -T \
+            -e PGPASSWORD="$POSTGRES_RUNTIME_PASSWORD" \
+            postgres psql \
+            --host=127.0.0.1 \
+            --username="$POSTGRES_RUNTIME_USER" \
+            --dbname="$POSTGRES_DB" \
+            --set=ON_ERROR_STOP=1 \
+            --command="SELECT COUNT(*) FROM schema_migrations;"
+
+          if docker compose exec -T \
+            -e PGPASSWORD="$POSTGRES_RUNTIME_PASSWORD" \
+            postgres psql \
+            --host=127.0.0.1 \
+            --username="$POSTGRES_RUNTIME_USER" \
+            --dbname="$POSTGRES_DB" \
+            --set=ON_ERROR_STOP=1 \
+            --command="CREATE TABLE public.runtime_must_not_create(id integer);"; then
+            echo "Runtime role unexpectedly created a permanent table."
+            exit 1
+          fi
+      - name: Dump Compose logs
+        if: failure()
+        run: docker compose --profile app logs --no-color
+      - name: Remove Compose stack
+        if: always()
+        run: docker compose --profile app down -v --remove-orphans
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npx prettier --check "src/**/*.{ts,tsx,vue,css}"
+      - run: npm run lint -- --max-warnings 0
+      - run: npm run test:run
+      - run: npm run build
+      - run: npm audit --omit=dev --audit-level=high
+
+  python:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend-go/akshare-service
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: backend-go/akshare-service/requirements.txt
+      - run: pip install -r requirements.txt pip-audit
+      - run: python -m unittest -v
+      - run: pip-audit -r requirements.txt
+
+  contract:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: actions/setup-go@v5
+        with:
+          go-version: 1.26.4
+          cache-dependency-path: scripts/verify-api-contract/go.sum
+      - shell: pwsh
+        working-directory: scripts/verify-api-contract
+        run: go test ./...
+      - shell: pwsh
+        run: pwsh ./scripts/tests/verify-api-contract.Tests.ps1

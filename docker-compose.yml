@@ -1,0 +1,74 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB must be set}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER must be set}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+      POSTGRES_RUNTIME_USER: ${POSTGRES_RUNTIME_USER:?POSTGRES_RUNTIME_USER must be set}
+      POSTGRES_RUNTIME_PASSWORD: ${POSTGRES_RUNTIME_PASSWORD:?POSTGRES_RUNTIME_PASSWORD must be set}
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./backend-go/docker/postgres/init/01-runtime-role.sh:/docker-entrypoint-initdb.d/01-runtime-role.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  migrate:
+    profiles: ["app"]
+    build: ./backend-go
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        : "$${MIGRATION_DATABASE_URL:?MIGRATION_DATABASE_URL must be set}"
+        : "$${POSTGRES_RUNTIME_USER:?POSTGRES_RUNTIME_USER must be set}"
+        : "$${POSTGRES_RUNTIME_PASSWORD:?POSTGRES_RUNTIME_PASSWORD must be set}"
+        stock-migrate
+        exec /usr/local/bin/stock-grant-runtime
+    environment:
+      APP_ENV: production
+      DATABASE_URL: ${MIGRATION_DATABASE_URL:-}
+      MIGRATION_DATABASE_URL: ${MIGRATION_DATABASE_URL:-}
+      POSTGRES_RUNTIME_USER: ${POSTGRES_RUNTIME_USER:?POSTGRES_RUNTIME_USER must be set}
+      POSTGRES_RUNTIME_PASSWORD: ${POSTGRES_RUNTIME_PASSWORD:?POSTGRES_RUNTIME_PASSWORD must be set}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  backend:
+    profiles: ["app"]
+    build: ./backend-go
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        : "$${DATABASE_URL:?DATABASE_URL must be set}"
+        : "$${ADMIN_TOKEN:?ADMIN_TOKEN must be set}"
+        : "$${CORS_ORIGINS:?CORS_ORIGINS must be set}"
+        exec stock-api
+    ports:
+      - "127.0.0.1:${BACKEND_PORT:-5070}:5070"
+    environment:
+      APP_ENV: production
+      HOST: 0.0.0.0
+      PORT: 5070
+      DATABASE_URL: ${DATABASE_URL:-}
+      ADMIN_TOKEN: ${ADMIN_TOKEN:-}
+      CORS_ORIGINS: ${CORS_ORIGINS:-}
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-}
+      RUN_DATABASE_MIGRATIONS: "false"
+      FUND_AUTO_SYNC_ON_START: ${FUND_AUTO_SYNC_ON_START:-false}
+      STOCK_AUTO_SYNC_ON_START: ${STOCK_AUTO_SYNC_ON_START:-false}
+      MARKET_SYNC_ENABLED: ${MARKET_SYNC_ENABLED:-false}
+      AKSHARE_URL: ${AKSHARE_URL:-}
+      AKSHARE_SERVICE_TOKEN: ${AKSHARE_SERVICE_TOKEN:-}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+volumes:
+  pgdata:

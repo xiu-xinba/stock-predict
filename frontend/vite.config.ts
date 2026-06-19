@@ -28,6 +28,12 @@ export default defineConfig({
       '/api': {
         target: 'http://localhost:5070',
         changeOrigin: true,
+        timeout: 30000,
+        configure: (proxy) => {
+          proxy.on('error', (err) => {
+            console.log('proxy error', err)
+          })
+        },
       },
     },
   },
@@ -51,7 +57,7 @@ export default defineConfig({
   },
   test: {
     environment: 'happy-dom',
-    setupFiles: ['src/__tests__/setup.ts'],
+    setupFiles: ['src/app/__tests__/setup.ts'],
     globals: true,
     css: true,
     server: {

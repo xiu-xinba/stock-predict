@@ -1,235 +1,294 @@
 # Stock Predict - 基金/股票行情系统
 
-基金与股票行情展示系统，提供市场行情、基金/股票搜索、自选管理和详情页。预测模型已拆分为独立项目，当前仓库只保留预测入口占位。
+Stock Predict 是一个基金与股票行情展示系统，提供市场指数、基金/股票搜索、自选管理、详情页和多数据源降级。预测服务已迁移至独立项目，本仓库保留的旧预测 API 仅用于兼容调用，并返回 HTTP 410 Gone。
 
-## 功能概览
+## 功能
 
-- **市场行情** — A股/港股/美股主要指数实时展示，迷你走势图，基金/股票涨跌排行
-- **自选基金** — 添加/删除关注基金，实时报价刷新，排序筛选
-- **个股详情** — 股票实时报价、K线走势、资金流向、股东信息、财务指标
-- **预测入口占位** — 保留基金/股票预测页面入口；后端预测接口返回 `501 feature_disabled`，等待后续独立预测项目接入
-- **统一搜索** — 基于 SQLite FTS5 的基金/股票拼音、代码全文检索
+- A 股、港股、美股主要指数与分时/K 线展示
+- 基金、股票搜索与筛选
+- 基金/股票自选列表及批量报价
+- 股票详情、资金流向、财务指标和股东信息
+- PostgreSQL `pg_trgm` 拼音/代码检索
+- 腾讯、东方财富、新浪、通达信、同花顺等数据源路由与健康监控
+- 可选 AKShare 内部服务和 BiyingAPI 数据源
 
 ## 技术栈
 
-### 前端
+| 模块 | 技术 |
+| --- | --- |
+| 前端 | Vue 3、TypeScript、Pinia、ECharts、Element Plus、Vite 8 |
+| API | Go 1.26.4、Gin、GORM |
+| 数据库 | PostgreSQL 16、`pg_trgm` |
+| 可选数据服务 | Python 3.13、FastAPI、AKShare |
+| 质量门禁 | Vitest、Go test/vet、govulncheck、GitHub Actions |
 
-| 技术                 | 用途       |
-| ------------------ | -------- |
-| Vue 3 + TypeScript | 核心框架     |
-| Pinia              | 状态管理     |
-| ECharts            | 数据可视化    |
-| Element Plus       | UI 组件库   |
-| Vite               | 构建工具     |
-| Axios              | HTTP 客户端 |
+## 环境要求
 
-### 后端
-
-| 技术                    | 用途                    |
-| --------------------- | --------------------- |
-| Go 1.26+              | Web API               |
-| Gin + net/http        | 路由、中间件、HTTP 服务        |
-| SQLite (FTS5)         | 基金/股票全文搜索索引           |
-| 内存种子数据                | 当前开发期数据仓库             |
-| 外部数据源                | 东方财富、腾讯行情等数据拉取        |
-
-## 项目结构
-
-```
-stock-predict/
-├── frontend/                    # Vue 3 前端应用
-│   ├── src/
-│   │   ├── app/                # 应用启动、路由入口
-│   │   ├── shared/             # 共享 API 路由、通用能力边界
-│   │   ├── features/           # funds/stocks/market/watchlist/search 业务入口
-│   │   ├── api/                # 兼容旧路径的 API 请求层
-│   │   ├── components/         # 页面组件与通用组件
-│   │   ├── composables/        # 组合式函数
-│   │   ├── router/             # 路由配置
-│   │   ├── stores/             # Pinia Store
-│   │   ├── types/              # TypeScript 类型
-│   │   ├── utils/              # 工具函数
-│   │   └── views/              # 页面视图
-│   └── vite.config.ts
-├── backend-go/                  # Go 后端
-│   ├── cmd/api/                # 进程入口
-│   └── internal/
-│       ├── app/                # 应用装配、依赖初始化、HTTP server 构造
-│       ├── api/                # HTTP handler、路由、中间件
-│       ├── platform/           # 通用响应、错误码等平台边界
-│       ├── config/             # 环境变量配置
-│       ├── data/               # 种子数据 & 默认 JSON
-│       ├── dto/                # 请求/响应数据结构
-│       ├── service/            # 现有领域服务，后续按 domain 继续收敛
-│       ├── store/              # 数据持久化、内存仓储、SQLite FTS5 搜索索引
-│       └── util/               # 工具函数
-└── docs/                       # 项目文档
-    ├── architecture.md          # 架构设计文档
-    ├── api/openapi.yaml         # OpenAPI 规范
-    └── operations/              # 部署、维护手册
-```
+- Node.js `>=20.19`（推荐 Node.js 24 LTS）
+- Go `1.26.4`
+- PostgreSQL `16+`
+- Python `3.13`（仅 AKShare 服务需要）
 
 ## 快速开始
 
-### 环境要求
+### 1. 启动 PostgreSQL
 
-- Node.js >= 18
-- Go >= 1.26
+Compose 使用独立的 owner/migration 与 API runtime 身份，不提供默认账号或密码：
 
-### 启动后端
+```powershell
+$env:POSTGRES_DB="stock_predict"
+$env:POSTGRES_USER="stock_owner"
+$env:POSTGRES_PASSWORD="<strong-owner-password>"
+$env:POSTGRES_RUNTIME_USER="stock_app"
+$env:POSTGRES_RUNTIME_PASSWORD="<different-runtime-password>"
+$env:MIGRATION_DATABASE_URL="postgres://stock_owner:<strong-owner-password>@localhost:5432/stock_predict?sslmode=disable"
+$env:DATABASE_URL="postgres://stock_app:<different-runtime-password>@localhost:5432/stock_predict?sslmode=disable"
+docker compose up -d postgres
+```
 
-```bash
+数据库端口只绑定到 `127.0.0.1`。初始化脚本创建 runtime 角色，撤销 Schema
+CREATE 与数据库 TEMPORARY 权限，并为迁移账号创建的表和序列设置默认 DML 权限。
+仓库提供的本地 Compose PostgreSQL 未启用 TLS，因此容器内 DSN 使用
+`sslmode=disable`；外部生产 PostgreSQL 必须启用证书校验，例如
+`sslmode=verify-full` 配合受信任 CA。
+
+### 2. 配置并迁移后端
+
+```powershell
 cd backend-go
+Copy-Item .env.example .env
+```
+
+至少检查以下配置：
+
+```dotenv
+APP_ENV=development
+HOST=127.0.0.1
+PORT=5070
+MIGRATION_DATABASE_URL=postgres://stock_owner:<owner-password>@localhost:5432/stock_predict?sslmode=disable
+DATABASE_URL=postgres://stock_app:<runtime-password>@localhost:5432/stock_predict?sslmode=disable
+ADMIN_TOKEN=<explicit-development-token>
+CORS_ORIGINS=http://localhost:5173
+RUN_DATABASE_MIGRATIONS=false
+```
+
+`APP_ENV` 和 `DATABASE_URL` 没有代码内默认值；缺失或非法时 API 会拒绝启动。
+`cmd/migrate` 当前读取 `DATABASE_URL`，因此本地直接执行时应临时传入 owner DSN。
+
+执行迁移并启动 API：
+
+```powershell
+$runtimeDatabaseUrl = $env:DATABASE_URL
+$env:DATABASE_URL = $env:MIGRATION_DATABASE_URL
+go run ./cmd/migrate
+$env:DATABASE_URL = $runtimeDatabaseUrl
 go run ./cmd/api
 ```
 
-后端默认运行在 `http://localhost:5070`
+示例配置显式关闭 API 进程迁移。生产环境必须保持
+`RUN_DATABASE_MIGRATIONS=false`，并在发布步骤中使用 owner DSN 先运行 `cmd/migrate`。
 
-预测模型训练和在线推理已拆分出当前主项目。当前后端会保留 `/api/v1/predict/{fundCode}` 与 `/api/v1/stock/{stockCode}/predict`，并返回 `501 feature_disabled` 占位响应。
-
-商业化发布前可运行完整质量门禁：
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts\verify-commercial-readiness.ps1
-```
-
-### 前端数据不可见排查
-
-如果基金或股票数据在前端不可见，先确认后端 gzip 响应没有被污染：
+### 3. 启动前端
 
 ```powershell
-curl.exe -s --compressed "http://localhost:5070/api/v1/stocks/search?size=1"
-```
-
-输出必须是纯 JSON，不能出现 gzip 尾部乱码。随后运行完整门禁：
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts\verify-commercial-readiness.ps1
-```
-
-### 数据同步
-
-#### 基金同步
-
-基金搜索底库默认会从东财全量基金代码列表补全，并合并东财净值排行里的
-最新净值、日增长率和近 1 月/1 年收益；如果本地
-`backend-go/data/funds.json` 少于 1000 条，或旧数据没有可信
-`quote_source`，开发启动时会自动同步。自选刷新会优先用腾讯场内基金行情
-和东财基金估值覆盖本地净值排行数据。
-也可以手动触发：
-
-```powershell
-cd backend-go
-$env:FUND_UNIVERSE_URL="https://fund.eastmoney.com/js/fundcode_search.js"
-$env:FUND_REALTIME_QUOTES_ENABLED="true"
-Invoke-RestMethod -Method Post -Uri "http://localhost:5070/api/v1/funds/sync" -Headers @{ Authorization = "Bearer dev-admin-token" }
-```
-
-#### 股票同步
-
-股票数据支持启动时自动同步，通过环境变量控制：
-
-```powershell
-$env:STOCK_AUTO_SYNC_ON_START="true"
-```
-
-默认关闭（`false`），开启后后端启动时会自动从东财拉取 A 股股票列表并写入 SQLite FTS5 搜索索引。
-
-手动触发股票同步：
-
-```powershell
-Invoke-RestMethod -Method Post -Uri "http://localhost:5070/api/v1/stocks/sync" -Headers @{ Authorization = "Bearer dev-admin-token" }
-```
-
-### 启动前端
-
-```bash
-cd frontend
-npm install
+cd ..\frontend
+npm ci
 npm run dev
 ```
 
-前端默认运行在 `http://localhost:5173`
+前端默认使用 Vite 代理访问 `http://localhost:5070`。
 
-### 构建生产版本
+## 开发命令
 
-```bash
+### 后端
+
+```powershell
+cd backend-go
+go run ./cmd/migrate
+go run ./cmd/api
+go test ./...
+go vet ./...
+go build ./...
+```
+
+生产 API 不执行 DDL。使用当前 Compose 镜像时，`migrate` 服务会先运行
+`stock-migrate`，再运行 `stock-grant-runtime` 为 runtime 角色刷新表和序列权限：
+
+```powershell
+docker compose --profile app build
+docker compose --profile app run --rm migrate
+docker compose --profile app up -d backend
+```
+
+### 前端
+
+```powershell
 cd frontend
+npm run dev
+npm run lint
+npm run test:run
 npm run build
+npx prettier --check "src/**/*.{ts,tsx,vue,css}"
 ```
 
-## API 接口
+Axios 客户端默认携带 Cookie，并从 API 响应的 `X-CSRF-Token` 头获取写请求令牌。
+生产静态站点可使用 `frontend/nginx.conf`，该配置包含 CSP 和其他浏览器安全响应头。
 
-### 通用
+### AKShare 服务
 
-| 端点               | 方法  | 说明                  |
-| ---------------- | --- | ------------------- |
-| `/api/v1/health` | GET | 后端健康检查              |
-| `/api/v1/metrics` | GET | 后端运行指标快照            |
-| `/api/v1/search` | GET | 统一搜索（基金+股票，基于 FTS5） |
-
-### 基金
-
-| 端点                               | 方法   | 说明        |
-| -------------------------------- | ---- | --------- |
-| `/api/v1/funds/search`           | GET  | 搜索基金      |
-| `/api/v1/funds/filters`          | GET  | 获取基金筛选项   |
-| `/api/v1/funds/coverage`         | GET  | 基金数据覆盖情况  |
-| `/api/v1/fund/{fundCode}/detail` | GET  | 基金详情      |
-| `/api/v1/predict/{fundCode}`     | GET  | 预测入口占位，返回 501 |
-| `/api/v1/funds/sync`             | POST | 触发基金同步 🔒 |
-
-### 股票
-
-| 端点                                    | 方法   | 说明                           |
-| ------------------------------------- | ---- | ---------------------------- |
-| `/api/v1/stocks/search`               | GET  | 搜索股票                         |
-| `/api/v1/stocks/filters`              | GET  | 获取股票筛选项                      |
-| `/api/v1/stock/{stockCode}/detail`    | GET  | 股票详情                         |
-| `/api/v1/stock/{stockCode}/predict`   | GET  | 预测入口占位，返回 501              |
-| `/api/v1/stocks/quotes`               | POST | 批量获取股票报价                     |
-| `/api/v1/market/stock-ranking/{type}` | GET  | 股票涨跌排行（`gainers` / `losers`） |
-| `/api/v1/stocks/sync`                 | POST | 触发股票同步 🔒                    |
-
-### 市场 & 自选
-
-| 端点                              | 方法   | 说明                           |
-| ------------------------------- | ---- | ---------------------------- |
-| `/api/v1/market/indices`        | GET  | 获取市场指数数据，包含 A 股、港股、美股与标普 500 |
-| `/api/v1/market/ranking/{type}` | GET  | 基金涨跌排行（`gainers` / `losers`） |
-| `/api/v1/watchlist/quotes`      | POST | 批量获取自选基金报价                   |
-
-> 🔒 标记的接口需要管理员令牌认证，详见下方说明。
-
-### 管理员令牌认证
-
-同步接口（`/funds/sync`、`/stocks/sync`）需要在请求头中携带 Bearer Token：
-
-```
-Authorization: Bearer <token>
+```powershell
+cd backend-go\akshare-service
+.\.venv\Scripts\python.exe -m pip check
+.\.venv\Scripts\python.exe -m unittest -v
 ```
 
-- 开发环境（`APP_ENV=development`）可使用 `dev-admin-token`
-- 生产环境通过 `ADMIN_TOKEN` 环境变量设置强随机令牌
+## 健康检查
 
-## 设计特色
+| 路径 | 用途 |
+| --- | --- |
+| `/api/v1/health/live` | 进程存活探测 |
+| `/api/v1/health/ready` | 数据库就绪探测 |
+| `/api/v1/health` | 兼容路径，语义等同 readiness |
 
-- **Inter 字体体系** — 专为数据密集型界面设计的字体层级系统
-- **市场主题色** — A股红/港股橙/美股蓝，左侧色轨快速区分市场
-- **深色模式** — 完整的 light/dark 主题切换
-- **响应式布局** — 适配桌面、平板和手机
-- **流畅动画** — 统一的缓动函数和时长规范，交错入场动画
-- **等宽数字** — `font-variant-numeric: tabular-nums` 确保数值对齐
-- **预测占位** — 预测页和详情页入口保留，明确提示预测模型将由独立项目接入
+公开的数据源健康接口只返回状态和失败次数，不返回上游原始错误或凭据相关 URL。
 
-## 项目文档
+## 管理接口
 
-| 文档                                             | 说明         |
-| ---------------------------------------------- | ---------- |
-| [docs/architecture.md](docs/architecture.md)   | 架构设计文档     |
-| [docs/api/openapi.yaml](docs/api/openapi.yaml) | OpenAPI 规范 |
-| [docs/operations/deployment.md](docs/operations/deployment.md) | 部署指南 |
-| [docs/operations/maintenance.md](docs/operations/maintenance.md) | 维护手册 |
+`GET /api/v1/metrics` 要求 Bearer Token。`POST /api/v1/funds/sync`、
+`POST /api/v1/stocks/sync` 和健康模拟接口同时要求 Bearer Token、CSRF Cookie
+及匹配的 `X-CSRF-Token`：
+
+```text
+Authorization: Bearer <ADMIN_TOKEN>
+```
+
+项目不再内置 `dev-admin-token`。开发和生产环境都必须显式配置令牌。
+
+浏览器写请求使用 HttpOnly CSRF Cookie 与 `X-CSRF-Token` 响应头。Axios 客户端会保存响应头令牌，并在后续 POST/PUT/PATCH/DELETE 请求中自动发送。命令行客户端必须先发送 GET，并在写请求中复用同一 Cookie 会话和响应头令牌。
+
+## 数据与迁移安全
+
+- 默认股票仅在空表时种入，重启不会清空已有股票。
+- Schema 变更由 `schema_migrations` 记录，并在 PostgreSQL advisory lock 下执行。
+- 历史 `updated_at` 字符串列使用类型转换迁移，不删除原有数据。
+- 数据库日志只记录主机和数据库名，不记录用户名、密码或查询参数。
+
+## AKShare 服务
+
+AKShare 只应部署在回环地址或内部网络：
+
+```powershell
+cd backend-go\akshare-service
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+$env:AKSHARE_SERVICE_TOKEN="<random-service-token>"
+.\.venv\Scripts\python.exe main.py
+```
+
+Go API 同时配置：
+
+```dotenv
+AKSHARE_URL=http://localhost:8900
+AKSHARE_SERVICE_TOKEN=<same-token>
+```
+
+未配置服务令牌时，Go API 不注册 AKShare provider。公网数据源必须使用 HTTPS。
+
+## 数据同步
+
+默认股票种子只会在股票表为空时写入，不会在重启时覆盖已有股票。远程同步使用 upsert/受控替换流程。
+
+后端同步行为可通过 `backend-go/.env` 配置：
+
+| 变量 | 作用 |
+| --- | --- |
+| `FUND_UNIVERSE_URL` | 基金全量代码列表来源，默认使用东方财富公开列表 |
+| `FUND_METRICS_URL` | 基金净值与收益排行来源；留空时使用运行时默认地址 |
+| `FUND_AUTO_SYNC_ON_START` | 启动时是否自动补全基金底库 |
+| `FUND_AUTO_SYNC_MIN_COUNT` | 触发基金底库自动补全的最小记录数，默认 `1000` |
+| `FUND_SYNC_CSV_PATH` | 可选本地基金 CSV，至少包含 `fund_code`、`fund_name`、`fund_type` |
+| `FUND_REALTIME_QUOTES_ENABLED` | 自选刷新时是否启用腾讯场内基金行情和东方财富基金估值 |
+| `STOCK_AUTO_SYNC_ON_START` | 启动时是否自动同步股票列表，默认关闭 |
+
+离线开发时应关闭两类启动同步，并按需配置本地 CSV：
+
+```dotenv
+FUND_AUTO_SYNC_ON_START=false
+STOCK_AUTO_SYNC_ON_START=false
+FUND_SYNC_CSV_PATH=..\data\fund-universe.csv
+```
+
+```powershell
+$session = New-Object Microsoft.PowerShell.Commands.WebRequestSession
+$bootstrap = Invoke-WebRequest `
+  -Uri "http://localhost:5070/api/v1/health/live" `
+  -WebSession $session
+$csrfToken = [string]$bootstrap.Headers["X-CSRF-Token"]
+$adminHeaders = @{
+  Authorization = "Bearer $env:ADMIN_TOKEN"
+  "X-CSRF-Token" = $csrfToken
+}
+
+Invoke-RestMethod -Method Post `
+  -Uri "http://localhost:5070/api/v1/funds/sync" `
+  -WebSession $session `
+  -Headers $adminHeaders
+
+Invoke-RestMethod -Method Post `
+  -Uri "http://localhost:5070/api/v1/stocks/sync" `
+  -WebSession $session `
+  -Headers $adminHeaders
+```
+
+## 质量门禁
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\verify-api-contract.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\verify-commercial-readiness.ps1
+```
+
+门禁覆盖：
+
+- Go 格式、测试、vet、构建和可达调用链漏洞扫描
+- 前端 Prettier、零警告 lint、测试、构建、全量及生产依赖审计
+- Python 依赖一致性、字节码编译和单元测试；CI 额外执行 `pip-audit`
+- Redocly OpenAPI 标准校验、后端路由方法/路径一致性及预测端点废弃/410 不变量
+
+GitHub Actions 配置位于 `.github/workflows/ci.yml`。
+
+## 项目结构
+
+当前代码已收敛为以下商业架构边界：
+
+```text
+stock-predict/
+├── backend-go/
+│   ├── cmd/api/                 # API 进程
+│   ├── cmd/migrate/             # 显式数据库迁移
+│   ├── internal/app/            # 应用装配与用例编排
+│   ├── internal/transport/http/ # Gin 路由、处理器、中间件与响应
+│   ├── internal/domain/         # fund、stock、market、search 领域
+│   ├── internal/infrastructure/ # PostgreSQL 与外部数据源实现
+│   ├── internal/platform/       # 配置、错误、缓存、HTTP 与可观测性
+│   └── akshare-service/         # 可选内部 FastAPI 服务
+├── frontend/
+│   └── src/
+│       ├── app/                 # 启动、路由、全局样式与应用测试
+│       ├── shared/              # 无业务依赖的 API、组件、组合式函数和工具
+│       └── features/            # funds、stocks、market、watchlist 等业务模块
+├── docs/api/openapi.yaml        # API 契约
+├── docs/operations/             # 部署与维护说明
+├── scripts/                     # 本地质量门禁
+└── docker-compose.yml
+```
+
+## 文档
+
+- [架构说明](docs/architecture.md)
+- [架构重构决策记录](docs/architecture-refactor.md)
+- [OpenAPI](docs/api/openapi.yaml)
+- [部署指南](docs/operations/deployment.md)
+- [维护手册](docs/operations/maintenance.md)
+- [数据源合规](docs/operations/data-source-compliance.md)
 
 ## License
 

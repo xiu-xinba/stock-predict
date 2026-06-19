@@ -1,3 +1,4 @@
+// Package main 是股票预测系统的 API 服务入口。
 package main
 
 import (
@@ -11,9 +12,11 @@ import (
 	"syscall"
 
 	"stock-predict-go/internal/app"
-	"stock-predict-go/internal/config"
+	"stock-predict-go/internal/platform/config"
 )
 
+// main 是 API 服务的入口函数，负责加载配置、初始化服务器、
+// 监听系统信号并在收到终止信号时执行优雅关闭。
 func main() {
 	cfg := config.Load()
 	if err := cfg.Validate(); err != nil {
